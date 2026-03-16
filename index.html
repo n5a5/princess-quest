@@ -410,8 +410,8 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 /* 3C: LETTER TRACING */
 #letter-trace-area { text-align: center; }
 .trace-canvas-wrap { position: relative; width: 280px; height: 280px; margin: 14px auto; border-radius: 20px; border: 4px solid #d8b4fe; background: white; overflow: hidden; touch-action: none; }
-.trace-canvas-wrap canvas { display: block; width: 100%; height: 100%; }
-.trace-letter-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Fredoka One', cursive; font-size: 220px; color: #f3e8ff; pointer-events: none; line-height: 1; user-select: none; }
+.trace-canvas-wrap canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; }
+.trace-letter-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Fredoka One', cursive; font-size: 220px; color: #e9d5ff; pointer-events: none; line-height: 1; user-select: none; z-index: 1; }
 .trace-progress { font-family: 'Fredoka One', cursive; font-size: 14px; color: #a855f7; margin-top: 8px; }
 
 /* 3E: FIVE SENSES */
