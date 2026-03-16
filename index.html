@@ -178,7 +178,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .letter-word { font-family: 'Fredoka One', cursive; font-size: 26px; color: #a855f7; text-align: center; margin-bottom: 16px; }
 .letter-image { font-size: 90px; text-align: center; margin-bottom: 14px; animation: wiggle 2s ease-in-out infinite; }
 .letter-nav { display: flex; justify-content: center; gap: 7px; flex-wrap: wrap; margin-bottom: 16px; padding: 0 4px; }
-.letter-btn { width: 46px; height: 46px; border-radius: 50%; background: linear-gradient(145deg, #fce7f3, #fbcfe8); border: 3px solid #f9a8d4; color: #9d174d; font-family: 'Fredoka One', cursive; font-size: 18px; cursor: pointer; transition: transform 0.15s; }
+.letter-btn { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(145deg, #fce7f3, #fbcfe8); border: 3px solid #f9a8d4; color: #9d174d; font-family: 'Fredoka One', cursive; font-size: 18px; cursor: pointer; transition: transform 0.15s; }
 .letter-btn:active { transform: scale(0.88); }
 .letter-btn.current { background: linear-gradient(145deg, #a855f7, #7c3aed); color: white; border-color: #6d28d9; transform: scale(1.18); box-shadow: 0 0 14px rgba(124,58,237,0.5); }
 .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 380px; margin: 18px auto; }
@@ -363,6 +363,81 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 
 /* TUTORIAL HINTS (Stage 2) */
 .tutorial-hint { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; font-family: 'Fredoka One', cursive; font-size: 15px; padding: 12px 24px; border-radius: 20px; z-index: 1500; box-shadow: 0 6px 24px rgba(124,58,237,0.4); animation: bounceIn 0.4s ease-out; pointer-events: none; white-space: nowrap; }
+
+/* OFFLINE INDICATOR */
+#offline-indicator { display: none; position: fixed; top: 64px; left: 50%; transform: translateX(-50%); background: #fef2f2; color: #dc2626; font-family: 'Fredoka One', cursive; font-size: 13px; padding: 6px 18px; border-radius: 14px; z-index: 1500; border: 2px solid #fecaca; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+#offline-indicator.show { display: block; animation: bounceIn 0.4s ease-out; }
+
+/* 4A: XP LEVEL BAR */
+.xp-bar-wrap { max-width: 520px; margin: 0 auto 10px; padding: 0 6px; text-align: left; }
+.xp-level-name { font-family: 'Fredoka One', cursive; font-size: 13px; color: #7c3aed; margin-bottom: 3px; }
+.xp-bar-track { height: 14px; background: #f3e8ff; border-radius: 10px; overflow: hidden; position: relative; border: 2px solid #e9d5ff; }
+.xp-fill { height: 100%; background: linear-gradient(90deg, #a855f7, #ec4899, #f59e0b); border-radius: 10px; transition: width 0.6s ease; position: relative; }
+.xp-fill::after { content: attr(data-pct); position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font-size: 9px; font-weight: 800; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+
+/* 4B: PROGRESS RINGS ON MAP CARDS */
+.progress-ring-wrap { position: absolute; top: 6px; right: 6px; width: 36px; height: 36px; }
+.progress-ring-wrap svg { transform: rotate(-90deg); }
+.progress-ring-bg { fill: none; stroke: #e9d5ff; stroke-width: 3; }
+.progress-ring-fill { fill: none; stroke: url(#progressGrad); stroke-width: 3; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+.progress-ring-text { font-family: 'Fredoka One', cursive; font-size: 8px; fill: #7c3aed; dominant-baseline: central; text-anchor: middle; }
+
+/* 4E: HOME SCREEN CHARACTER */
+.home-princess { text-align: center; margin: 10px auto 0; cursor: pointer; position: relative; }
+.home-princess .princess-emoji { font-size: 60px; display: inline-block; animation: float 3s ease-in-out infinite; }
+.home-princess .speech-bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: white; border-radius: 16px; padding: 8px 16px; font-family: 'Fredoka One', cursive; font-size: 14px; color: #7c3aed; box-shadow: 0 4px 12px rgba(0,0,0,0.1); white-space: nowrap; animation: bounceIn 0.3s ease-out; pointer-events: none; }
+.home-princess .speech-bubble::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 8px solid transparent; border-top-color: white; }
+@keyframes princessBounce { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15) rotate(5deg); } }
+
+/* 3A: WORD CATEGORIES */
+#word-category-area { text-align: center; }
+.cat-title { font-family: 'Fredoka One', cursive; font-size: 22px; color: #7c3aed; margin-bottom: 6px; }
+.cat-subtitle { font-size: 16px; color: #a855f7; font-weight: 700; margin-bottom: 14px; }
+.cat-word-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 420px; margin: 0 auto 14px; }
+.cat-word-btn { font-family: 'Fredoka One', cursive; font-size: 18px; padding: 12px 20px; border-radius: 16px; border: 3px solid #d8b4fe; background: white; cursor: pointer; transition: all 0.2s; min-height: 48px; color: #581c87; }
+.cat-word-btn:active { transform: scale(0.93); }
+.cat-word-btn.cat-correct { background: #dcfce7; border-color: #22c55e; animation: correctFlash 0.6s ease-out; pointer-events: none; }
+.cat-word-btn.cat-wrong { background: #fef2f2; border-color: #f87171; animation: wrongShake 0.4s ease-out; }
+.cat-progress { font-family: 'Fredoka One', cursive; font-size: 14px; color: #a855f7; margin-top: 8px; }
+
+/* 3B: NUMBER LINE */
+#number-line-area { text-align: center; }
+.number-line-row { display: flex; justify-content: center; gap: 2px; flex-wrap: wrap; margin: 18px auto; max-width: 480px; }
+.nl-box { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Fredoka One', cursive; font-size: 16px; color: #581c87; background: white; border: 2px solid #d8b4fe; flex-shrink: 0; }
+.nl-box.nl-missing { background: linear-gradient(135deg, #fde68a, #fbbf24); border-color: #f59e0b; font-size: 20px; color: #92400e; animation: pulse 1s ease-in-out infinite; }
+@media (max-width: 420px) { .nl-box { width: 28px; height: 28px; font-size: 12px; } .nl-box.nl-missing { font-size: 14px; } }
+
+/* 3C: LETTER TRACING */
+#letter-trace-area { text-align: center; }
+.trace-canvas-wrap { position: relative; width: 280px; height: 280px; margin: 14px auto; border-radius: 20px; border: 4px solid #d8b4fe; background: white; overflow: hidden; touch-action: none; }
+.trace-canvas-wrap canvas { display: block; width: 100%; height: 100%; }
+.trace-letter-bg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Fredoka One', cursive; font-size: 220px; color: #f3e8ff; pointer-events: none; line-height: 1; user-select: none; }
+.trace-progress { font-family: 'Fredoka One', cursive; font-size: 14px; color: #a855f7; margin-top: 8px; }
+
+/* 3E: FIVE SENSES */
+#five-senses-area { text-align: center; }
+.sense-emoji { font-size: 100px; display: block; margin: 14px auto; animation: wiggle 2s ease-in-out infinite; }
+.sense-instruction { font-family: 'Fredoka One', cursive; font-size: 22px; color: #581c87; margin: 14px 0; line-height: 1.4; }
+.sense-counter { font-family: 'Fredoka One', cursive; font-size: 16px; color: #a855f7; margin: 8px 0; }
+.sense-dots { display: flex; justify-content: center; gap: 8px; margin: 14px 0; }
+.sense-dot { width: 16px; height: 16px; border-radius: 50%; background: #e5e7eb; transition: background 0.3s; }
+.sense-dot.done { background: linear-gradient(135deg, #a855f7, #ec4899); box-shadow: 0 0 6px rgba(168,85,247,0.4); }
+
+/* 7TH MODULE CARD */
+.module-card:nth-child(7) { animation-delay: 0.35s; border-color: #fda4af; background: linear-gradient(145deg, #fff 30%, #fff1f2); }
+.module-card:nth-child(7) .icon { animation-delay: 3s; }
+
+/* MEMORY PALACE */
+.memory-grid { display: grid; gap: 8px; max-width: 400px; margin: 16px auto; }
+.memory-card { aspect-ratio: 1; border-radius: 16px; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform 0.5s; }
+.memory-card.flipped { transform: rotateY(180deg); }
+.memory-card.matched { transform: rotateY(180deg); pointer-events: none; }
+.memory-card.matched .memory-card-back { background: linear-gradient(145deg, #dcfce7, #bbf7d0); border-color: #22c55e; }
+.memory-card-face { position: absolute; inset: 0; border-radius: 16px; display: flex; align-items: center; justify-content: center; backface-visibility: hidden; }
+.memory-card-front { background: linear-gradient(145deg, #c4b5fd, #a78bfa); border: 3px solid #8b5cf6; font-size: 28px; }
+.memory-card-front::after { content: '❓'; }
+.memory-card-back { background: white; border: 3px solid #d8b4fe; transform: rotateY(180deg); font-size: 36px; }
+#memory-moves { font-family: 'Fredoka One', cursive; text-align: center; font-size: 18px; color: #7c3aed; margin: 10px 0; }
 </style>
 </head>
 <body>
@@ -430,11 +505,27 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 <!-- SESSION TIMER -->
 <div id="session-timer"></div>
 
+<!-- OFFLINE INDICATOR -->
+<div id="offline-indicator">📡 You're offline — playing from saved data</div>
+
 <!-- MAP SCREEN -->
 <div id="map-screen" class="screen active">
   <div class="castle-title">&#127984; Princess Quest &#127984;</div>
   <div id="daily-quest-container"></div>
+  <div class="xp-bar-wrap" id="xp-bar-wrap">
+    <div class="xp-level-name" id="xp-level-name">Beginner Princess</div>
+    <div class="xp-bar-track"><div class="xp-fill" id="xp-fill" data-pct="0%" style="width:0%"></div></div>
+  </div>
   <div class="castle-subtitle">Pick a room, Princess! &#128149;</div>
+  <!-- SVG defs for progress ring gradient -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#a855f7"/>
+        <stop offset="100%" stop-color="#ec4899"/>
+      </linearGradient>
+    </defs>
+  </svg>
   <div class="module-grid">
     <div class="module-card" role="button" aria-label="Open Word Garden" onclick="openModule('words')">
       <span class="icon">&#128218;</span>
@@ -466,6 +557,11 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="name">Letter Land</div>
       <div class="desc">Learn ABCs!</div>
     </div>
+    <div class="module-card" role="button" aria-label="Open Memory Palace" onclick="openModule('memory')">
+      <span class="icon">🧠</span>
+      <div class="name">Memory Palace</div>
+      <div class="desc">Match the pairs!</div>
+    </div>
   </div>
   <div style="text-align:center;margin:16px auto;max-width:520px">
     <div class="module-card" onclick="surpriseMe()" style="background:linear-gradient(135deg,#fde68a,#fbcfe8,#c4b5fd,#93c5fd);border-color:#fbbf24;max-width:260px;margin:0 auto">
@@ -473,6 +569,10 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="name">Surprise Me!</div>
       <div class="desc">Pick something fun!</div>
     </div>
+  </div>
+  <div class="home-princess" id="home-princess" onclick="princessTap()">
+    <div id="princess-speech" style="display:none"></div>
+    <div class="princess-emoji">👸</div>
   </div>
 </div>
 
@@ -498,9 +598,13 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
           <span class="mode-icon">🎵</span>
           <div class="mode-label">Rhyme Time</div>
         </div>
-        <div class="mode-card" role="button" style="grid-column: 1 / -1; max-width: 180px; margin: 0 auto;" onclick="startSentences()">
+        <div class="mode-card" role="button" onclick="startSentences()">
           <span class="mode-icon">📝</span>
           <div class="mode-label">Read Sentences</div>
+        </div>
+        <div class="mode-card" role="button" onclick="startWordCategories()">
+          <span class="mode-icon">🗂️</span>
+          <div class="mode-label">Word Sort</div>
         </div>
       </div>
     </div>
@@ -539,6 +643,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div id="ml-hint" class="scenario-text" style="font-size:14px;color:#a78bfa;margin-top:8px"></div>
     </div>
     <div id="sentence-area" style="display:none"></div>
+    <div id="word-category-area" style="display:none"></div>
   </div>
 </div>
 
@@ -572,9 +677,13 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
           <span class="mode-icon">🕐</span>
           <div class="mode-label">What Time?</div>
         </div>
-        <div class="mode-card" role="button" style="grid-column: 1 / -1; max-width: 180px; margin: 0 auto;" onclick="startShapes()">
+        <div class="mode-card" role="button" onclick="startShapes()">
           <span class="mode-icon">🔷</span>
           <div class="mode-label">Shapes!</div>
+        </div>
+        <div class="mode-card" role="button" onclick="startNumberLine()">
+          <span class="mode-icon">📏</span>
+          <div class="mode-label">Number Line</div>
         </div>
       </div>
     </div>
@@ -616,6 +725,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     </div>
     <div id="clock-area" style="display:none"></div>
     <div id="shapes-area" style="display:none"></div>
+    <div id="number-line-area" style="display:none"></div>
   </div>
 </div>
 
@@ -636,6 +746,10 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
         <div class="calm-card" role="button" onclick="startVisualization()">
           <div class="icon">&#127752;</div>
           <div class="label">Happy Place</div>
+        </div>
+        <div class="calm-card" role="button" onclick="startFiveSenses()">
+          <div class="icon">🖐️</div>
+          <div class="label">5 Senses</div>
         </div>
       </div>
     </div>
@@ -673,6 +787,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
         <button class="big-btn" onclick="endCalmActivity()">✅ All Done 😊</button>
       </div>
     </div>
+    <div id="five-senses-area" style="display:none"></div>
   </div>
 </div>
 
@@ -727,10 +842,46 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
           <span class="mode-icon">👂</span>
           <div class="mode-label">Sound Match</div>
         </div>
+        <div class="mode-card" role="button" onclick="startLetterTracing()">
+          <span class="mode-icon">✍️</span>
+          <div class="mode-label">Trace It!</div>
+        </div>
       </div>
     </div>
     <div id="abc-area" style="display:none"></div>
     <div id="sound-match-area" style="display:none"></div>
+    <div id="letter-trace-area" style="display:none"></div>
+  </div>
+</div>
+
+<!-- MEMORY PALACE -->
+<div id="memory-screen" class="screen">
+  <div class="game-area">
+    <div class="game-title">🧠 Memory Palace</div>
+    <div id="memory-mode-select">
+      <div class="mode-grid">
+        <div class="mode-card" role="button" onclick="startMemoryGame(4)">
+          <span class="mode-icon">🌸</span>
+          <div class="mode-label">Easy (4 pairs)</div>
+        </div>
+        <div class="mode-card" role="button" onclick="startMemoryGame(6)">
+          <span class="mode-icon">🌺</span>
+          <div class="mode-label">Medium (6 pairs)</div>
+        </div>
+        <div class="mode-card" role="button" onclick="startMemoryGame(8)">
+          <span class="mode-icon">🌻</span>
+          <div class="mode-label">Hard (8 pairs)</div>
+        </div>
+        <div class="mode-card" role="button" onclick="startMemoryGame(10)">
+          <span class="mode-icon">👑</span>
+          <div class="mode-label">Expert (10 pairs)</div>
+        </div>
+      </div>
+    </div>
+    <div id="memory-game-area" style="display:none">
+      <div id="memory-moves">Moves: 0</div>
+      <div id="memory-grid" class="memory-grid"></div>
+    </div>
   </div>
 </div>
 
@@ -761,8 +912,6 @@ const defaultState = {
   calmCompleted: 0,
   scenariosCompleted: 0,
   storiesCompleted: 0,
-  unlockedItems: [],
-  equippedItems: [],
   totalActivities: 0,
   startDate: new Date().toISOString(),
   // Stage 2: Engagement
@@ -781,8 +930,6 @@ const defaultState = {
   wordsMastered: [],  // words with 3+ correct and 0 recent wrong
   storyPaths: {},     // {storyTitle: [pathIds explored]}
   mathWrong: {},      // {range: wrongCount} for trouble spot tracking
-  colorCombosFound: [], // discovered color mixing combos
-  lastDrawing: null,  // data URL of last saved drawing
   // Stage 3 additions
   dailyQuest: null,       // {date, type, target, progress, completed, claimed}
   activeDays: [],         // ['2026-03-15', ...] dates the child used the app
@@ -798,7 +945,9 @@ const defaultState = {
   letterAccuracy: {},     // per-letter {correct, wrong} tracking
   sentencesRead: 0,       // sentences read in Word Garden
   clockCompleted: 0,      // clock problems solved
-  shapesCompleted: 0      // shape quizzes completed
+  shapesCompleted: 0,      // shape quizzes completed
+  memoryBestMoves: {},    // best move count per difficulty {4: N, 6: N, 8: N, 10: N}
+  hiddenModules: []       // modules hidden by parent ['calm', 'memory', etc.]
 };
 let state = JSON.parse(localStorage.getItem('princessQuest') || 'null') || {...defaultState};
 // Merge in any new fields from defaultState that old saves don't have
@@ -1146,10 +1295,14 @@ function createSparkles(count) {
 }
 
 function createConfetti(count) {
+  // DOM element cap: remove excess celebration elements
+  const existing = document.querySelectorAll('[data-celebration]');
+  if (existing.length > 60) existing.forEach((el, i) => { if (i < existing.length - 30) el.remove(); });
   const colors = ['#ec4899','#a855f7','#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
   const shapes = ['●','■','▲','♦','★','♥','✦'];
   for (let i = 0; i < (count || 40); i++) {
     const c = document.createElement('div');
+    c.setAttribute('data-celebration', '1');
     c.style.cssText = `position:fixed;top:-10px;left:${Math.random()*100}%;z-index:2500;pointer-events:none;font-size:${10+Math.random()*16}px;color:${colors[Math.floor(Math.random()*colors.length)]};animation:confettiFall ${1.5+Math.random()*2}s ease-in forwards;animation-delay:${Math.random()*0.5}s;opacity:0;`;
     c.textContent = shapes[Math.floor(Math.random()*shapes.length)];
     document.body.appendChild(c);
@@ -1261,6 +1414,8 @@ if ('speechSynthesis' in window) {
   speechSynthesis.onvoiceschanged = loadVoice;
   setTimeout(loadVoice, 100); // Some browsers need a delay
   loadVoice();
+  // Chrome speech synthesis keepalive workaround
+  setInterval(() => { if (speechSynthesis.speaking) { speechSynthesis.pause(); speechSynthesis.resume(); } }, 10000);
 }
 
 function speak(text) {
@@ -1315,6 +1470,7 @@ function transitionScreens(fromScreen, toScreen, cb) {
 }
 
 function openModule(mod) {
+  haptic('tap');
   playSound('module-enter');
   const currentScreen = document.querySelector('.screen.active');
   const nextScreen = document.getElementById(mod + '-screen');
@@ -1327,6 +1483,7 @@ function openModule(mod) {
     if (mod === 'uhoh') initUhOh();
     if (mod === 'stories') initStories();
     if (mod === 'letters') initLetters();
+    if (mod === 'memory') initMemory();
   });
 }
 
@@ -1338,6 +1495,9 @@ function goHome() {
   transitionScreens(currentScreen, mapScreen, () => {
     document.getElementById('back-btn').style.display = 'none';
     updateDailyQuest();
+    updateProgressRings();
+    updateXpBar();
+    applyHiddenModules();
   });
   // Stop all ongoing activity timers and speech
   clearTimeout(calmTimer);
@@ -1358,6 +1518,10 @@ function showReward(emoji, text, gems) {
   rewardEmojiEl.style.animation = 'celebratePulse 0.8s ease-out';
   setTimeout(() => rewardEmojiEl.style.animation = '', 800);
   addGems(totalGems);
+  // 4A: Add XP equal to gems earned
+  addXp(totalGems);
+  // 4C: Haptic success feedback
+  haptic('success');
   state.totalActivities++;
   state.dailyActivities++;
   saveState();
@@ -1376,6 +1540,151 @@ function showReward(emoji, text, gems) {
 }
 
 function closeReward() { document.getElementById('reward-popup').classList.remove('show'); }
+
+// ==================== 4A: XP LEVEL SYSTEM ====================
+const xpLevelNames = ['Beginner Princess', 'Brave Explorer', 'Clever Scholar', 'Shining Star', 'Royal Champion', 'Legendary Queen'];
+const xpThresholds = [0, 50, 120, 220, 360, 550];
+
+function getXpLevel(xp) {
+  let lvl = 0;
+  for (let i = xpThresholds.length - 1; i >= 0; i--) {
+    if (xp >= xpThresholds[i]) { lvl = i; break; }
+  }
+  return lvl;
+}
+
+function updateXpBar() {
+  const xp = state.xp || 0;
+  const lvl = getXpLevel(xp);
+  const nextLvl = lvl < xpThresholds.length - 1 ? lvl + 1 : lvl;
+  const currentThresh = xpThresholds[lvl];
+  const nextThresh = xpThresholds[nextLvl];
+  const progress = lvl >= xpThresholds.length - 1 ? 100 : Math.min(100, Math.round((xp - currentThresh) / (nextThresh - currentThresh) * 100));
+  const fill = document.getElementById('xp-fill');
+  const nameEl = document.getElementById('xp-level-name');
+  if (fill) { fill.style.width = progress + '%'; fill.setAttribute('data-pct', progress + '%'); }
+  if (nameEl) nameEl.textContent = xpLevelNames[lvl] + (lvl < xpThresholds.length - 1 ? ' (' + xp + '/' + nextThresh + ' XP)' : ' (MAX)');
+}
+
+function addXp(amount) {
+  const oldLevel = getXpLevel(state.xp || 0);
+  state.xp = (state.xp || 0) + amount;
+  const newLevel = getXpLevel(state.xp);
+  saveState();
+  updateXpBar();
+  if (newLevel > oldLevel) {
+    haptic('levelup');
+    // Show level-up celebration using reward popup mechanism
+    setTimeout(() => {
+      const popup = document.getElementById('reward-popup');
+      document.getElementById('reward-emoji').textContent = '🎉';
+      document.getElementById('reward-text').textContent = 'Level Up! ' + xpLevelNames[newLevel] + '!';
+      document.getElementById('reward-gems-text').textContent = 'You reached level ' + (newLevel + 1) + '!';
+      popup.classList.add('show');
+      createConfetti(40);
+      speak('Amazing! You are now a ' + xpLevelNames[newLevel] + '!');
+    }, 2500);
+  }
+}
+
+// ==================== 4B: PROGRESS RINGS ====================
+function updateProgressRings() {
+  const cards = document.querySelectorAll('#map-screen .module-grid > .module-card');
+  const moduleData = [
+    { learned: (state.lettersLearned || []).length, total: sightWords.length },    // Word Garden
+    { learned: state.mathCompleted || 0, total: 100 },                              // Number Kingdom
+    { learned: state.calmCompleted || 0, total: 20 },                               // Calm Castle
+    { learned: Object.keys(state.storyPaths || {}).length, total: stories.length },   // Story Garden
+    { learned: state.scenariosCompleted || 0, total: 18 },                          // Uh-Oh Academy
+    { learned: (state.lettersKnown || []).length, total: 26 },                      // Letter Land
+    { learned: Object.keys(state.memoryBestMoves || {}).length, total: 4 },        // Memory Palace
+  ];
+  cards.forEach((card, i) => {
+    if (i >= moduleData.length) return;
+    // Remove old ring if any
+    const old = card.querySelector('.progress-ring-wrap');
+    if (old) old.remove();
+    const d = moduleData[i];
+    const pct = Math.min(100, Math.round((d.learned / d.total) * 100));
+    const r = 14;
+    const circumference = 2 * Math.PI * r;
+    const offset = circumference - (pct / 100) * circumference;
+    const wrap = document.createElement('div');
+    wrap.className = 'progress-ring-wrap';
+    wrap.innerHTML = '<svg viewBox="0 0 36 36" width="36" height="36">' +
+      '<circle class="progress-ring-bg" cx="18" cy="18" r="' + r + '"/>' +
+      '<circle class="progress-ring-fill" cx="18" cy="18" r="' + r + '" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + offset + '"/>' +
+      '<text class="progress-ring-text" x="18" y="19" transform="rotate(90 18 18)">' + pct + '%</text>' +
+      '</svg>';
+    card.appendChild(wrap);
+  });
+}
+
+// ==================== 4C: HAPTIC FEEDBACK ====================
+const hapticPatterns = {
+  tap: [10],
+  success: [20, 50, 20],
+  wrong: [50, 30, 50, 30, 50],
+  levelup: [30, 50, 30, 50, 30, 100, 50]
+};
+
+function haptic(pattern) {
+  if (navigator.vibrate && hapticPatterns[pattern]) {
+    navigator.vibrate(hapticPatterns[pattern]);
+  }
+}
+
+// ==================== 4D: IDLE ENCOURAGEMENT ====================
+let idleTimer = null;
+const idleMessages = ["You've got this! \uD83D\uDCAA", "Take your time! \uD83C\uDF1F", "Try tapping an answer! \uD83D\uDC46", "You're doing great! \u2728"];
+
+function resetIdleTimer() {
+  clearTimeout(idleTimer);
+  // Only set idle timer if we're on an activity screen (not home)
+  const mapScreen = document.getElementById('map-screen');
+  if (mapScreen && mapScreen.classList.contains('active')) return;
+  idleTimer = setTimeout(showIdleHint, 30000);
+}
+
+function showIdleHint() {
+  // Don't show on home screen
+  const mapScreen = document.getElementById('map-screen');
+  if (mapScreen && mapScreen.classList.contains('active')) return;
+  const msg = idleMessages[Math.floor(Math.random() * idleMessages.length)];
+  const hint = document.createElement('div');
+  hint.className = 'tutorial-hint';
+  hint.textContent = msg;
+  document.body.appendChild(hint);
+  setTimeout(() => { if (hint.parentNode) hint.remove(); }, 4000);
+  // Reset for next idle period
+  resetIdleTimer();
+}
+
+document.addEventListener('click', resetIdleTimer);
+document.addEventListener('touchstart', resetIdleTimer);
+
+// ==================== 4E: HOME SCREEN CHARACTER ====================
+const princessSayings = [
+  "You're amazing!", "Let's learn something fun!", "I believe in you!",
+  "You're so smart!", "Let's go on an adventure!", "I'm proud of you!",
+  "Ready to learn?", "You shine so bright!"
+];
+
+function princessTap() {
+  haptic('tap');
+  const bubble = document.getElementById('princess-speech');
+  const msg = princessSayings[Math.floor(Math.random() * princessSayings.length)];
+  bubble.textContent = msg;
+  bubble.className = 'speech-bubble';
+  bubble.style.display = 'block';
+  speak(msg);
+  // Bounce the emoji
+  const emoji = document.querySelector('.home-princess .princess-emoji');
+  emoji.style.animation = 'princessBounce 0.5s ease-out';
+  setTimeout(() => emoji.style.animation = 'float 3s ease-in-out infinite', 500);
+  // Hide bubble after 3s
+  setTimeout(() => { bubble.style.display = 'none'; }, 3000);
+}
 
 // ==================== PARENT DASHBOARD ====================
 // PIN entry system
@@ -1629,6 +1938,15 @@ function openDashboard() {
         <button onclick="changePinFromInput()" style="padding:6px 12px;border-radius:10px;border:2px solid #d8b4fe;background:#dcfce7;cursor:pointer;font-weight:bold">Save</button>
       </div>
     </div>
+    <hr style="margin:12px 0;border-color:#e5e7eb">
+    <div style="font-family:Fredoka One,cursive;font-size:15px;color:#7c3aed;margin-bottom:8px">👁️ Show/Hide Modules</div>
+    ${getModuleTogglesHtml()}
+    <hr style="margin:12px 0;border-color:#e5e7eb">
+    <div style="font-family:Fredoka One,cursive;font-size:15px;color:#7c3aed;margin-bottom:8px">💎 Gem Management</div>
+    <div class="stat" style="display:flex;align-items:center;justify-content:space-between">
+      <strong>Current Gems: ${state.gems} 💎</strong>
+      <button onclick="if(confirm('Reset gems to 0? Progress will be kept.')){state.gems=0;saveState();openDashboard();updateGemDisplay()}" style="padding:6px 14px;border-radius:10px;border:2px solid #f59e0b;background:#fef9c3;cursor:pointer;font-weight:bold;color:#92400e">Reset Gems to 0</button>
+    </div>
     <hr style="margin:15px 0;border-color:#e5e7eb">
     <div class="stat"><em>Tap the crown to access this dashboard (PIN: ${state.parentPin || '1234'}).</em></div>
     <div class="stat" style="margin-top:10px"><button onclick="if(confirm('Reset all progress? This cannot be undone.')){localStorage.removeItem('princessQuest');localStorage.removeItem('pq-sound-muted');localStorage.removeItem('pq-music-muted');location.reload()}" style="color:#dc2626;background:none;border:2px solid #dc2626;padding:8px 18px;border-radius:12px;cursor:pointer;font-weight:bold">Reset All Progress</button></div>
@@ -1649,7 +1967,61 @@ function changePinFromInput() {
   }
 }
 
-function closeDashboard() { document.getElementById('parent-dashboard').style.display = 'none'; }
+function closeDashboard() {
+  document.getElementById('parent-dashboard').style.display = 'none';
+  applyHiddenModules(); // refresh home screen after any changes
+}
+
+function updateGemDisplay() {
+  document.getElementById('gem-count').textContent = state.gems;
+}
+
+const allModules = [
+  { id: 'words', name: 'Word Garden', icon: '📚' },
+  { id: 'numbers', name: 'Number Kingdom', icon: '⭐' },
+  { id: 'calm', name: 'Calm Castle', icon: '🦄' },
+  { id: 'stories', name: 'Story Garden', icon: '📖' },
+  { id: 'uhoh', name: 'Uh-Oh Academy', icon: '🤗' },
+  { id: 'letters', name: 'Letter Land', icon: '🔤' },
+  { id: 'memory', name: 'Memory Palace', icon: '🧠' }
+];
+
+function getModuleTogglesHtml() {
+  const hidden = state.hiddenModules || [];
+  return '<div style="display:flex;flex-direction:column;gap:6px">' +
+    allModules.map(m => {
+      const isHidden = hidden.includes(m.id);
+      return '<div class="stat" style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px">' +
+        '<span>' + m.icon + ' <strong>' + m.name + '</strong></span>' +
+        '<button onclick="toggleModuleVisibility(\'' + m.id + '\')" style="padding:4px 12px;border-radius:10px;border:2px solid ' + (isHidden ? '#fecaca' : '#86efac') + ';background:' + (isHidden ? '#fef2f2' : '#dcfce7') + ';cursor:pointer;font-weight:bold;font-size:13px">' + (isHidden ? '👁️‍🗨️ Hidden' : '👁️ Visible') + '</button>' +
+        '</div>';
+    }).join('') +
+    '</div>';
+}
+
+function toggleModuleVisibility(moduleId) {
+  if (!state.hiddenModules) state.hiddenModules = [];
+  const idx = state.hiddenModules.indexOf(moduleId);
+  if (idx >= 0) {
+    state.hiddenModules.splice(idx, 1);
+  } else {
+    state.hiddenModules.push(moduleId);
+  }
+  saveState();
+  openDashboard();
+}
+
+function applyHiddenModules() {
+  const hidden = state.hiddenModules || [];
+  const cards = document.querySelectorAll('#map-screen .module-grid .module-card');
+  cards.forEach(card => {
+    const onclick = card.getAttribute('onclick') || '';
+    const match = onclick.match(/openModule\('(\w+)'\)/);
+    if (match) {
+      card.style.display = hidden.includes(match[1]) ? 'none' : '';
+    }
+  });
+}
 
 // ==================== SESSION TIMER ====================
 let sessionTimerInterval;
@@ -1778,7 +2150,7 @@ let currentWordIdx = 0;
 
 function initWords() {
   document.getElementById('word-mode-select').style.display = 'block';
-  ['sight-word-area','word-match-area','word-build-area','rhyme-area','missing-letter-area','sentence-area'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['sight-word-area','word-match-area','word-build-area','rhyme-area','missing-letter-area','sentence-area','word-category-area'].forEach(id => document.getElementById(id).style.display = 'none');
   document.getElementById('word-diff').innerHTML = getDiffStars(state.wordLevel, 4);
   showTutorialHint('words', '📚 Tap a word to hear it!');
 }
@@ -1846,7 +2218,7 @@ function generateWordMatch() {
         showReaction('correct');
         addStreak();
         createStarBurst(e.clientX, e.clientY, 6);
-        state.lettersLearned.push(target.word);
+        if (!state.lettersLearned.includes(target.word)) state.lettersLearned.push(target.word);
         trackWordAccuracy(target.word, true);
         maybeIncreaseDifficulty('word');
         showReward('📖', 'You read ' + target.word + '!', 5);
@@ -1854,6 +2226,7 @@ function generateWordMatch() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
         trackWordAccuracy(target.word, false);
@@ -1939,7 +2312,7 @@ function showBuildLetters() {
           playSound('correct');
           showReaction('correct');
           addStreak();
-          state.lettersLearned.push(buildTarget.word);
+          if (!state.lettersLearned.includes(buildTarget.word)) state.lettersLearned.push(buildTarget.word);
           trackWordAccuracy(buildTarget.word, true);
           maybeIncreaseDifficulty('word');
           showReward('✏️', 'You spelled ' + buildTarget.word + '!', 8);
@@ -1948,6 +2321,7 @@ function showBuildLetters() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
         speak('Oops! Try another letter!');
@@ -2013,7 +2387,7 @@ function generateRhyme() {
         showReaction('correct');
         addStreak();
         createStarBurst(e.clientX, e.clientY, 6);
-        state.lettersLearned.push(target);
+        if (!state.lettersLearned.includes(target)) state.lettersLearned.push(target);
         trackWordAccuracy(target, true);
         maybeIncreaseDifficulty('word');
         showReward('🎵', target + ' and ' + correct + ' rhyme!', 6);
@@ -2021,6 +2395,7 @@ function generateRhyme() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
         rhymeWrongCount++;
@@ -2079,7 +2454,7 @@ function generateMissingLetter() {
         showReaction('correct');
         addStreak();
         createStarBurst(e.clientX, e.clientY, 6);
-        state.lettersLearned.push(word);
+        if (!state.lettersLearned.includes(word)) state.lettersLearned.push(word);
         trackWordAccuracy(word, true);
         maybeIncreaseDifficulty('word');
         showReward('🔍', 'You found the ' + missingLetter + ' in ' + word + '!', 6);
@@ -2087,6 +2462,7 @@ function generateMissingLetter() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
         mlWrongCount++;
@@ -2106,7 +2482,7 @@ let countTarget = 0, currentCount = 0;
 
 function initNumbers() {
   document.getElementById('number-mode-select').style.display = 'block';
-  ['counting-area','addition-area','pattern-area','compare-area','subtraction-area','skip-count-area','clock-area','shapes-area'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['counting-area','addition-area','pattern-area','compare-area','subtraction-area','skip-count-area','clock-area','shapes-area','number-line-area'].forEach(id => document.getElementById(id).style.display = 'none');
   document.getElementById('math-diff').innerHTML = getDiffStars(state.mathLevel, 4);
   // Show subtraction with lock if math level < 2
   const subCard = document.getElementById('subtract-card');
@@ -2122,6 +2498,7 @@ function startSubtractionSafe() {
   if (state.mathLevel < 2) {
     speak('Keep practicing to unlock!');
     playSound('wrong');
+    showReaction('wrong');
     return;
   }
   startSubtraction();
@@ -2222,8 +2599,10 @@ function generateAddition() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
+        state.mathWrong[mathA+'+'+mathB] = (state.mathWrong[mathA+'+'+mathB]||0)+1; saveState();
         speak('Almost! Try again!');
         setTimeout(() => btn.classList.remove('wrong'), 600);
       }
@@ -2308,8 +2687,10 @@ function generatePattern() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
+        state.mathWrong[sequence.join(',')+',?'] = (state.mathWrong[sequence.join(',')+',?']||0)+1; saveState();
         patternWrongCount++;
         if (patternWrongCount >= 2) {
           document.getElementById('pattern-hint').textContent = '💡 Hint: ' + hintText;
@@ -2374,8 +2755,10 @@ function generateCompare() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
+        state.mathWrong[a+'vs'+b] = (state.mathWrong[a+'vs'+b]||0)+1; saveState();
         compareWrongCount++;
         if (compareWrongCount >= 2) {
           const hintEmoji = askBigger ? '📏 Bigger means MORE!' : '📏 Smaller means LESS!';
@@ -2439,8 +2822,10 @@ function generateSubtraction() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
+        state.mathWrong[mathA+'-'+mathB] = (state.mathWrong[mathA+'-'+mathB]||0)+1; saveState();
         speak('Almost! Try again!');
         setTimeout(() => btn.classList.remove('wrong'), 600);
       }
@@ -2502,8 +2887,10 @@ function generateSkipCount() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
+        state.mathWrong['skip'+skipStep+':'+skipTarget] = (state.mathWrong['skip'+skipStep+':'+skipTarget]||0)+1; saveState();
         wrongCount++;
         if (wrongCount >= 2) {
           document.getElementById('skip-hint').textContent = '💡 Hint: Add ' + skipStep + ' to the last number!';
@@ -2522,7 +2909,7 @@ let calmTimer;
 
 function initCalm() {
   document.getElementById('calm-menu').style.display = 'block';
-  ['calm-activity','emotion-checkin','visualization-area'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['calm-activity','emotion-checkin','visualization-area','five-senses-area'].forEach(id => document.getElementById(id).style.display = 'none');
   clearTimeout(calmTimer);
   showTutorialHint('calm', '🦄 Pick how to feel calm!');
 }
@@ -2940,6 +3327,76 @@ const stories = [
       'treasure-nice': { text: 'Joy said something nice to EVERYONE! By the end, the whole kingdom was glowing with happiness!', emoji: '✨', choices: null },
     }
   },
+  {
+    title: 'Space Princess', icon: '🚀',
+    nodes: {
+      start: { text: 'Princess Nova found a sparkly rocket ship in the garden! It hummed and glowed purple!', emoji: '🚀', choices: [{text:'Climb inside!', next:'climb'}, {text:'Find a co-pilot!', next:'copilot'}, {text:'Press the big button!', next:'button'}] },
+      climb: { text: 'Nova climbed in and the rocket zoomed up through the clouds! She could see her castle getting tiny!', emoji: '☁️', choices: [{text:'Fly to the moon!', next:'moon'}, {text:'Visit the rainbow planet!', next:'rainbow-planet'}, {text:'Follow the shooting star!', next:'shooting-star'}] },
+      copilot: { text: 'Her cat Stardust jumped in too! Meow! Together they blasted off into space!', emoji: '🐱', choices: [{text:'Visit the candy asteroid!', next:'candy-asteroid'}, {text:'Say hi to the sun!', next:'sun'}] },
+      button: { text: 'WHOOOOSH! The rocket blasted off! Nova was floating in space surrounded by stars!', emoji: '⭐', choices: [{text:'Land on a sparkly planet!', next:'sparkle-planet'}, {text:'Wave to a friendly alien!', next:'alien-wave'}] },
+      moon: { text: 'The moon was made of silver sand! Nova made moon-castles and found moon-gems!', emoji: '🌙', choices: [{text:'Bring moon-gems home!', next:'moon-gems'}, {text:'Have a moonlight picnic!', next:'moon-picnic'}] },
+      'moon-gems': { text: 'The moon-gems glowed in the dark! Nova put them in her room and it looked like the night sky!', emoji: '💎', ending: true, choices: null },
+      'moon-picnic': { text: 'Nova had sandwiches on the moon! She could see the whole world below. What a view!', emoji: '🧺', ending: true, choices: null },
+      'rainbow-planet': { text: 'Everything was rainbow colored! The trees, the rivers, even the friendly aliens!', emoji: '🌈', choices: [{text:'Paint with rainbow mud!', next:'rainbow-paint'}, {text:'Ride a rainbow horse!', next:'rainbow-ride'}] },
+      'rainbow-paint': { text: 'Nova painted the most beautiful picture ever! The aliens hung it in their museum!', emoji: '🎨', ending: true, choices: null },
+      'rainbow-ride': { text: 'The rainbow horse flew through space! Nova felt like the luckiest princess in the universe!', emoji: '🐴', ending: true, choices: null },
+      'shooting-star': { text: 'The shooting star was actually a star-fairy! She sprinkled glitter on Nova!', emoji: '✨', choices: [{text:'Make a wish!', next:'star-wish'}, {text:'Fly with her!', next:'star-fly'}] },
+      'star-wish': { text: 'Nova wished for everyone to see how beautiful space is. That night, everyone saw extra sparkly stars!', emoji: '🌟', ending: true, choices: null },
+      'star-fly': { text: 'They zoomed past comets and planets! Nova was the first princess to fly with a star-fairy!', emoji: '💫', ending: true, choices: null },
+      'candy-asteroid': { text: 'The asteroid was covered in lollipops and gummy stars! Stardust ate a candy meteor!', emoji: '🍭', ending: true, choices: null },
+      sun: { text: 'The sun was warm and friendly! It gave Nova a tiny sunbeam to light her way home!', emoji: '☀️', ending: true, choices: null },
+      'sparkle-planet': { text: 'The planet had sparkle-oceans and glitter-mountains! Nova played all day and came back covered in sparkles!', emoji: '✨', ending: true, choices: null },
+      'alien-wave': { text: 'The alien was so cute and green! They traded friendship bracelets!', emoji: '👽', choices: [{text:'Visit the alien\'s home!', next:'alien-home'}, {text:'Teach the alien to dance!', next:'alien-dance'}] },
+      'alien-home': { text: 'The alien lived in a crystal house! Nova had the best playdate in the whole galaxy!', emoji: '🏠', ending: true, choices: null },
+      'alien-dance': { text: 'The alien wiggled so funny! They invented the Space Shimmy dance! Everyone in the galaxy loved it!', emoji: '💃', ending: true, choices: null },
+    }
+  },
+  {
+    title: 'The Tiny Kingdom', icon: '🐜',
+    nodes: {
+      start: { text: 'Princess Petal found a tiny glowing mushroom. When she touched it, she shrank to the size of a bug!', emoji: '🍄', choices: [{text:'Look around!', next:'look'}, {text:'Call for help!', next:'call'}, {text:'Follow the ants!', next:'ants'}] },
+      look: { text: 'Everything was HUGE! A ladybug walked by — she was as big as a horse!', emoji: '🐞', choices: [{text:'Ride the ladybug!', next:'ride-ladybug'}, {text:'Talk to the ladybug!', next:'talk-ladybug'}] },
+      call: { text: 'A tiny fairy appeared! "Welcome to the Bug Kingdom! Want a tour?"', emoji: '🧚', choices: [{text:'Yes please!', next:'fairy-tour'}, {text:'Can you make me big again?', next:'fairy-big'}] },
+      ants: { text: 'The ants were marching in a line! They were carrying crumbs like treasure!', emoji: '🐜', choices: [{text:'Help them carry!', next:'help-ants'}, {text:'Follow them home!', next:'ant-home'}] },
+      'ride-ladybug': { text: 'The ladybug flew Petal over the garden! She could see flowers as tall as mountains!', emoji: '🌺', choices: [{text:'Land on a flower!', next:'flower-land'}, {text:'Fly to the beehive!', next:'beehive'}] },
+      'flower-land': { text: 'Petal landed on a daisy! She bounced on the petals like a trampoline! A butterfly waved hello!', emoji: '🌼', ending: true, choices: null },
+      beehive: { text: 'The bees gave Petal a tiny drop of honey! It was the most delicious thing she ever tasted!', emoji: '🐝', ending: true, choices: null },
+      'talk-ladybug': { text: '"I\'m Lady Dot! Our kingdom needs help — a spider blocked our bridge!"', emoji: '🐞', choices: [{text:'Help move the web!', next:'web-help'}, {text:'Ask the spider nicely!', next:'ask-spider'}] },
+      'web-help': { text: 'Petal used a stick to move the web! All the bugs cheered! They made her an honorary Bug Princess!', emoji: '👑', ending: true, choices: null },
+      'ask-spider': { text: '"Oh, sorry!" said the spider. "I didn\'t know I was in the way!" He moved and everyone was friends!', emoji: '🕷️', ending: true, choices: null },
+      'fairy-tour': { text: 'The fairy showed Petal the mushroom palace, the dewdrop lake, and the caterpillar school!', emoji: '🏰', choices: [{text:'Visit the caterpillar school!', next:'cat-school'}, {text:'Swim in the dewdrop lake!', next:'dewdrop'}] },
+      'cat-school': { text: 'The caterpillars were learning to become butterflies! Petal taught them a song and they all danced!', emoji: '🦋', ending: true, choices: null },
+      dewdrop: { text: 'The dewdrop was like a crystal pool! Petal splashed and played with the water striders!', emoji: '💧', ending: true, choices: null },
+      'fairy-big': { text: 'The fairy waved her wand! Petal grew back big — but now she could hear bugs talking forever!', emoji: '✨', ending: true, choices: null },
+      'help-ants': { text: 'Petal helped carry a huge crumb! The ant queen was so happy she gave Petal a tiny gold crown!', emoji: '👑', ending: true, choices: null },
+      'ant-home': { text: 'The ant home was underground with tunnels and rooms! It was like a tiny city! Petal was amazed!', emoji: '🏘️', choices: [{text:'Stay for dinner!', next:'ant-dinner'}, {text:'Help build a new room!', next:'ant-build'}] },
+      'ant-dinner': { text: 'The ants served tiny cake crumbs and honey drops! Petal had the best tiny dinner party ever!', emoji: '🍰', ending: true, choices: null },
+      'ant-build': { text: 'Petal helped build a playground for baby ants! They all played on the tiny slide together!', emoji: '🎢', ending: true, choices: null },
+    }
+  },
+  {
+    title: 'Music Mountain', icon: '🎵',
+    nodes: {
+      start: { text: 'Princess Melody heard beautiful music from a faraway mountain. She had to find where it was coming from!', emoji: '🎵', choices: [{text:'Follow the music!', next:'follow'}, {text:'Sing along!', next:'sing'}, {text:'Bring her flute!', next:'flute'}] },
+      follow: { text: 'The path to Music Mountain was made of piano keys! Each step played a note!', emoji: '🎹', choices: [{text:'Dance up the path!', next:'dance-path'}, {text:'Jump on the loud keys!', next:'loud-keys'}] },
+      sing: { text: 'Melody sang and the trees started swaying! A bird landed on her shoulder and sang along!', emoji: '🐦', choices: [{text:'Form a singing duo!', next:'duo'}, {text:'Invite more animals!', next:'animal-band'}] },
+      flute: { text: 'Melody played her flute and a magical staircase of music notes appeared!', emoji: '🎶', choices: [{text:'Climb the music stairs!', next:'music-stairs'}, {text:'Play a concert at the bottom!', next:'bottom-concert'}] },
+      'dance-path': { text: 'She danced a beautiful melody all the way up! At the top, the rhythm crickets greeted her!', emoji: '🦗', choices: [{text:'Join their cricket band!', next:'cricket-band'}, {text:'Explore the echo cave!', next:'echo-cave'}] },
+      'cricket-band': { text: 'Melody and the crickets played the most amazing song! Animals came from everywhere to listen!', emoji: '🎸', ending: true, choices: null },
+      'echo-cave': { text: 'In the cave, every sound echoed into a beautiful harmony! Melody sang and it was magical!', emoji: '🔔', ending: true, choices: null },
+      'loud-keys': { text: 'BOOM BOOM TINKLE! The loud notes woke up a friendly drum bear who loved to make beats!', emoji: '🥁', choices: [{text:'Make music with the bear!', next:'bear-music'}, {text:'Start a parade!', next:'parade'}] },
+      'bear-music': { text: 'The drum bear and Melody made the grooviest song ever! Everyone on the mountain danced!', emoji: '🐻', ending: true, choices: null },
+      parade: { text: 'A whole parade of musical animals marched down the mountain! The kingdom had the best day ever!', emoji: '🎺', ending: true, choices: null },
+      duo: { text: 'Melody and the bird sang so beautifully that flowers bloomed everywhere they walked!', emoji: '🌸', ending: true, choices: null },
+      'animal-band': { text: 'A frog played drums, a cat played violin, and a bunny played trumpet! Best band in the kingdom!', emoji: '🎷', choices: [{text:'Enter the talent show!', next:'talent-show'}, {text:'Record an album!', next:'album'}] },
+      'talent-show': { text: 'They won first place! The prize was a golden music note that played any song you wished for!', emoji: '🏆', ending: true, choices: null },
+      album: { text: 'Their album was called "Princess and Friends"! Every kid in the kingdom sang along!', emoji: '💿', ending: true, choices: null },
+      'music-stairs': { text: 'At the top of the stairs was a crystal piano that played rainbow sounds!', emoji: '🎹', choices: [{text:'Play the crystal piano!', next:'crystal-piano'}, {text:'Bring it home!', next:'bring-home'}] },
+      'crystal-piano': { text: 'Melody played and the sky filled with colors! It was the most beautiful sunset anyone ever saw!', emoji: '🌅', ending: true, choices: null },
+      'bring-home': { text: 'The crystal piano sat in the castle garden! Anyone could play it and make rainbows appear!', emoji: '🌈', ending: true, choices: null },
+      'bottom-concert': { text: 'Animals gathered from all around! Melody played the sweetest song and everyone swayed together!', emoji: '🎵', ending: true, choices: null },
+    }
+  },
 ];
 let currentStoryIdx = 0, currentNodeId = 'start';
 
@@ -3251,11 +3708,6 @@ function showScenario() {
 
 function nextScenario() { currentScenario++; showScenario(); }
 
-
-
-
-
-
 // ==================== DAILY QUEST SYSTEM ====================
 const dailyQuests = [
   { type: 'math', text: 'Solve 3 math problems!', icon: '🔢', target: 3, stateKey: 'mathCompleted' },
@@ -3512,6 +3964,7 @@ function initLetters() {
   document.getElementById('letter-mode-select').style.display = 'block';
   document.getElementById('abc-area').style.display = 'none';
   document.getElementById('sound-match-area').style.display = 'none';
+  document.getElementById('letter-trace-area').style.display = 'none';
   showTutorialHint('letters', '🔤 Learn your ABCs!');
 }
 
@@ -3614,6 +4067,7 @@ function generateSoundMatch() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
         if (!state.letterAccuracy) state.letterAccuracy = {};
@@ -3814,8 +4268,10 @@ function generateClockProblem() {
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
+        haptic('wrong');
         showReaction('wrong');
         resetStreak();
+        state.mathWrong['clock:'+timeStr] = (state.mathWrong['clock:'+timeStr]||0)+1; saveState();
         speak('Not quite! Look at where the hands point!');
         setTimeout(() => btn.classList.remove('wrong'), 600);
       }
@@ -3920,34 +4376,514 @@ function handleShapeAnswer(btn, chosen, correct, e) {
   } else {
     btn.classList.add('wrong');
     playSound('wrong');
+    haptic('wrong');
     showReaction('wrong');
     resetStreak();
+    state.mathWrong['shape:'+correct] = (state.mathWrong['shape:'+correct]||0)+1; saveState();
     speak('Not quite! Try again!');
     setTimeout(() => btn.classList.remove('wrong'), 600);
+  }
+}
+
+// ==================== 3A: WORD CATEGORIES ====================
+const wordCategories = [
+  { name: 'Animals', words: ['cat', 'dog', 'fish', 'bird', 'frog', 'bear', 'duck', 'cow'], distractors: ['hat', 'cup', 'red', 'big', 'run', 'sun'] },
+  { name: 'Colors', words: ['red', 'blue', 'pink', 'green', 'yellow', 'purple', 'orange', 'white'], distractors: ['cat', 'run', 'hat', 'cup', 'bed', 'top'] },
+  { name: 'Food', words: ['cake', 'apple', 'milk', 'bread', 'cookie', 'banana', 'rice', 'soup'], distractors: ['dog', 'run', 'big', 'hat', 'blue', 'bed'] },
+  { name: 'Body Parts', words: ['hand', 'foot', 'head', 'arm', 'leg', 'nose', 'eye', 'ear'], distractors: ['cup', 'red', 'cat', 'sun', 'hat', 'run'] },
+  { name: 'Clothes', words: ['hat', 'shoe', 'sock', 'shirt', 'dress', 'coat', 'pants', 'scarf'], distractors: ['dog', 'red', 'run', 'big', 'cup', 'sun'] },
+  { name: 'Vehicles', words: ['car', 'bus', 'boat', 'bike', 'train', 'plane', 'truck', 'van'], distractors: ['cat', 'hat', 'red', 'big', 'cup', 'run'] },
+];
+let catCorrectFound = 0, catTotalCorrect = 0, catCurrentWords = [];
+
+function startWordCategories() {
+  document.getElementById('word-mode-select').style.display = 'none';
+  document.getElementById('word-category-area').style.display = 'block';
+  generateWordCategory();
+}
+
+function generateWordCategory() {
+  const cat = wordCategories[Math.floor(Math.random() * wordCategories.length)];
+  // Pick 3-4 correct words
+  const numCorrect = 3 + Math.floor(Math.random() * 2);
+  const shuffledWords = [...cat.words].sort(() => Math.random() - 0.5);
+  const correct = shuffledWords.slice(0, numCorrect);
+  // Pick distractors
+  const numDistract = 6 - numCorrect;
+  const shuffledDist = [...cat.distractors].sort(() => Math.random() - 0.5);
+  const distractors = shuffledDist.slice(0, numDistract);
+  // Combine and shuffle
+  const allWords = [...correct, ...distractors].sort(() => Math.random() - 0.5);
+
+  catCorrectFound = 0;
+  catTotalCorrect = numCorrect;
+  catCurrentWords = correct;
+
+  const area = document.getElementById('word-category-area');
+  area.innerHTML =
+    '<div class="cat-title">🗂️ Word Sort</div>' +
+    '<div class="cat-subtitle">Tap all the <strong>' + cat.name + '</strong>!</div>' +
+    '<div class="cat-word-grid" id="cat-grid"></div>' +
+    '<div class="cat-progress" id="cat-progress">Found: 0 / ' + numCorrect + '</div>';
+
+  speak('Tap all the words that are ' + cat.name + '!');
+
+  const grid = document.getElementById('cat-grid');
+  allWords.forEach(word => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-word-btn';
+    btn.textContent = word;
+    const belongs = correct.includes(word);
+    btn.onclick = (e) => checkCategoryWord(btn, word, belongs, e);
+    grid.appendChild(btn);
+  });
+}
+
+function checkCategoryWord(btn, word, belongs, e) {
+  if (btn.classList.contains('cat-correct')) return;
+  haptic('tap');
+  if (belongs) {
+    btn.classList.add('cat-correct');
+    playSound('correct');
+    showReaction('correct');
+    addStreak();
+    createStarBurst(e.clientX, e.clientY, 4);
+    catCorrectFound++;
+    document.getElementById('cat-progress').textContent = 'Found: ' + catCorrectFound + ' / ' + catTotalCorrect;
+    if (catCorrectFound >= catTotalCorrect) {
+      state.totalActivities++;
+      saveState();
+      showReward('🗂️', 'Great sorting!', 5);
+      setTimeout(generateWordCategory, 2000);
+    }
+  } else {
+    btn.classList.add('cat-wrong');
+    playSound('wrong');
+    haptic('wrong');
+    showReaction('wrong');
+    resetStreak();
+    speak('Not quite! That one doesn\'t belong.');
+    setTimeout(() => btn.classList.remove('cat-wrong'), 600);
+  }
+}
+
+// ==================== 3B: NUMBER LINE ====================
+let nlMissing = 0, nlMax = 10, nlCorrectCount = 0;
+
+function startNumberLine() {
+  document.getElementById('number-mode-select').style.display = 'none';
+  document.getElementById('number-line-area').style.display = 'block';
+  nlCorrectCount = 0;
+  nlMax = 10;
+  generateNumberLine();
+}
+
+function generateNumberLine() {
+  // Progressive: start 0-10, advance to 0-20 after 5 correct
+  if (nlCorrectCount >= 5) nlMax = 20;
+  const rangeStart = 0;
+  const rangeEnd = nlMax;
+  // Pick a number to hide (not 0 or the max)
+  nlMissing = Math.floor(Math.random() * (rangeEnd - 1)) + 1;
+
+  const area = document.getElementById('number-line-area');
+  let lineHtml = '<div class="scenario-text" style="margin-bottom:10px">What number is missing?</div>';
+  lineHtml += '<div class="number-line-row">';
+  for (let i = rangeStart; i <= rangeEnd; i++) {
+    if (i === nlMissing) {
+      lineHtml += '<div class="nl-box nl-missing">?</div>';
+    } else {
+      lineHtml += '<div class="nl-box">' + i + '</div>';
+    }
+  }
+  lineHtml += '</div>';
+
+  // Generate options: correct + 2-3 wrong
+  const numOpts = nlMax <= 10 ? 3 : 4;
+  let options = [nlMissing];
+  while (options.length < numOpts) {
+    const r = Math.floor(Math.random() * (rangeEnd)) + 1;
+    if (!options.includes(r)) options.push(r);
+  }
+  options.sort(() => Math.random() - 0.5);
+
+  lineHtml += '<div class="answer-options" id="nl-answers" style="margin-top:18px"></div>';
+  area.innerHTML = lineHtml;
+
+  speak('What number is missing from the number line?');
+
+  const container = document.getElementById('nl-answers');
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'answer-btn';
+    btn.textContent = opt;
+    btn.onclick = (e) => checkNumberLineAnswer(btn, opt, e);
+    container.appendChild(btn);
+  });
+}
+
+function checkNumberLineAnswer(btn, chosen, e) {
+  if (chosen === nlMissing) {
+    btn.classList.add('correct');
+    playSound('correct');
+    showReaction('correct');
+    addStreak();
+    createStarBurst(e.clientX, e.clientY, 6);
+    nlCorrectCount++;
+    state.mathCompleted++;
+    maybeIncreaseDifficulty('math');
+    saveState();
+    showReward('📏', 'The missing number was ' + nlMissing + '!', 5);
+    setTimeout(generateNumberLine, 1800);
+  } else {
+    btn.classList.add('wrong');
+    playSound('wrong');
+    haptic('wrong');
+    showReaction('wrong');
+    resetStreak();
+    speak('Not quite! Look at the numbers around the question mark!');
+    setTimeout(() => btn.classList.remove('wrong'), 600);
+  }
+}
+
+// ==================== 3C: LETTER TRACING ====================
+let traceLetterIdx = 0, traceGrid = [], traceTouched = 0, traceTotal = 0;
+
+function startLetterTracing() {
+  document.getElementById('letter-mode-select').style.display = 'none';
+  document.getElementById('letter-trace-area').style.display = 'block';
+  traceLetterIdx = Math.floor(Math.random() * 26);
+  showTraceLetter();
+}
+
+function showTraceLetter() {
+  const letter = letterData[traceLetterIdx].letter;
+  const area = document.getElementById('letter-trace-area');
+  area.innerHTML =
+    '<div class="scenario-text" style="margin-bottom:8px">Trace the letter <strong>' + letter + '</strong> with your finger!</div>' +
+    '<div class="trace-canvas-wrap" id="trace-wrap">' +
+      '<div class="trace-letter-bg">' + letter + '</div>' +
+      '<canvas id="trace-canvas" width="280" height="280"></canvas>' +
+    '</div>' +
+    '<div class="trace-progress" id="trace-progress">Trace over the letter!</div>' +
+    '<div style="text-align:center;margin-top:12px">' +
+      '<button class="big-btn green" onclick="nextTraceLetter()">Next Letter! ➡️</button>' +
+    '</div>';
+
+  speak('Trace the letter ' + letter + ' with your finger!');
+
+  // Set up grid tracking
+  const gridSize = 7;
+  traceGrid = [];
+  traceTouched = 0;
+  traceTotal = Math.floor(gridSize * gridSize * 0.3); // need ~30% coverage
+
+  for (let r = 0; r < gridSize; r++) {
+    traceGrid[r] = [];
+    for (let c = 0; c < gridSize; c++) {
+      traceGrid[r][c] = false;
+    }
+  }
+
+  const canvas = document.getElementById('trace-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#7c3aed';
+  ctx.lineWidth = 16;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  let drawing = false, lastX = 0, lastY = 0;
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return {
+      x: (touch.clientX - rect.left) * (canvas.width / rect.width),
+      y: (touch.clientY - rect.top) * (canvas.height / rect.height)
+    };
+  }
+
+  function markGrid(x, y) {
+    const cellW = canvas.width / 7;
+    const cellH = canvas.height / 7;
+    const col = Math.min(6, Math.max(0, Math.floor(x / cellW)));
+    const row = Math.min(6, Math.max(0, Math.floor(y / cellH)));
+    if (!traceGrid[row][col]) {
+      traceGrid[row][col] = true;
+      traceTouched++;
+      const pct = Math.min(100, Math.round(traceTouched / traceTotal * 100));
+      const progEl = document.getElementById('trace-progress');
+      if (progEl) progEl.textContent = pct + '% traced!';
+      if (traceTouched >= traceTotal) {
+        traceComplete();
+      }
+    }
+  }
+
+  function startDraw(e) {
+    e.preventDefault();
+    drawing = true;
+    const pos = getPos(e);
+    lastX = pos.x; lastY = pos.y;
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    markGrid(pos.x, pos.y);
+  }
+
+  function moveDraw(e) {
+    e.preventDefault();
+    if (!drawing) return;
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    lastX = pos.x; lastY = pos.y;
+    markGrid(pos.x, pos.y);
+  }
+
+  function endDraw(e) {
+    e.preventDefault();
+    drawing = false;
+  }
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', moveDraw);
+  canvas.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+  canvas.addEventListener('touchstart', startDraw, { passive: false });
+  canvas.addEventListener('touchmove', moveDraw, { passive: false });
+  canvas.addEventListener('touchend', endDraw, { passive: false });
+}
+
+function traceComplete() {
+  const letter = letterData[traceLetterIdx].letter;
+  playSound('correct');
+  showReaction('celebrate');
+  createConfetti(20);
+  if (!state.lettersKnown) state.lettersKnown = [];
+  if (!state.lettersKnown.includes(letter)) {
+    state.lettersKnown.push(letter);
+  }
+  state.totalActivities++;
+  saveState();
+  showReward('✍️', 'Great tracing of ' + letter + '!', 5);
+}
+
+function nextTraceLetter() {
+  traceLetterIdx = (traceLetterIdx + 1) % 26;
+  playSound('click');
+  showTraceLetter();
+}
+
+// ==================== 3E: FIVE SENSES GROUNDING ====================
+const fiveSensesSteps = [
+  { emoji: '👀', sense: 'SEE', count: 5, instruction: 'Look around! Name 5 things you can SEE' },
+  { emoji: '🤲', sense: 'FEEL', count: 4, instruction: 'Touch something! Name 4 things you can FEEL' },
+  { emoji: '👂', sense: 'HEAR', count: 3, instruction: 'Listen carefully! Name 3 things you can HEAR' },
+  { emoji: '👃', sense: 'SMELL', count: 2, instruction: 'Sniff! Name 2 things you can SMELL' },
+  { emoji: '👅', sense: 'TASTE', count: 1, instruction: 'Name 1 thing you can TASTE' },
+];
+let senseStep = 0;
+
+function startFiveSenses() {
+  document.getElementById('calm-menu').style.display = 'none';
+  document.getElementById('five-senses-area').style.display = 'block';
+  senseStep = 0;
+  showSenseStep();
+}
+
+function showSenseStep() {
+  const area = document.getElementById('five-senses-area');
+  if (senseStep >= fiveSensesSteps.length) {
+    // Completed all 5 senses
+    state.calmCompleted++;
+    saveState();
+    area.innerHTML =
+      '<div class="sense-emoji">🌟</div>' +
+      '<div class="sense-instruction">Amazing! You used all 5 senses!</div>' +
+      '<div style="font-size:18px;color:#a855f7;font-weight:700;margin:14px 0">You are here. You are safe. You are wonderful!</div>' +
+      '<div style="text-align:center;margin-top:18px">' +
+        '<button class="big-btn" onclick="endCalmActivity()">✅ All Done 😊</button>' +
+      '</div>';
+    speak('Amazing! You used all 5 senses. You are here. You are safe. You are wonderful!');
+    showReward('🖐️', 'Senses grounding done!', 8);
+    return;
+  }
+
+  const step = fiveSensesSteps[senseStep];
+
+  // Build progress dots
+  let dotsHtml = '<div class="sense-dots">';
+  for (let i = 0; i < fiveSensesSteps.length; i++) {
+    dotsHtml += '<div class="sense-dot ' + (i < senseStep ? 'done' : '') + '"></div>';
+  }
+  dotsHtml += '</div>';
+
+  area.innerHTML =
+    '<div class="sense-emoji">' + step.emoji + '</div>' +
+    '<div class="sense-instruction">' + step.instruction + ' ' + step.emoji + '</div>' +
+    '<div class="sense-counter">Step ' + (senseStep + 1) + ' of 5</div>' +
+    dotsHtml +
+    '<div style="text-align:center;margin-top:18px">' +
+      '<button class="big-btn green" onclick="nextSense()">Done! Next ➡️</button>' +
+      '<button class="big-btn" onclick="endCalmActivity()">✅ All Done 😊</button>' +
+    '</div>';
+
+  speak(step.instruction + '! Take your time.');
+  haptic('tap');
+}
+
+function nextSense() {
+  playSound('correct');
+  createSparkles(4);
+  showReaction('correct');
+  senseStep++;
+  showSenseStep();
+}
+
+// ==================== MEMORY PALACE ====================
+const memoryEmojis = ['🦄','🌈','⭐','🦋','🌸','💎','🎀','👑','🍭','🌙','❤️','🔮'];
+let memoryFlipped = [];
+let memoryMatched = 0;
+let memoryMoves = 0;
+let memoryPairs = 0;
+let memoryLocked = false;
+
+function initMemory() {
+  document.getElementById('memory-mode-select').style.display = '';
+  document.getElementById('memory-game-area').style.display = 'none';
+}
+
+function startMemoryGame(pairs) {
+  memoryPairs = pairs;
+  memoryMoves = 0;
+  memoryMatched = 0;
+  memoryFlipped = [];
+  memoryLocked = false;
+  document.getElementById('memory-mode-select').style.display = 'none';
+  document.getElementById('memory-game-area').style.display = '';
+  document.getElementById('memory-moves').textContent = 'Moves: 0';
+
+  // Build card set
+  const shuffledEmojis = [...memoryEmojis].sort(() => Math.random() - 0.5);
+  const selected = shuffledEmojis.slice(0, pairs);
+  const deck = [...selected, ...selected].sort(() => Math.random() - 0.5);
+
+  // Set grid columns
+  const grid = document.getElementById('memory-grid');
+  grid.innerHTML = '';
+  const cols = pairs >= 10 ? 5 : 4;
+  grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+
+  deck.forEach((emoji, idx) => {
+    const card = document.createElement('div');
+    card.className = 'memory-card';
+    card.dataset.emoji = emoji;
+    card.dataset.index = idx;
+    card.innerHTML = '<div class="memory-card-face memory-card-front"></div>' +
+                     '<div class="memory-card-face memory-card-back">' + emoji + '</div>';
+    card.addEventListener('click', () => flipCard(card));
+    grid.appendChild(card);
+  });
+}
+
+function flipCard(card) {
+  if (memoryLocked) return;
+  if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+  haptic('tap');
+  card.classList.add('flipped');
+  memoryFlipped.push(card);
+
+  if (memoryFlipped.length === 2) {
+    memoryMoves++;
+    document.getElementById('memory-moves').textContent = 'Moves: ' + memoryMoves;
+    memoryLocked = true;
+
+    const [a, b] = memoryFlipped;
+    if (a.dataset.emoji === b.dataset.emoji) {
+      // Match!
+      setTimeout(() => {
+        a.classList.add('matched');
+        b.classList.add('matched');
+        haptic('success');
+        playSound('correct');
+        memoryMatched++;
+        memoryFlipped = [];
+        memoryLocked = false;
+
+        if (memoryMatched === memoryPairs) {
+          // All matched — calculate reward
+          const best = state.memoryBestMoves[memoryPairs];
+          if (!best || memoryMoves < best) {
+            state.memoryBestMoves[memoryPairs] = memoryMoves;
+          }
+          state.totalActivities++;
+          state.dailyActivities++;
+          saveState();
+
+          let gems;
+          if (memoryMoves <= memoryPairs * 2) gems = 5;
+          else if (memoryMoves <= memoryPairs * 3) gems = 3;
+          else gems = 2;
+
+          setTimeout(() => {
+            showReward('🧠', 'Memory Master! ' + memoryMoves + ' moves!', gems);
+          }, 500);
+        }
+      }, 600);
+    } else {
+      // No match
+      setTimeout(() => {
+        a.classList.remove('flipped');
+        b.classList.remove('flipped');
+        playSound('wrong');
+        memoryFlipped = [];
+        memoryLocked = false;
+      }, 800);
+    }
   }
 }
 
 // ==================== SURPRISE ME ====================
 function surpriseMe() {
   playSound('click');
-  const modules = ['words', 'numbers', 'stories', 'uhoh', 'letters'];
+  const hidden = state.hiddenModules || [];
+  const modules = ['words', 'numbers', 'stories', 'uhoh', 'letters', 'calm', 'memory'].filter(m => !hidden.includes(m));
+  if (modules.length === 0) return;
   const mod = modules[Math.floor(Math.random() * modules.length)];
   openModule(mod);
   // Auto-start a random activity after a brief delay
   setTimeout(() => {
     if (mod === 'words') {
-      const fns = [startSightWords, startWordMatch, startSpellIt, startRhyming, startSentences];
+      const fns = [startSightWords, startWordMatch, startSpellIt, startRhyming, startSentences, startWordCategories];
       fns[Math.floor(Math.random() * fns.length)]();
     } else if (mod === 'numbers') {
-      const fns = [startCounting, startAddition, startSequence, startCompare, startClock, startShapes];
+      const fns = [startCounting, startAddition, startSequence, startCompare, startClock, startShapes, startNumberLine];
       fns[Math.floor(Math.random() * fns.length)]();
     } else if (mod === 'letters') {
-      const fns = [startAbcSounds, startSoundMatch];
+      const fns = [startAbcSounds, startSoundMatch, startLetterTracing];
       fns[Math.floor(Math.random() * fns.length)]();
+    } else if (mod === 'calm') {
+      const fns = [startBreathing, startEmotionCheckIn, startVisualization, startFiveSenses];
+      fns[Math.floor(Math.random() * fns.length)]();
+    } else if (mod === 'memory') {
+      const pairOptions = [4, 6, 8, 10];
+      startMemoryGame(pairOptions[Math.floor(Math.random() * pairOptions.length)]);
     }
     // Stories and UhOh auto-init when opened, so no extra action needed
   }, 600);
 }
+
+// ==================== OFFLINE INDICATOR ====================
+function updateOfflineStatus() {
+  const el = document.getElementById('offline-indicator');
+  if (el) el.classList.toggle('show', !navigator.onLine);
+}
+window.addEventListener('online', updateOfflineStatus);
+window.addEventListener('offline', updateOfflineStatus);
+updateOfflineStatus();
 
 // ==================== INIT ====================
 saveState();
@@ -3956,6 +4892,10 @@ updateSoundButtons();
 initDailyQuest();
 initParallaxTilt();
 initSessionTimer();
+updateXpBar();
+updateProgressRings();
+applyHiddenModules();
+resetIdleTimer();
 
 // Read aloud module names on hover/focus for emerging readers
 document.querySelectorAll('.module-card').forEach(card => {
