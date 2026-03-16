@@ -138,7 +138,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .progress-bar-fill.calm { background: linear-gradient(90deg, #06b6d4, #67e8f9); }
 .progress-bar-fill.stories { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
 .progress-bar-fill.social { background: linear-gradient(90deg, #10b981, #6ee7b7); }
-.progress-bar-fill.letters { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+.progress-bar-fill.letters { background: linear-gradient(90deg, #06b6d4, #67e8f9); }
 
 /* TROUBLE SPOTS */
 .trouble-spots { margin: 8px 0; }
@@ -365,7 +365,14 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .lock-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 28px; }
 
 /* MODE CARD GRIDS (Stage 2) */
-.mode-card { background: white; border-radius: 20px; padding: 18px 12px; text-align: center; cursor: pointer; border: 3px solid #e5e7eb; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
+.mode-card { background: white; border-radius: 20px; padding: 18px 12px; text-align: center; cursor: pointer; border: 3px solid #e5e7eb; transition: transform 0.2s, box-shadow 0.2s; position: relative; animation: cardEntrance 0.4s ease-out both; }
+.mode-card:nth-child(1) { animation-delay: 0.05s; }
+.mode-card:nth-child(2) { animation-delay: 0.1s; }
+.mode-card:nth-child(3) { animation-delay: 0.15s; }
+.mode-card:nth-child(4) { animation-delay: 0.2s; }
+.mode-card:nth-child(5) { animation-delay: 0.25s; }
+.mode-card:nth-child(6) { animation-delay: 0.3s; }
+.mode-card:nth-child(7) { animation-delay: 0.35s; }
 .mode-card:active { transform: scale(0.93); }
 .mode-card .mode-icon { font-size: 48px; display: block; margin-bottom: 6px; }
 .mode-card .mode-label { font-family: 'Fredoka One', cursive; font-size: 14px; color: #581c87; }
@@ -390,12 +397,12 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 
 <!-- GEM BAR -->
 <div id="gem-bar">
-  <button id="back-btn" onclick="goHome()">&#8592;</button>
+  <button id="back-btn" onclick="goHome()" aria-label="Go back home">&#8592;</button>
   <div class="title" id="crown-tap">&#128081; Princess Quest</div>
   <div style="display:flex;align-items:center;gap:8px">
-    <button id="sound-btn" onclick="toggleSound()" class="sound-toggle" title="Sound">&#128266;</button>
-    <button id="music-btn" onclick="toggleMusic()" class="sound-toggle" title="Music">&#127925;</button>
-    <div class="gems"><span class="gem-icon">&#128142;</span> <span id="gem-count">0</span></div>
+    <button id="sound-btn" onclick="toggleSound()" class="sound-toggle" title="Sound" aria-label="Toggle sound">&#128266;</button>
+    <button id="music-btn" onclick="toggleMusic()" class="sound-toggle" title="Music" aria-label="Toggle music">&#127925;</button>
+    <div class="gems" aria-label="Gems earned"><span class="gem-icon">&#128142;</span> <span id="gem-count">0</span></div>
   </div>
 </div>
 
@@ -448,37 +455,37 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
   <div id="daily-quest-container"></div>
   <div class="castle-subtitle">Pick a room, Princess! &#128149;</div>
   <div class="module-grid">
-    <div class="module-card" onclick="openModule('words')">
+    <div class="module-card" role="button" aria-label="Open Word Garden" onclick="openModule('words')">
       <span class="icon">&#128218;</span>
       <div class="name">Word Garden</div>
       <div class="desc">Read new words!</div>
     </div>
-    <div class="module-card" onclick="openModule('numbers')">
+    <div class="module-card" role="button" aria-label="Open Number Kingdom" onclick="openModule('numbers')">
       <span class="icon">&#11088;</span>
       <div class="name">Number Kingdom</div>
       <div class="desc">Count with me!</div>
     </div>
-    <div class="module-card" onclick="openModule('calm')">
+    <div class="module-card" role="button" aria-label="Open Calm Castle" onclick="openModule('calm')">
       <span class="icon">&#129412;</span>
       <div class="name">Calm Castle</div>
       <div class="desc">Feel nice and calm</div>
     </div>
-    <div class="module-card" onclick="openModule('stories')">
+    <div class="module-card" role="button" aria-label="Open Story Garden" onclick="openModule('stories')">
       <span class="icon">&#128214;</span>
       <div class="name">Story Garden</div>
       <div class="desc">Pick your story!</div>
     </div>
-    <div class="module-card" onclick="openModule('uhoh')">
+    <div class="module-card" role="button" aria-label="Open Uh-Oh Academy" onclick="openModule('uhoh')">
       <span class="icon">&#129303;</span>
       <div class="name">Uh-Oh Academy</div>
       <div class="desc">You can do it!</div>
     </div>
-    <div class="module-card" onclick="openModule('dressup')">
+    <div class="module-card" role="button" aria-label="Open Dress-Up Palace" onclick="openModule('dressup')">
       <span class="icon">&#128087;</span>
       <div class="name">Dress-Up Palace</div>
       <div class="desc">Pretty outfits!</div>
     </div>
-    <div class="module-card" onclick="openModule('letters')">
+    <div class="module-card" role="button" aria-label="Open Letter Land" onclick="openModule('letters')">
       <span class="icon">🔤</span>
       <div class="name">Letter Land</div>
       <div class="desc">Learn ABCs!</div>
@@ -499,23 +506,23 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div class="game-title">&#128218; Word Garden <span class="diff-indicator" id="word-diff"></span></div>
     <div id="word-mode-select">
       <div class="mode-grid">
-        <div class="mode-card" onclick="startSightWords()">
+        <div class="mode-card" role="button" onclick="startSightWords()">
           <span class="mode-icon">📚</span>
           <div class="mode-label">Read Words</div>
         </div>
-        <div class="mode-card" onclick="startWordMatch()">
+        <div class="mode-card" role="button" onclick="startWordMatch()">
           <span class="mode-icon">🎯</span>
           <div class="mode-label">Match Words</div>
         </div>
-        <div class="mode-card" onclick="startSpellIt()">
+        <div class="mode-card" role="button" onclick="startSpellIt()">
           <span class="mode-icon">✏️</span>
           <div class="mode-label">Spell It!</div>
         </div>
-        <div class="mode-card" onclick="startRhyming()">
+        <div class="mode-card" role="button" onclick="startRhyming()">
           <span class="mode-icon">🎵</span>
           <div class="mode-label">Rhyme Time</div>
         </div>
-        <div class="mode-card" style="grid-column: 1 / -1; max-width: 180px; margin: 0 auto;" onclick="startSentences()">
+        <div class="mode-card" role="button" style="grid-column: 1 / -1; max-width: 180px; margin: 0 auto;" onclick="startSentences()">
           <span class="mode-icon">📝</span>
           <div class="mode-label">Read Sentences</div>
         </div>
@@ -565,31 +572,31 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div class="game-title">&#11088; Number Kingdom <span class="diff-indicator" id="math-diff"></span></div>
     <div id="number-mode-select">
       <div class="mode-grid">
-        <div class="mode-card" onclick="startCounting()">
+        <div class="mode-card" role="button" onclick="startCounting()">
           <span class="mode-icon">🔢</span>
           <div class="mode-label">Count Things</div>
         </div>
-        <div class="mode-card" onclick="startAddition()">
+        <div class="mode-card" role="button" onclick="startAddition()">
           <span class="mode-icon">➕</span>
           <div class="mode-label">Add Them Up</div>
         </div>
-        <div class="mode-card" id="subtract-card" onclick="startSubtractionSafe()">
+        <div class="mode-card" role="button" id="subtract-card" onclick="startSubtractionSafe()">
           <span class="mode-icon">➖</span>
           <div class="mode-label">Take Away</div>
         </div>
-        <div class="mode-card" onclick="startSequence()">
+        <div class="mode-card" role="button" onclick="startSequence()">
           <span class="mode-icon">🔮</span>
           <div class="mode-label">What's Next?</div>
         </div>
-        <div class="mode-card" onclick="startCompare()">
+        <div class="mode-card" role="button" onclick="startCompare()">
           <span class="mode-icon">⚖️</span>
           <div class="mode-label">Compare</div>
         </div>
-        <div class="mode-card" onclick="startClock()">
+        <div class="mode-card" role="button" onclick="startClock()">
           <span class="mode-icon">🕐</span>
           <div class="mode-label">What Time?</div>
         </div>
-        <div class="mode-card" style="grid-column: 1 / -1; max-width: 180px; margin: 0 auto;" onclick="startShapes()">
+        <div class="mode-card" role="button" style="grid-column: 1 / -1; max-width: 180px; margin: 0 auto;" onclick="startShapes()">
           <span class="mode-icon">🔷</span>
           <div class="mode-label">Shapes!</div>
         </div>
@@ -642,23 +649,23 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div class="game-title">&#129412; Calm Castle</div>
     <div id="calm-menu">
       <div class="calm-options">
-        <div class="calm-card" onclick="startBreathing()">
+        <div class="calm-card" role="button" onclick="startBreathing()">
           <div class="icon">&#129412;</div>
           <div class="label">Unicorn Breathing</div>
         </div>
-        <div class="calm-card" onclick="startBodyScan()">
+        <div class="calm-card" role="button" onclick="startBodyScan()">
           <div class="icon">&#10024;</div>
           <div class="label">Sparkle Body Scan</div>
         </div>
-        <div class="calm-card" onclick="startShakeOff()">
+        <div class="calm-card" role="button" onclick="startShakeOff()">
           <div class="icon">&#128131;</div>
           <div class="label">Shake It Off Dance!</div>
         </div>
-        <div class="calm-card" onclick="startEmotionCheckIn()">
+        <div class="calm-card" role="button" onclick="startEmotionCheckIn()">
           <div class="icon">&#128156;</div>
           <div class="label">How Do I Feel?</div>
         </div>
-        <div class="calm-card" onclick="startVisualization()">
+        <div class="calm-card" role="button" onclick="startVisualization()">
           <div class="icon">&#127752;</div>
           <div class="label">Happy Place</div>
         </div>
@@ -759,11 +766,11 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div class="game-title">🔤 Letter Land</div>
     <div id="letter-mode-select">
       <div class="mode-grid">
-        <div class="mode-card" onclick="startAbcSounds()">
+        <div class="mode-card" role="button" onclick="startAbcSounds()">
           <span class="mode-icon">🅰️</span>
           <div class="mode-label">ABC Sounds</div>
         </div>
-        <div class="mode-card" onclick="startSoundMatch()">
+        <div class="mode-card" role="button" onclick="startSoundMatch()">
           <span class="mode-icon">👂</span>
           <div class="mode-label">Sound Match</div>
         </div>
@@ -1129,8 +1136,20 @@ function playSound(type) {
     const t = ctx.currentTime;
     if (type === 'correct') {
       // Happy major chord arpeggio (C E G C')
-      [523, 659, 784, 1047].forEach((freq, i) => {
+      const baseNotes = [523, 659, 784, 1047];
+      // Add extra celebration notes based on streak
+      if (state.streak >= 5) {
+        baseNotes.push(1318, 1568); // high E, high G
+      } else if (state.streak >= 3) {
+        baseNotes.push(1318); // high E
+      }
+      baseNotes.forEach((freq, i) => {
         playNote(ctx, freq, 'triangle', t + i * 0.09, 0.35, 0.07);
+      });
+    } else if (type === 'module-enter') {
+      // Pleasant 3-note ascending arpeggio for entering a module
+      [392, 523, 659].forEach((freq, i) => {
+        playNote(ctx, freq, 'sine', t + i * 0.12, 0.4, 0.06);
       });
     } else if (type === 'wrong') {
       // Minor second dissonance, gentle
@@ -1344,7 +1363,7 @@ function transitionScreens(fromScreen, toScreen, cb) {
 }
 
 function openModule(mod) {
-  playSound('click');
+  playSound('module-enter');
   const currentScreen = document.querySelector('.screen.active');
   const nextScreen = document.getElementById(mod + '-screen');
   document.querySelectorAll('.screen').forEach(s => { if (s !== currentScreen) s.classList.remove('active'); });
@@ -1383,6 +1402,10 @@ function showReward(emoji, text, gems) {
   const bonusText = streakBonus > 0 ? ' (+' + streakBonus + ' streak bonus!)' : '';
   document.getElementById('reward-gems-text').textContent = '+' + totalGems + ' gems!' + bonusText;
   document.getElementById('reward-popup').classList.add('show');
+  // Bounce animation on reward emoji
+  const rewardEmojiEl = document.getElementById('reward-emoji');
+  rewardEmojiEl.style.animation = 'celebratePulse 0.8s ease-out';
+  setTimeout(() => rewardEmojiEl.style.animation = '', 800);
   addGems(totalGems);
   state.totalActivities++;
   state.dailyActivities++;
@@ -1466,6 +1489,29 @@ function updatePinDots() {
 }
 
 function closePin() { pinEntry = ''; document.getElementById('pin-overlay').classList.remove('show'); }
+
+function getBadgeGridHtml() {
+  if (state.badges.length > 0) {
+    return state.badges.map(id => {
+      const badge = allBadges.find(b => b.id === id);
+      return badge ? '<span style="display:inline-block;padding:4px 8px;margin:3px;background:#f3e8ff;border-radius:10px;font-size:12px;font-weight:700">' + badge.icon + ' ' + badge.name + '</span>' : '';
+    }).join('');
+  }
+  return '<div style="font-size:13px;color:#a78bfa;font-weight:600">No badges yet — keep playing!</div>';
+}
+
+function getRecommendationsHtml() {
+  let recommendations = [];
+  if ((state.lettersKnown||[]).length < 10) recommendations.push('🔤 Practice letter sounds in Letter Land');
+  if ((state.sentencesRead||0) < 5) recommendations.push('📝 Try reading sentences in Word Garden');
+  if ((state.clockCompleted||0) < 3) recommendations.push('🕐 Practice telling time');
+  if ((state.shapesCompleted||0) < 4) recommendations.push('🔷 Learn shape names');
+  if (state.calmCompleted < 3) recommendations.push('🦄 Try a calm exercise');
+  if (state.scenariosCompleted < 5) recommendations.push('🤗 Practice social scenarios');
+  const top3 = recommendations.slice(0, 3);
+  if (top3.length === 0) return '<div style="font-size:13px;color:#22c55e;font-weight:700">Amazing progress! Keep exploring all the rooms!</div>';
+  return '<ul style="margin:0;padding-left:20px">' + top3.map(r => '<li style="font-size:13px;color:#6b7280;font-weight:600;margin-bottom:4px">' + r + '</li>').join('') + '</ul>';
+}
 
 function openDashboard() {
   const d = document.getElementById('dash-stats');
@@ -1599,6 +1645,12 @@ function openDashboard() {
     <div style="font-family:Fredoka One,cursive;font-size:15px;color:#7c3aed;margin-bottom:8px">📅 Activity Calendar</div>
     ${renderStreakCalendar()}
     ${feelingsSummary ? '<hr style="margin:12px 0;border-color:#e5e7eb"><div style="font-family:Fredoka One,cursive;font-size:15px;color:#7c3aed;margin-bottom:8px">💜 Emotional Wellness</div>' + feelingsSummary : ''}
+    <hr style="margin:12px 0;border-color:#e5e7eb">
+    <div style="font-family:Fredoka One,cursive;font-size:15px;color:#7c3aed;margin-bottom:8px">🏆 Badges Earned</div>
+    <div style="margin-bottom:12px">${getBadgeGridHtml()}</div>
+    <hr style="margin:12px 0;border-color:#e5e7eb">
+    <div style="font-family:Fredoka One,cursive;font-size:15px;color:#7c3aed;margin-bottom:8px">💡 Recommended Next Steps</div>
+    <div style="margin-bottom:12px">${getRecommendationsHtml()}</div>
     <hr style="margin:12px 0;border-color:#e5e7eb">
     <div style="font-family:Fredoka One,cursive;font-size:15px;color:#7c3aed;margin-bottom:8px">⚙️ Settings</div>
     <div class="stat" style="display:flex;align-items:center;justify-content:space-between">
@@ -3962,6 +4014,7 @@ function nextSentence() {
   sentenceSessionCount++;
   if (!state.sentencesRead) state.sentencesRead = 0;
   state.sentencesRead++;
+  addStreak();
   saveState();
   playSound('click');
   // Award gems every 3 sentences
