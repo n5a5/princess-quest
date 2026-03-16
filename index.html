@@ -44,7 +44,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 #gem-bar .gems { color: white; font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.15); padding: 6px 14px; border-radius: 20px; transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), background 0.3s; }
 #gem-bar .gems.flash { background: rgba(255,255,255,0.35); transform: scale(1.15); }
 #gem-bar .gem-icon { font-size: 24px; animation: float 2s ease-in-out infinite; }
-#back-btn { background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; font-size: 22px; padding: 6px 14px; border-radius: 14px; cursor: pointer; display: none; font-weight: bold; }
+#back-btn { background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; font-size: 24px; padding: 6px 14px; border-radius: 14px; cursor: pointer; display: none; font-weight: bold; min-width: 48px; min-height: 48px; }
 #back-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.3); }
 
 /* MAIN CONTENT */
@@ -57,7 +57,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .castle-title { font-family: 'Fredoka One', cursive; font-size: 30px; color: #7c3aed; margin: 18px 0 4px; text-shadow: 2px 2px 0 rgba(124,58,237,0.15); letter-spacing: 1px; }
 .castle-subtitle { font-size: 17px; color: #a855f7; margin-bottom: 22px; font-weight: 700; }
 .module-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 520px; margin: 0 auto; padding: 0 6px; }
-.module-card { background: white; border-radius: 24px; padding: 22px 12px; text-align: center; box-shadow: 0 6px 24px rgba(0,0,0,0.08); cursor: pointer; transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s; border: 3px solid transparent; position: relative; overflow: hidden; animation: cardEntrance 0.5s ease-out both; }
+.module-card { background: white; border-radius: 24px; padding: 24px 14px; text-align: center; box-shadow: 0 6px 24px rgba(0,0,0,0.08); cursor: pointer; transition: transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s; border: 3px solid transparent; position: relative; overflow: hidden; animation: cardEntrance 0.5s ease-out both; }
 .module-card:nth-child(1) { animation-delay: 0.05s; }
 .module-card:nth-child(2) { animation-delay: 0.1s; }
 .module-card:nth-child(3) { animation-delay: 0.15s; }
@@ -67,7 +67,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .module-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 60%); opacity: 0; transition: opacity 0.3s; }
 .module-card:active { transform: scale(0.93) rotate(-1deg); }
 .module-card:active::before { opacity: 1; }
-.module-card .icon { font-size: 56px; margin-bottom: 8px; display: block; animation: float 3s ease-in-out infinite; }
+.module-card .icon { font-size: 64px; margin-bottom: 8px; display: block; animation: float 3s ease-in-out infinite; }
 .module-card .name { font-family: 'Fredoka One', cursive; font-size: 16px; color: #581c87; letter-spacing: 0.5px; }
 .module-card .desc { font-size: 13px; color: #a78bfa; margin-top: 4px; font-weight: 700; }
 .module-card:nth-child(1) { border-color: #f9a8d4; background: linear-gradient(145deg, #fff 30%, #fce7f3); }
@@ -159,7 +159,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 /* SHARED GAME STYLES */
 .game-title { font-family: 'Fredoka One', cursive; font-size: 28px; color: #7c3aed; text-align: center; margin: 8px 0 18px; letter-spacing: 1px; }
 .game-area { max-width: 560px; margin: 0 auto; }
-.big-btn { font-family: 'Fredoka One', cursive; background: linear-gradient(135deg, #a855f7, #7c3aed); color: white; border: none; padding: 16px 36px; font-size: 19px; border-radius: 50px; cursor: pointer; margin: 8px; box-shadow: 0 6px 20px rgba(124,58,237,0.35); transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s; letter-spacing: 0.5px; position: relative; overflow: hidden; }
+.big-btn { font-family: 'Fredoka One', cursive; background: linear-gradient(135deg, #a855f7, #7c3aed); color: white; border: none; padding: 16px 36px; font-size: 19px; border-radius: 50px; cursor: pointer; margin: 8px; box-shadow: 0 6px 20px rgba(124,58,237,0.35); transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s; letter-spacing: 0.5px; position: relative; overflow: hidden; min-height: 56px; }
 .big-btn:active { transform: scale(0.9); box-shadow: 0 2px 8px rgba(124,58,237,0.3); }
 .big-btn::after { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; background: rgba(255,255,255,0.3); border-radius: 50%; transform: translate(-50%,-50%); transition: width 0.4s, height 0.4s, opacity 0.4s; opacity: 0; }
 .big-btn:active::after { width: 200px; height: 200px; opacity: 0; }
@@ -175,7 +175,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .letter-btn:active { transform: scale(0.88); }
 .letter-btn.current { background: linear-gradient(145deg, #a855f7, #7c3aed); color: white; border-color: #6d28d9; transform: scale(1.18); box-shadow: 0 0 14px rgba(124,58,237,0.5); }
 .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 380px; margin: 18px auto; }
-.quiz-option { padding: 20px; font-family: 'Fredoka One', cursive; font-size: 26px; border-radius: 20px; border: 3px solid #d8b4fe; background: white; cursor: pointer; text-align: center; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+.quiz-option { padding: 20px; font-family: 'Fredoka One', cursive; font-size: 26px; border-radius: 20px; border: 3px solid #d8b4fe; background: white; cursor: pointer; text-align: center; transition: all 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.06); min-height: 56px; }
 .quiz-option:active { transform: scale(0.93); }
 .quiz-option.correct { background: #dcfce7; border-color: #22c55e; animation: correctFlash 0.6s ease-out; }
 .quiz-option.wrong { background: #fef2f2; border-color: #f87171; animation: wrongShake 0.4s ease-out; }
@@ -189,7 +189,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .math-problem .plus { color: #ec4899; }
 .math-problem .equals { color: #a855f7; }
 .answer-options { display: flex; justify-content: center; gap: 14px; }
-.answer-btn { width: 76px; height: 76px; border-radius: 50%; background: white; border: 4px solid #d8b4fe; font-family: 'Fredoka One', cursive; font-size: 30px; color: #581c87; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+.answer-btn { width: 76px; height: 76px; border-radius: 50%; background: white; border: 4px solid #d8b4fe; font-family: 'Fredoka One', cursive; font-size: 30px; color: #581c87; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 14px rgba(0,0,0,0.08); min-height: 56px; min-width: 56px; }
 .answer-btn:active { transform: scale(0.88); }
 .answer-btn.correct { background: #dcfce7; border-color: #22c55e; animation: correctFlash 0.6s ease-out; }
 .answer-btn.wrong { background: #fef2f2; border-color: #f87171; animation: wrongShake 0.4s ease-out; }
@@ -231,7 +231,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .scenario-emoji { font-size: 64px; text-align: center; margin-bottom: 8px; animation: wiggle 2s ease-in-out infinite; }
 .scenario-text { font-size: 20px; color: #581c87; text-align: center; line-height: 1.6; font-weight: 700; }
 .response-options { display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin: 16px auto; }
-.response-btn { padding: 16px 18px; font-size: 17px; font-weight: 700; border-radius: 18px; border: 3px solid #d8b4fe; background: white; cursor: pointer; text-align: left; transition: all 0.2s; display: flex; align-items: center; gap: 12px; box-shadow: 0 3px 12px rgba(0,0,0,0.05); }
+.response-btn { padding: 16px 18px; font-size: 17px; font-weight: 700; border-radius: 18px; border: 3px solid #d8b4fe; background: white; cursor: pointer; text-align: left; transition: all 0.2s; display: flex; align-items: center; gap: 12px; box-shadow: 0 3px 12px rgba(0,0,0,0.05); min-height: 56px; }
 .response-btn:active { transform: scale(0.97); }
 .response-btn .r-icon { font-size: 30px; flex-shrink: 0; }
 .response-btn.best { background: #dcfce7; border-color: #22c55e; }
@@ -360,6 +360,18 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 
 /* LOCKED OVERLAY */
 .lock-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 28px; }
+
+/* MODE CARD GRIDS (Stage 2) */
+.mode-card { background: white; border-radius: 20px; padding: 18px 12px; text-align: center; cursor: pointer; border: 3px solid #e5e7eb; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
+.mode-card:active { transform: scale(0.93); }
+.mode-card .mode-icon { font-size: 48px; display: block; margin-bottom: 6px; }
+.mode-card .mode-label { font-family: 'Fredoka One', cursive; font-size: 14px; color: #581c87; }
+.mode-card.locked { opacity: 0.5; }
+.mode-card.locked::after { content: '🔒'; position: absolute; top: 8px; right: 8px; font-size: 18px; }
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 400px; margin: 0 auto; }
+
+/* TUTORIAL HINTS (Stage 2) */
+.tutorial-hint { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; font-family: 'Fredoka One', cursive; font-size: 15px; padding: 12px 24px; border-radius: 20px; z-index: 1500; box-shadow: 0 6px 24px rgba(124,58,237,0.4); animation: bounceIn 0.4s ease-out; pointer-events: none; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -464,25 +476,46 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="desc">Pretty outfits!</div>
     </div>
   </div>
+  <div style="text-align:center;margin:16px auto;max-width:520px">
+    <div class="module-card" onclick="surpriseMe()" style="background:linear-gradient(135deg,#fde68a,#fbcfe8,#c4b5fd,#93c5fd);border-color:#fbbf24;max-width:260px;margin:0 auto">
+      <span class="icon" style="animation-delay:0s">🎲</span>
+      <div class="name">Surprise Me!</div>
+      <div class="desc">Pick something fun!</div>
+    </div>
+  </div>
 </div>
 
 <!-- WORD GARDEN -->
 <div id="words-screen" class="screen">
   <div class="game-area">
     <div class="game-title">&#128218; Word Garden <span class="diff-indicator" id="word-diff"></span></div>
-    <div id="word-mode-select" style="text-align:center">
-      <button class="big-btn pink" onclick="startSightWords()">&#128149; Read Words!</button>
-      <button class="big-btn green" onclick="startWordMatch()">&#127912; Match Words!</button>
-      <button class="big-btn" onclick="startSpellIt()">&#9999;&#65039; Spell It!</button>
-      <button class="big-btn pink" onclick="startRhyming()">&#127925; Rhyme Time!</button>
+    <div id="word-mode-select">
+      <div class="mode-grid">
+        <div class="mode-card" onclick="startSightWords()">
+          <span class="mode-icon">📚</span>
+          <div class="mode-label">Read Words</div>
+        </div>
+        <div class="mode-card" onclick="startWordMatch()">
+          <span class="mode-icon">🎯</span>
+          <div class="mode-label">Match Words</div>
+        </div>
+        <div class="mode-card" onclick="startSpellIt()">
+          <span class="mode-icon">✏️</span>
+          <div class="mode-label">Spell It!</div>
+        </div>
+        <div class="mode-card" onclick="startRhyming()">
+          <span class="mode-icon">🎵</span>
+          <div class="mode-label">Rhyme Time</div>
+        </div>
+      </div>
     </div>
     <div id="sight-word-area" style="display:none">
       <div class="letter-image" id="sw-image"></div>
       <div class="letter-display" id="sw-display" style="font-size:80px"></div>
       <div class="letter-word" id="sw-hint"></div>
       <div style="text-align:center">
-        <button class="big-btn pink" onclick="speakWord()">&#128266; Hear It!</button>
-        <button class="big-btn green" onclick="nextSightWord()">Next Word! &#10145;&#65039;</button>
+        <button class="big-btn pink" onclick="speakWord()">🔊 Hear It!</button>
+        <button class="big-btn green" onclick="nextSightWord()">Next Word! ➡️</button>
       </div>
     </div>
     <div id="word-match-area" style="display:none">
@@ -517,19 +550,36 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 <div id="numbers-screen" class="screen">
   <div class="game-area">
     <div class="game-title">&#11088; Number Kingdom <span class="diff-indicator" id="math-diff"></span></div>
-    <div id="number-mode-select" style="text-align:center">
-      <button class="big-btn pink" onclick="startCounting()">&#129412; Count Things!</button>
-      <button class="big-btn green" onclick="startAddition()">&#10133; Add Them Up!</button>
-      <button class="big-btn" id="subtract-btn" onclick="startSubtraction()">&#10134; Take Away!</button>
-      <button class="big-btn pink" onclick="startSequence()">&#128302; What Comes Next?</button>
-      <button class="big-btn" onclick="startCompare()">&#9878;&#65039; Bigger or Smaller!</button>
+    <div id="number-mode-select">
+      <div class="mode-grid">
+        <div class="mode-card" onclick="startCounting()">
+          <span class="mode-icon">🔢</span>
+          <div class="mode-label">Count Things</div>
+        </div>
+        <div class="mode-card" onclick="startAddition()">
+          <span class="mode-icon">➕</span>
+          <div class="mode-label">Add Them Up</div>
+        </div>
+        <div class="mode-card" id="subtract-card" onclick="startSubtractionSafe()">
+          <span class="mode-icon">➖</span>
+          <div class="mode-label">Take Away</div>
+        </div>
+        <div class="mode-card" onclick="startSequence()">
+          <span class="mode-icon">🔮</span>
+          <div class="mode-label">What's Next?</div>
+        </div>
+        <div class="mode-card" style="grid-column: 1 / -1; max-width: 180px; margin: 0 auto;" onclick="startCompare()">
+          <span class="mode-icon">⚖️</span>
+          <div class="mode-label">Compare</div>
+        </div>
+      </div>
     </div>
     <div id="counting-area" style="display:none">
       <div class="scenario-text" id="count-instruction"></div>
       <div class="objects-area" id="count-objects"></div>
       <div class="number-display" id="count-display">0</div>
       <div style="text-align:center">
-        <button class="big-btn green" onclick="checkCount()" id="count-check-btn">Am I Right? &#10004;&#65039;</button>
+        <button class="big-btn green" onclick="checkCount()" id="count-check-btn">✅ Am I Right?</button>
       </div>
     </div>
     <div id="addition-area" style="display:none">
@@ -599,7 +649,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="breathe-label" id="calm-instruction"></div>
       <div id="breathe-progress" style="display:flex;justify-content:center;gap:6px;margin:10px 0"></div>
       <div style="text-align:center; margin-top:18px">
-        <button class="big-btn" onclick="endCalmActivity()">All Done &#128522;</button>
+        <button class="big-btn" onclick="endCalmActivity()">✅ All Done 😊</button>
       </div>
     </div>
     <div id="emotion-checkin" style="display:none">
@@ -612,8 +662,8 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
         </div>
         <div id="emotion-coping" style="text-align:center;margin:14px 0"></div>
         <div style="text-align:center">
-          <button class="big-btn green" onclick="startEmotionCheckIn()">Check Again &#128260;</button>
-          <button class="big-btn" onclick="endCalmActivity()">All Done &#128522;</button>
+          <button class="big-btn green" onclick="startEmotionCheckIn()">🔄 Check Again</button>
+          <button class="big-btn" onclick="endCalmActivity()">✅ All Done 😊</button>
         </div>
       </div>
     </div>
@@ -622,7 +672,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="breathe-circle" id="viz-circle" style="font-size:60px"></div>
       <div class="breathe-label" id="viz-instruction"></div>
       <div style="text-align:center; margin-top:18px">
-        <button class="big-btn" onclick="endCalmActivity()">All Done &#128522;</button>
+        <button class="big-btn" onclick="endCalmActivity()">✅ All Done 😊</button>
       </div>
     </div>
   </div>
@@ -643,7 +693,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div id="story-map-area" style="display:none;text-align:center;margin-top:14px">
       <div style="font-family:Fredoka One,cursive;font-size:16px;color:#7c3aed;margin-bottom:8px">&#128506; Story Map</div>
       <div id="story-map-content"></div>
-      <button class="big-btn" onclick="showStorySelect()">Back to Stories</button>
+      <button class="big-btn" onclick="showStorySelect()">⬅️ Back to Stories</button>
     </div>
   </div>
 </div>
@@ -659,7 +709,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div class="response-options" id="uhoh-choices"></div>
     <div class="response-feedback" id="uhoh-feedback"></div>
     <div style="text-align:center">
-      <button class="big-btn green" id="uhoh-next-btn" style="display:none" onclick="nextScenario()">Next One! &#10145;&#65039;</button>
+      <button class="big-btn green" id="uhoh-next-btn" style="display:none" onclick="nextScenario()">Next! ➡️</button>
     </div>
   </div>
 </div>
@@ -737,7 +787,8 @@ const defaultState = {
   parentPin: '1234',      // 4-digit PIN for parent dashboard
   sessionTimeLimit: 0,    // minutes, 0 = unlimited
   sessionStartTime: null, // ISO string when current session began
-  speechEnabled: true     // speech synthesis toggle
+  speechEnabled: true,    // speech synthesis toggle
+  tutorialsSeen: []       // first-use tutorial hints seen
 };
 let state = JSON.parse(localStorage.getItem('princessQuest') || 'null') || {...defaultState};
 // Merge in any new fields from defaultState that old saves don't have
@@ -1663,6 +1714,7 @@ function initWords() {
   document.getElementById('word-mode-select').style.display = 'block';
   ['sight-word-area','word-match-area','word-build-area','rhyme-area','missing-letter-area'].forEach(id => document.getElementById(id).style.display = 'none');
   document.getElementById('word-diff').innerHTML = getDiffStars(state.wordLevel, 4);
+  showTutorialHint('words', '📚 Tap a word to hear it!');
 }
 
 // --- SIGHT WORDS (Read Words) ---
@@ -1991,14 +2043,22 @@ function initNumbers() {
   ['counting-area','addition-area','pattern-area','compare-area','subtraction-area','skip-count-area'].forEach(id => document.getElementById(id).style.display = 'none');
   document.getElementById('math-diff').innerHTML = getDiffStars(state.mathLevel, 4);
   // Show subtraction with lock if math level < 2
-  const subBtn = document.getElementById('subtract-btn');
+  const subCard = document.getElementById('subtract-card');
   if (state.mathLevel >= 2) {
-    subBtn.textContent = '➖ Take Away!';
-    subBtn.onclick = startSubtraction;
+    subCard.classList.remove('locked');
   } else {
-    subBtn.textContent = '🔒 Take Away!';
-    subBtn.onclick = () => { speak('Keep practicing to unlock!'); playSound('wrong'); };
+    subCard.classList.add('locked');
   }
+  showTutorialHint('numbers', '🔢 Tap each star to count!');
+}
+
+function startSubtractionSafe() {
+  if (state.mathLevel < 2) {
+    speak('Keep practicing to unlock!');
+    playSound('wrong');
+    return;
+  }
+  startSubtraction();
 }
 
 function startCounting() {
@@ -2398,6 +2458,7 @@ function initCalm() {
   document.getElementById('calm-menu').style.display = 'block';
   ['calm-activity','emotion-checkin','visualization-area'].forEach(id => document.getElementById(id).style.display = 'none');
   clearTimeout(calmTimer);
+  showTutorialHint('calm', '🦄 Pick how to feel calm!');
 }
 
 function startBreathing() {
@@ -2801,6 +2862,7 @@ let currentStoryIdx = 0, currentNodeId = 'start';
 
 function initStories() {
   showStorySelect();
+  showTutorialHint('stories', '📖 Choose your adventure!');
 }
 
 function showStorySelect() {
@@ -3064,6 +3126,7 @@ function initUhOh() {
   scenarioOrder = [...Array(scenarios.length).keys()].sort(() => Math.random() - 0.5);
   currentScenario = 0;
   showScenario();
+  showTutorialHint('uhoh', '🤗 What would you do?');
 }
 
 function showScenario() {
@@ -3600,6 +3663,39 @@ function getDiffStars(level, max) {
     html += '<span class="diff-star ' + (i <= level ? '' : 'empty') + '">★</span>';
   }
   return html;
+}
+
+// ==================== TUTORIAL HINTS ====================
+function showTutorialHint(moduleId, text) {
+  if (!state.tutorialsSeen) state.tutorialsSeen = [];
+  if (state.tutorialsSeen.includes(moduleId)) return;
+  state.tutorialsSeen.push(moduleId);
+  saveState();
+  const hint = document.createElement('div');
+  hint.className = 'tutorial-hint';
+  hint.textContent = text;
+  document.body.appendChild(hint);
+  setTimeout(() => { hint.style.opacity = '0'; hint.style.transition = 'opacity 0.5s'; }, 3500);
+  setTimeout(() => hint.remove(), 4000);
+}
+
+// ==================== SURPRISE ME ====================
+function surpriseMe() {
+  playSound('click');
+  const modules = ['words', 'numbers', 'stories', 'uhoh'];
+  const mod = modules[Math.floor(Math.random() * modules.length)];
+  openModule(mod);
+  // Auto-start a random activity after a brief delay
+  setTimeout(() => {
+    if (mod === 'words') {
+      const fns = [startSightWords, startWordMatch, startSpellIt, startRhyming];
+      fns[Math.floor(Math.random() * fns.length)]();
+    } else if (mod === 'numbers') {
+      const fns = [startCounting, startAddition, startSequence, startCompare];
+      fns[Math.floor(Math.random() * fns.length)]();
+    }
+    // Stories and UhOh auto-init when opened, so no extra action needed
+  }, 600);
 }
 
 // ==================== INIT ====================
