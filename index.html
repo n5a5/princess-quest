@@ -202,7 +202,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .answer-btn.wrong { background: #fef2f2; border-color: #f87171; animation: wrongShake 0.4s ease-out; }
 
 /* CALM CASTLE */
-.breathe-circle { width: 220px; height: 220px; border-radius: 50%; background: linear-gradient(135deg, #c4b5fd, #8b5cf6); margin: 28px auto; display: flex; align-items: center; justify-content: center; color: white; font-family: 'Fredoka One', cursive; font-size: 20px; text-align: center; animation: glow 3s ease-in-out infinite; transition: transform ease-in-out, background 0.8s, box-shadow 0.8s; }
+.breathe-circle { width: 220px; height: 220px; border-radius: 50%; background: linear-gradient(135deg, #c4b5fd, #8b5cf6); margin: 28px auto; display: flex; align-items: center; justify-content: center; color: white; font-family: 'Fredoka One', cursive; font-size: 20px; text-align: center; animation: glow 3s ease-in-out infinite; transition: transform ease-in-out, background 0.8s, box-shadow 0.8s; transform: scale(0.5); }
 .breathe-circle.inhale { transform: scale(1.6); background: linear-gradient(135deg, #a78bfa, #7c3aed); box-shadow: 0 0 50px rgba(124,58,237,0.5), 0 0 80px rgba(168,85,247,0.3); }
 .breathe-circle.exhale { transform: scale(0.5); background: linear-gradient(135deg, #93c5fd, #60a5fa); box-shadow: 0 0 30px rgba(96,165,250,0.4); }
 .breathe-circle.hold { box-shadow: 0 0 40px rgba(139,92,246,0.6), 0 0 15px rgba(255,255,255,0.3); }
@@ -628,14 +628,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
         <div class="calm-card" role="button" onclick="startBreathing()">
           <div class="icon">&#129412;</div>
           <div class="label">Unicorn Breathing</div>
-        </div>
-        <div class="calm-card" role="button" onclick="startBodyScan()">
-          <div class="icon">&#10024;</div>
-          <div class="label">Sparkle Body Scan</div>
-        </div>
-        <div class="calm-card" role="button" onclick="startShakeOff()">
-          <div class="icon">&#128131;</div>
-          <div class="label">Shake It Off Dance!</div>
         </div>
         <div class="calm-card" role="button" onclick="startEmotionCheckIn()">
           <div class="icon">&#128156;</div>
@@ -1275,7 +1267,7 @@ function speak(text) {
   if (!('speechSynthesis' in window) || soundMuted || state.speechEnabled === false) return;
   speechSynthesis.cancel();
   // Clean text of emojis for more natural speech
-  const cleanText = text.replace(/[\u{1F300}-\u{1FAF8}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\s+/g, ' ').trim();
+  const cleanText = text.replace(/[\u{1F300}-\u{1FAF8}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\.{2,}/g, '.').replace(/\s+/g, ' ').trim();
   if (!cleanText) return;
   // Split into sentences for natural pauses between phrases
   const sentences = cleanText.split(/(?<=[.!?])\s+/).filter(s => s.trim());
@@ -2612,82 +2604,15 @@ function startBreathing() {
   nextPhase();
 }
 
-function startBodyScan() {
-  document.getElementById('calm-menu').style.display = 'none';
-  document.getElementById('calm-activity').style.display = 'block';
-  document.getElementById('calm-label').textContent = '✨ Sparkle Body Scan';
-  speak("Close your eyes. Let's put sparkles all over your body!");
-  const parts = [
-    { text: 'Sparkles on your head! Feel them tingle!', emoji: '✨' },
-    { text: 'Sparkles on your face! Relax and smile!', emoji: '😊' },
-    { text: 'Sparkles on your shoulders! Let them drop down.', emoji: '🌟' },
-    { text: 'Sparkles down your arms! Wiggle your fingers!', emoji: '🤗' },
-    { text: 'Sparkles on your tummy! Take a big breath!', emoji: '💫' },
-    { text: 'Sparkles down your legs to your toes! Wiggle!', emoji: '🦶' },
-    { text: 'Sparkles everywhere! You feel SO calm and happy!', emoji: '💖' }
-  ];
-  let idx = 0;
-  const circle = document.getElementById('breathe-circle');
-
-  function nextPart() {
-    if (idx < parts.length) {
-      circle.textContent = parts[idx].emoji;
-      circle.style.transform = 'scale(1)';
-      document.getElementById('calm-instruction').textContent = parts[idx].text;
-      speak(parts[idx].text);
-      createSparkles(3);
-      idx++;
-      calmTimer = setTimeout(nextPart, 5500);
-    } else {
-      state.calmCompleted++;
-      showReward('✨', 'So sparkly and calm!', 8);
-    }
-  }
-  nextPart();
-}
-
-function startShakeOff() {
-  document.getElementById('calm-menu').style.display = 'none';
-  document.getElementById('calm-activity').style.display = 'block';
-  document.getElementById('calm-label').textContent = '💃 Shake It Off Dance!';
-  speak("Time to dance! Do what I say!");
-  const moves = [
-    { text: 'Shake your hands!', emoji: '👐' },
-    { text: 'Wiggle your shoulders!', emoji: '💃' },
-    { text: 'Stomp your feet!', emoji: '🦶' },
-    { text: 'Spin around!', emoji: '🌀' },
-    { text: 'Jump up and down!', emoji: '⬆️' },
-    { text: 'Wave your arms!', emoji: '🙌' },
-    { text: 'Take a bow! You did it!', emoji: '🎭' }
-  ];
-  let idx = 0;
-  const circle = document.getElementById('breathe-circle');
-  circle.style.animation = 'rainbowBg 2s infinite';
-
-  function nextMove() {
-    if (idx < moves.length) {
-      circle.textContent = moves[idx].emoji;
-      document.getElementById('calm-instruction').textContent = moves[idx].text;
-      speak(moves[idx].text);
-      idx++;
-      calmTimer = setTimeout(nextMove, 3800);
-    } else {
-      circle.style.animation = '';
-      state.calmCompleted++;
-      showReward('💃', 'Best dancer ever!', 8);
-    }
-  }
-  nextMove();
-}
 
 // --- EMOTION CHECK-IN ---
 const emotions = [
   { emoji: '😊', name: 'Happy', color: '#22c55e', response: "Yay! You feel happy! That's wonderful!", coping: "Keep spreading that sunshine! Maybe share a smile with someone!" },
   { emoji: '😢', name: 'Sad', color: '#3b82f6', response: "It's okay to feel sad. Everyone feels sad sometimes.", coping: "Try giving yourself a big hug, or talk to someone you love. You could also try Unicorn Breathing!" },
-  { emoji: '😠', name: 'Angry', color: '#ef4444', response: "It's okay to feel angry. Your feelings are important!", coping: "Try taking 5 big breaths, or squeeze your hands tight then let go. Shake It Off Dance might help too!" },
-  { emoji: '😰', name: 'Worried', color: '#f59e0b', response: "Being worried means you care. That's not a bad thing!", coping: "Tell yourself: 'I am safe. I am brave. I can do hard things.' Try the Body Scan to relax!" },
+  { emoji: '😠', name: 'Angry', color: '#ef4444', response: "It's okay to feel angry. Your feelings are important!", coping: "Try taking 5 big breaths, or squeeze your hands tight then let go. Unicorn Breathing might help too!" },
+  { emoji: '😰', name: 'Worried', color: '#f59e0b', response: "Being worried means you care. That's not a bad thing!", coping: "Tell yourself: 'I am safe. I am brave. I can do hard things.' Try Unicorn Breathing to relax!" },
   { emoji: '😴', name: 'Tired', color: '#8b5cf6', response: "Your body is telling you it needs rest. That's smart!", coping: "Try some gentle breathing, drink some water, or close your eyes for a minute." },
-  { emoji: '🤩', name: 'Excited', color: '#ec4899', response: "WOW! You're full of energy and excitement!", coping: "Channel that energy! Maybe do the Shake It Off Dance or tell someone what you're excited about!" },
+  { emoji: '🤩', name: 'Excited', color: '#ec4899', response: "WOW! You're full of energy and excitement!", coping: "Channel that energy! Tell someone what you're excited about, or try Unicorn Breathing to focus!" },
   { emoji: '😔', name: 'Lonely', color: '#6366f1', response: "Feeling lonely is hard. But you are never truly alone.", coping: "You could draw a picture for someone, or hug a stuffed animal. Remember: people love you!" },
   { emoji: '🥰', name: 'Loved', color: '#f472b6', response: "Feeling loved is the best feeling in the whole world!", coping: "Spread that love! Tell someone you love them, or draw them a heart!" },
   { emoji: '😨', name: 'Scared', color: '#64748b', response: "Being scared is okay. Even princesses feel scared sometimes!", coping: "Remember: you are BRAVE. Hold someone's hand, or hug something soft. Try breathing with the unicorn!" },
@@ -2825,110 +2750,194 @@ const stories = [
   {
     title: 'The Lost Unicorn', icon: '🦄',
     nodes: {
-      start: { text: 'A little unicorn named Sparkle got lost in the big forest. She was scared but brave!', emoji: '🦄', choices: [{text:'Follow the rainbow!', next:'rainbow'}, {text:'Ask the owl!', next:'owl'}] },
-      rainbow: { text: 'Sparkle followed the rainbow through the trees! The colors lit the way. She found a sparkling river!', emoji: '🌈', choices: [{text:'Swim across!', next:'swim'}, {text:'Find a bridge!', next:'bridge'}] },
+      start: { text: 'A little unicorn named Sparkle got lost in the big forest. She was scared but brave!', emoji: '🦄', choices: [{text:'Follow the rainbow!', next:'rainbow'}, {text:'Ask the owl!', next:'owl'}, {text:'Listen to the wind!', next:'wind'}] },
+      rainbow: { text: 'Sparkle followed the rainbow through the trees! The colors lit the way. She found a sparkling river!', emoji: '🌈', choices: [{text:'Swim across!', next:'swim'}, {text:'Find a bridge!', next:'bridge'}, {text:'Follow the river!', next:'follow-river'}] },
       owl: { text: '"Hoo hoo! Go north past the mushrooms!" said the wise owl. Sparkle thanked him and trotted on.', emoji: '🦉', choices: [{text:'Follow the mushrooms!', next:'mushroom'}, {text:'Climb a hill to look around!', next:'hill'}] },
+      wind: { text: 'The wind carried a sweet song! Sparkle followed it to a meadow with two paths.', emoji: '🌬️', choices: [{text:'Take the flower path!', next:'flower-path'}, {text:'Take the starlight path!', next:'star-path'}] },
       swim: { text: 'Sparkle swam across! A friendly dolphin helped her! On the other side was her castle!', emoji: '🐬', choices: null },
       bridge: { text: 'She found a wooden bridge with fairy lights! A bunny waved from the other side. "Welcome home!"', emoji: '🐰', choices: null },
-      mushroom: { text: 'The glowing mushrooms made a path! Each one lit up as she walked past. She was home!', emoji: '🍄', choices: null },
-      hill: { text: 'From the hilltop she could see her castle! She galloped down and everyone cheered!', emoji: '🏰', choices: null },
+      'follow-river': { text: 'The river led to a beautiful lake! She saw fireflies dancing above the water.', emoji: '✨', choices: [{text:'Follow the fireflies!', next:'fireflies'}, {text:'Call out for help!', next:'lake-call'}] },
+      fireflies: { text: 'The fireflies made a glowing trail right to her front door! Sparkle was home safe!', emoji: '🌟', choices: null },
+      'lake-call': { text: 'A kind frog heard her! He showed her a secret shortcut home through the lily pads!', emoji: '🐸', choices: null },
+      mushroom: { text: 'The glowing mushrooms made a path! But it split into two directions!', emoji: '🍄', choices: [{text:'Go left toward music!', next:'mushroom-music'}, {text:'Go right toward light!', next:'mushroom-light'}] },
+      'mushroom-music': { text: 'Crickets were playing a welcome-home song! Sparkle danced all the way back to her castle!', emoji: '🎵', choices: null },
+      'mushroom-light': { text: 'The light was her family holding lanterns! They had been looking for her! Big hugs all around!', emoji: '🏮', choices: null },
+      hill: { text: 'From the hilltop she could see two places she knew!', emoji: '⛰️', choices: [{text:'Run to the castle!', next:'hill-castle'}, {text:'Slide down to the meadow!', next:'hill-meadow'}] },
+      'hill-castle': { text: 'She galloped down and everyone cheered! The whole kingdom had a welcome-home party!', emoji: '🏰', choices: null },
+      'hill-meadow': { text: 'In the meadow, her best friend Buttercup was waiting! They skipped home together!', emoji: '🦋', choices: null },
+      'flower-path': { text: 'The flowers whispered directions! Each petal pointed the way home. Sparkle made it!', emoji: '🌸', choices: null },
+      'star-path': { text: 'The stars twinkled so bright they lit a path on the ground! Sparkle followed them right to her cozy bed!', emoji: '⭐', choices: null },
     }
   },
   {
     title: 'The Princess Bakery', icon: '🎂',
     nodes: {
-      start: { text: 'Princess Lily wanted to bake a cake for her unicorn friend! She put on her apron!', emoji: '🎂', choices: [{text:'Chocolate cake!', next:'choc'}, {text:'Rainbow cake!', next:'rainbow'}] },
-      choc: { text: 'She poured in cocoa and sugar. The kitchen smelled AMAZING! But oh no — she needed frosting!', emoji: '🍫', choices: [{text:'Make vanilla frosting!', next:'choc-vanilla'}, {text:'Make strawberry frosting!', next:'choc-straw'}] },
-      rainbow: { text: 'She mixed 6 colors of batter! Red, orange, yellow, green, blue, purple! So pretty!', emoji: '🌈', choices: [{text:'Add sparkle sprinkles!', next:'rainbow-sparkle'}, {text:'Add a candy crown!', next:'rainbow-crown'}] },
-      'choc-vanilla': { text: 'The chocolate cake with vanilla frosting was PERFECT! The unicorn said it was the best ever!', emoji: '🎉', choices: null },
+      start: { text: 'Princess Lily wanted to bake a treat for her unicorn friend! She put on her apron!', emoji: '🎂', choices: [{text:'Bake a chocolate cake!', next:'choc'}, {text:'Bake a rainbow cake!', next:'rainbow'}, {text:'Bake cupcakes!', next:'cupcakes'}] },
+      choc: { text: 'She poured in cocoa and sugar. The kitchen smelled AMAZING! But oh no — she needed frosting!', emoji: '🍫', choices: [{text:'Make vanilla frosting!', next:'choc-vanilla'}, {text:'Make strawberry frosting!', next:'choc-straw'}, {text:'Make caramel frosting!', next:'choc-caramel'}] },
+      rainbow: { text: 'She mixed 6 colors of batter! Red, orange, yellow, green, blue, purple! So pretty!', emoji: '🌈', choices: [{text:'Add sparkle sprinkles!', next:'rainbow-sparkle'}, {text:'Add a candy crown!', next:'rainbow-crown'}, {text:'Add fresh berries!', next:'rainbow-berries'}] },
+      cupcakes: { text: 'Lily made a dozen tiny cupcakes! Now she needed to decorate them!', emoji: '🧁', choices: [{text:'Use flower shapes!', next:'cup-flower'}, {text:'Use star shapes!', next:'cup-star'}, {text:'Use animal shapes!', next:'cup-animal'}] },
+      'choc-vanilla': { text: 'Yum! Now she wanted to add a topping!', emoji: '🍦', choices: [{text:'Add cherries on top!', next:'choc-cherry'}, {text:'Add cookie crumbles!', next:'choc-cookie'}] },
+      'choc-cherry': { text: 'Chocolate cake with vanilla frosting and cherries! The unicorn said it was the BEST cake ever!', emoji: '🍒', choices: null },
+      'choc-cookie': { text: 'Cookie crumbles on vanilla frosting on chocolate cake! Everyone asked for the recipe!', emoji: '🍪', choices: null },
       'choc-straw': { text: 'Pink strawberry frosting on chocolate! It looked like a sunset! Everyone wanted a piece!', emoji: '🍓', choices: null },
+      'choc-caramel': { text: 'Golden caramel dripped down the chocolate cake like treasure! The unicorn licked the plate clean!', emoji: '🍯', choices: null },
       'rainbow-sparkle': { text: 'The sparkles made the rainbow cake GLOW! All the unicorns flew in circles with joy!', emoji: '✨', choices: null },
       'rainbow-crown': { text: 'The candy crown on top made it a ROYAL cake! The queen herself came to try a slice!', emoji: '👑', choices: null },
+      'cup-flower': { text: 'Each cupcake looked like a tiny garden! The butterflies came to look because they were so pretty!', emoji: '🌺', choices: null },
+      'cup-star': { text: 'The star cupcakes sparkled like the night sky! The unicorn ate three in a row!', emoji: '⭐', choices: null },
+      'cup-animal': { text: 'Bunny cupcakes, kitten cupcakes, and unicorn cupcakes! Almost too cute to eat. Almost!', emoji: '🐱', choices: null },
+      'rainbow-berries': { text: 'Fresh berries on rainbow cake! It was so yummy that the unicorn asked Lily to open a bakery!', emoji: '🫐', choices: null },
     }
   },
   {
     title: 'The Brave Princess', icon: '🌹',
     nodes: {
-      start: { text: 'Princess Rose heard a tiny cry from the garden. Someone needed help!', emoji: '🌹', choices: [{text:'Go look!', next:'look'}, {text:'Get the magic wand!', next:'wand'}] },
-      look: { text: 'A baby bird had fallen from its nest! It chirped sadly. Rose picked it up gently.', emoji: '🐣', choices: [{text:'Climb the tree!', next:'climb'}, {text:'Ask the giraffe!', next:'giraffe'}] },
+      start: { text: 'Princess Rose heard a tiny cry from the garden. Someone needed help!', emoji: '🌹', choices: [{text:'Go look right away!', next:'look'}, {text:'Get the magic wand!', next:'wand'}, {text:'Call her animal friends!', next:'call-friends'}] },
+      look: { text: 'A baby bird had fallen from its nest! It chirped sadly. Rose picked it up gently.', emoji: '🐣', choices: [{text:'Climb the tree!', next:'climb'}, {text:'Ask the giraffe!', next:'giraffe'}, {text:'Build a little ladder!', next:'ladder'}] },
       wand: { text: 'Rose grabbed her wand and ran outside. She found a baby bird on the ground!', emoji: '🪄', choices: [{text:'Use magic to lift it!', next:'magic'}, {text:'Make a nest of clouds!', next:'cloudnest'}] },
+      'call-friends': { text: 'Rose whistled and her animal friends came running! They found a baby bird that needed help!', emoji: '🐾', choices: [{text:'The squirrel can help!', next:'squirrel'}, {text:'The butterfly knows the way!', next:'butterfly'}, {text:'Everyone help together!', next:'teamwork'}] },
       climb: { text: 'Rose climbed carefully and put the bird back! Mama bird sang the happiest song!', emoji: '🎵', choices: null },
       giraffe: { text: 'The giraffe stretched her long neck and Rose put the bird on her head. Up to the nest!', emoji: '🦒', choices: null },
-      magic: { text: 'The wand glowed pink! The bird floated gently up to its nest. Magic saved the day!', emoji: '💫', choices: null },
-      cloudnest: { text: 'Rose made a fluffy cloud nest right next to the tree! The bird family LOVED their upgrade!', emoji: '☁️', choices: null },
+      ladder: { text: 'Rose built a tiny ladder from sticks! She climbed up and the bird family was together again!', emoji: '🪜', choices: null },
+      magic: { text: 'The wand glowed pink! The bird floated gently up. But wait — another bird needed help too!', emoji: '💫', choices: [{text:'Help the second bird!', next:'magic-two'}, {text:'Make a safety net for all birds!', next:'magic-net'}] },
+      'magic-two': { text: 'Rose helped both birds! The mama bird crowned Rose with a tiny flower tiara!', emoji: '🌼', choices: null },
+      'magic-net': { text: 'The magic safety net caught any baby bird that fell! Rose became the Bird Rescue Princess!', emoji: '🦸', choices: null },
+      cloudnest: { text: 'Rose made a fluffy cloud nest right next to the tree! But she heard another cry!', emoji: '☁️', choices: [{text:'Find who else needs help!', next:'cloud-find'}, {text:'Make cloud nests for everyone!', next:'cloud-all'}] },
+      'cloud-find': { text: 'A little bunny was stuck in a bush! Rose freed it gently. Two rescues in one day!', emoji: '🐰', choices: null },
+      'cloud-all': { text: 'Rose made cloud nests for every animal! The forest became the coziest place ever!', emoji: '🌤️', choices: null },
+      squirrel: { text: 'The squirrel carried the baby bird up the tree in a tiny acorn basket! So clever!', emoji: '🐿️', choices: null },
+      butterfly: { text: 'The butterfly led them to a low branch! Rose gently placed the bird there. Mama bird was so happy!', emoji: '🦋', choices: null },
+      teamwork: { text: 'All the animals worked together! The squirrel held a leaf umbrella while the giraffe lifted the bird! Teamwork!', emoji: '🤝', choices: null },
     }
   },
   {
     title: 'The Dragon Who Was Sad', icon: '🐉',
     nodes: {
-      start: { text: 'A little dragon sat alone, crying fire-tears. Nobody wanted to be his friend!', emoji: '🐉', choices: [{text:'Go talk to him!', next:'talk'}, {text:'Bring a gift!', next:'gift'}] },
-      talk: { text: '"I just want to play!" sniffled the dragon. Princess Luna had an idea!', emoji: '💡', choices: [{text:'Teach him hide-and-seek!', next:'hide'}, {text:'Start a dragon band!', next:'band'}] },
-      gift: { text: 'Luna brought a friendship bracelet! The dragon smiled for the first time. "For ME?"', emoji: '🎁', choices: [{text:'Make matching bracelets!', next:'bracelet'}, {text:'Throw a welcome party!', next:'party'}] },
-      hide: { text: 'The dragon was AMAZING at hide-and-seek (he could turn invisible!). Everyone wanted him on their team!', emoji: '🎮', choices: null },
+      start: { text: 'A little dragon sat alone, crying fire-tears. Nobody wanted to be his friend!', emoji: '🐉', choices: [{text:'Go talk to him!', next:'talk'}, {text:'Bring a gift!', next:'gift'}, {text:'Sit next to him quietly!', next:'sit'}] },
+      talk: { text: '"I just want to play!" sniffled the dragon. Princess Luna had an idea!', emoji: '💡', choices: [{text:'Teach him hide-and-seek!', next:'hide'}, {text:'Start a dragon band!', next:'band'}, {text:'Have a flying race!', next:'race'}] },
+      gift: { text: 'Luna brought a friendship bracelet! The dragon smiled for the first time. "For ME?"', emoji: '🎁', choices: [{text:'Make matching bracelets!', next:'bracelet'}, {text:'Throw a welcome party!', next:'party'}, {text:'Go on an adventure together!', next:'adventure'}] },
+      sit: { text: 'Luna just sat next to him. After a while, the dragon said, "Thanks for staying."', emoji: '💜', choices: [{text:'Draw pictures together!', next:'draw'}, {text:'Watch the sunset together!', next:'sunset'}, {text:'Tell silly jokes!', next:'jokes'}] },
+      hide: { text: 'The dragon could turn invisible! But he kept giggling so everyone found him!', emoji: '🎮', choices: [{text:'Play tag next!', next:'tag'}, {text:'Play treasure hunt!', next:'treasure'}] },
+      tag: { text: 'The dragon was the fastest at tag! Everyone cheered for him! He finally had a big group of friends!', emoji: '🏃', choices: null },
+      treasure: { text: 'The dragon hid treasures with his fire-breath clues! It became the kingdom\'s favorite game!', emoji: '💎', choices: null },
       band: { text: 'The dragon played fire-drums! He made the BEST fireworks-music show the kingdom ever saw!', emoji: '🎆', choices: null },
+      race: { text: 'The dragon zoomed through the sky! Everyone cheered! He won a golden trophy and ten new friends!', emoji: '🏆', choices: null },
       bracelet: { text: 'Soon EVERYONE wanted friendship bracelets! The dragon became the most popular kid in the kingdom!', emoji: '📿', choices: null },
-      party: { text: 'At the party, the dragon showed his sparkly fireworks. Now he had more friends than he could count!', emoji: '🎉', choices: null },
+      party: { text: 'At the party, the dragon showed his sparkly fireworks! Now he had more friends than he could count!', emoji: '🎉', choices: null },
+      draw: { text: 'The dragon could draw with smoke! He made beautiful sky-pictures! Everyone gathered to watch!', emoji: '🎨', choices: null },
+      sunset: { text: 'They watched the sunset together. The dragon said, "This is the best day ever." Luna agreed!', emoji: '🌅', choices: null },
+      adventure: { text: 'They flew over mountains and rainbows! The dragon said, "Having a friend makes everything better!"', emoji: '🗻', choices: null },
+      jokes: { text: 'Luna told the silliest joke ever! The dragon laughed so hard that sparkles came out of his nose!', emoji: '😂', choices: null },
     }
   },
   {
     title: 'The Magic Garden', icon: '🌱',
     nodes: {
-      start: { text: 'Princess Daisy found a glowing seed! "I wonder what will grow!"', emoji: '🌱', choices: [{text:'Plant it in sunshine!', next:'sun'}, {text:'Plant it by the waterfall!', next:'water'}] },
-      sun: { text: 'In the sunshine, a HUGE flower grew overnight with a tiny fairy inside!', emoji: '🧚', choices: [{text:'Ask for a wish!', next:'wish-sun'}, {text:'Become friends!', next:'fairy-friend'}] },
-      water: { text: 'By the waterfall, a magical vine grew with glowing fruit on it!', emoji: '🍇', choices: [{text:'Taste the fruit!', next:'fruit'}, {text:'Share with everyone!', next:'share-fruit'}] },
+      start: { text: 'Princess Daisy found a glowing seed! "I wonder what will grow!"', emoji: '🌱', choices: [{text:'Plant it in sunshine!', next:'sun'}, {text:'Plant it by the waterfall!', next:'water'}, {text:'Plant it under moonlight!', next:'moon'}] },
+      sun: { text: 'In the sunshine, a HUGE flower grew overnight with a tiny fairy inside!', emoji: '🧚', choices: [{text:'Ask for a wish!', next:'wish-sun'}, {text:'Become friends!', next:'fairy-friend'}, {text:'Have a tea party!', next:'fairy-tea'}] },
+      water: { text: 'By the waterfall, a magical vine grew with glowing fruit on it!', emoji: '🍇', choices: [{text:'Taste the fruit!', next:'fruit'}, {text:'Share with everyone!', next:'share-fruit'}, {text:'Plant the seeds!', next:'water-seeds'}] },
+      moon: { text: 'Under the moonlight, a silver tree grew with tiny singing flowers!', emoji: '🌙', choices: [{text:'Sing along!', next:'moon-sing'}, {text:'Pick a flower!', next:'moon-pick'}, {text:'Dance with the flowers!', next:'moon-dance'}] },
       'wish-sun': { text: 'Daisy wished for a garden where everyone could play. It grew into a magical park!', emoji: '🌸', choices: null },
       'fairy-friend': { text: 'The fairy became her best friend! Together they made the whole kingdom bloom!', emoji: '🦋', choices: null },
-      fruit: { text: 'The fruit made Daisy able to talk to flowers! She became the greatest gardener ever!', emoji: '🌺', choices: null },
+      'fairy-tea': { text: 'They had the tiniest tea party ever! The fairy brought dewdrop tea and petal cakes!', emoji: '🫖', choices: null },
+      fruit: { text: 'The fruit tasted like happiness! Daisy could hear what the flowers were thinking!', emoji: '🌺', choices: [{text:'Help a sad flower!', next:'fruit-sad'}, {text:'Start a flower choir!', next:'fruit-choir'}] },
+      'fruit-sad': { text: 'A little daisy was lonely. Daisy planted friends all around it! Now it was the happiest flower!', emoji: '🌼', choices: null },
+      'fruit-choir': { text: 'Daisy taught all the flowers to sing together! The garden concerts were famous everywhere!', emoji: '🎶', choices: null },
       'share-fruit': { text: 'Everyone who ate the fruit could grow plants with a touch! The kingdom became a paradise!', emoji: '🌳', choices: null },
+      'moon-sing': { text: 'Daisy\'s voice and the flowers made the most beautiful lullaby! Stars came closer to listen!', emoji: '⭐', choices: null },
+      'moon-pick': { text: 'The silver flower glowed in her hair like a crown! Daisy became the Moon Garden Princess!', emoji: '👑', choices: null },
+      'moon-dance': { text: 'The flowers danced with Daisy all night! Fireflies joined in and it was a magical ball!', emoji: '💃', choices: null },
+      'water-seeds': { text: 'Daisy planted the seeds everywhere! A hundred magical vines grew and the kingdom had fruit forever!', emoji: '🌿', choices: null },
     }
   },
   {
     title: 'The Sharing Star', icon: '🍪',
     nodes: {
-      start: { text: 'Princess Mia had the last cookie. Her little brother looked so hungry and sad!', emoji: '🍪', choices: [{text:'Share it!', next:'share'}, {text:'Bake more together!', next:'bake'}] },
-      share: { text: 'Mia broke it in half and gave her brother the bigger piece! He smiled like sunshine!', emoji: '😃', choices: [{text:'Hug him!', next:'hug'}, {text:'Play together!', next:'play'}] },
-      bake: { text: 'They baked a WHOLE batch together! The kitchen was covered in flour and giggles!', emoji: '👩‍🍳', choices: [{text:'Share with neighbors!', next:'neighbors'}, {text:'Cookie party!', next:'cookie-party'}] },
+      start: { text: 'Princess Mia had the last cookie. Her little brother looked so hungry and sad!', emoji: '🍪', choices: [{text:'Share it!', next:'share'}, {text:'Bake more together!', next:'bake'}, {text:'Make it a game!', next:'game'}] },
+      share: { text: 'Mia broke it in half and gave her brother the bigger piece! He smiled like sunshine!', emoji: '😃', choices: [{text:'Hug him!', next:'hug'}, {text:'Play together!', next:'play'}, {text:'Tell him a story!', next:'story'}] },
+      bake: { text: 'They baked a WHOLE batch together! The kitchen was covered in flour and giggles!', emoji: '👩‍🍳', choices: [{text:'Share with neighbors!', next:'neighbors'}, {text:'Cookie party!', next:'cookie-party'}, {text:'Decorate them fancy!', next:'decorate'}] },
+      game: { text: 'Mia hid the cookie and they played find-the-cookie! Her brother found it and they split it!', emoji: '🎯', choices: [{text:'Play more games!', next:'more-games'}, {text:'Make a treasure map!', next:'treasure-map'}, {text:'Give each other piggyback rides!', next:'piggyback'}] },
       hug: { text: 'That night, a star appeared. "I am the Sharing Star. You earned a wish for being kind!"', emoji: '🌟', choices: null },
       play: { text: 'They played until sunset. Mia realized sharing a cookie gave her something even sweeter — happiness!', emoji: '💖', choices: null },
-      neighbors: { text: 'Every neighbor got warm cookies! The whole street smelled like love! Mia became Cookie Princess!', emoji: '🏘️', choices: null },
+      story: { text: 'Mia told a story about a cookie that traveled the world! Her brother fell asleep smiling!', emoji: '📖', choices: null },
+      neighbors: { text: 'Every neighbor got warm cookies! The whole street smelled like love!', emoji: '🏘️', choices: [{text:'Start a cookie club!', next:'cookie-club'}, {text:'Teach everyone to bake!', next:'teach-bake'}] },
+      'cookie-club': { text: 'The Cookie Club met every Saturday! Everyone brought their own special cookie to share!', emoji: '🤝', choices: null },
+      'teach-bake': { text: 'Mia taught the whole kingdom to bake! She opened the Royal Baking School!', emoji: '🎓', choices: null },
       'cookie-party': { text: 'ALL the kids came! They traded cookies and made new friends! Best party in the kingdom!', emoji: '🎊', choices: null },
+      'more-games': { text: 'They played all day! Hide and seek, tag, and giggle contests! Best siblings ever!', emoji: '🎮', choices: null },
+      'treasure-map': { text: 'They made treasure maps for cookies all around the house! Mom found one and laughed so hard!', emoji: '🗺️', choices: null },
+      decorate: { text: 'They made the fanciest cookies ever with sprinkles, icing, and tiny candy flowers! Like cookie art!', emoji: '🎨', choices: null },
+      piggyback: { text: 'They ran around the yard laughing! Mom took a picture and it became their favorite family photo!', emoji: '📸', choices: null },
     }
   },
   {
     title: 'The Mermaid Mystery', icon: '🧜‍♀️',
     nodes: {
-      start: { text: 'Princess Coral found a sparkling shell on the beach. When she held it to her ear, it whispered!', emoji: '🐚', choices: [{text:'Follow the whisper!', next:'follow'}, {text:'Show it to the wise turtle!', next:'turtle'}] },
-      follow: { text: 'The shell led her to a hidden cove! A mermaid was tangled in seaweed!', emoji: '🧜‍♀️', choices: [{text:'Help untangle her!', next:'help'}, {text:'Sing to calm her!', next:'sing'}] },
-      turtle: { text: 'The turtle said: "That is a mermaid\'s shell! She must need help!" Coral ran to the shore!', emoji: '🐢', choices: [{text:'Dive in!', next:'dive'}, {text:'Build a raft!', next:'raft'}] },
-      help: { text: 'Coral gently freed the mermaid! "Thank you! Come visit my underwater kingdom anytime!"', emoji: '🏰', choices: null },
+      start: { text: 'Princess Coral found a sparkling shell on the beach. When she held it to her ear, it whispered!', emoji: '🐚', choices: [{text:'Follow the whisper!', next:'follow'}, {text:'Show it to the wise turtle!', next:'turtle'}, {text:'Whisper back!', next:'whisper-back'}] },
+      follow: { text: 'The shell led her to a hidden cove! A mermaid was tangled in seaweed!', emoji: '🧜‍♀️', choices: [{text:'Help untangle her!', next:'help'}, {text:'Sing to calm her!', next:'sing'}, {text:'Get scissors from home!', next:'scissors'}] },
+      turtle: { text: 'The turtle said: "That is a mermaid\'s shell! She must need help!" Coral ran to the shore!', emoji: '🐢', choices: [{text:'Dive in!', next:'dive'}, {text:'Build a raft!', next:'raft'}, {text:'Ask the dolphins!', next:'dolphins'}] },
+      'whisper-back': { text: '"Hello!" said Coral. The shell glowed! "Please come find me!" said a tiny mermaid voice.', emoji: '💬', choices: [{text:'Follow the glow!', next:'follow-glow'}, {text:'Ask the seagulls for help!', next:'seagulls'}] },
+      help: { text: 'Coral gently freed the mermaid! The mermaid was so grateful she gave Coral a magic pearl!', emoji: '🏰', choices: [{text:'Use the pearl to breathe underwater!', next:'pearl-breathe'}, {text:'Keep it as a treasure!', next:'pearl-keep'}] },
+      'pearl-breathe': { text: 'Coral could breathe underwater! She visited the mermaid kingdom every day after school!', emoji: '🫧', choices: null },
+      'pearl-keep': { text: 'The pearl glowed at night and showed Coral beautiful dreams of the ocean!', emoji: '🌙', choices: null },
       sing: { text: 'Coral sang so beautifully that the seaweed unwrapped itself! The mermaid gave her a pearl crown!', emoji: '👑', choices: null },
       dive: { text: 'Coral dove in and found a whole underwater city! The mermaids made her an honorary mermaid princess!', emoji: '🌊', choices: null },
       raft: { text: 'On her raft, Coral sailed to a secret island where mermaids and humans played together forever!', emoji: '🏝️', choices: null },
+      dolphins: { text: 'The dolphins gave Coral a ride! They zoomed through the waves to a sparkling underwater cave!', emoji: '🐬', choices: [{text:'Go inside the cave!', next:'cave'}, {text:'Swim with the dolphins more!', next:'swim-dolphins'}] },
+      cave: { text: 'Inside the cave was a mermaid library full of ocean stories! Coral read them all summer!', emoji: '📚', choices: null },
+      'swim-dolphins': { text: 'Coral and the dolphins became best friends! They had splash races every afternoon!', emoji: '💦', choices: null },
+      'follow-glow': { text: 'The glow led to a tiny mermaid trapped in a tide pool! Coral carried her to the sea!', emoji: '🐠', choices: null },
+      seagulls: { text: 'The seagulls flew over the ocean and found the mermaid! They led Coral right to her new friend!', emoji: '🕊️', choices: null },
+      scissors: { text: 'Coral carefully cut the seaweed! The mermaid was free! She splashed happily and did a flip!', emoji: '✂️', choices: null },
     }
   },
   {
     title: 'The Cloud Castle', icon: '☁️',
     nodes: {
-      start: { text: 'Princess Skye found a golden ladder reaching up into the clouds!', emoji: '☁️', choices: [{text:'Climb up!', next:'climb'}, {text:'Call out hello!', next:'hello'}] },
-      climb: { text: 'At the top was a castle made of clouds! A cloud kitten bounced over to her!', emoji: '🐱', choices: [{text:'Play with the kitten!', next:'kitten'}, {text:'Explore the castle!', next:'explore'}] },
+      start: { text: 'Princess Skye found a golden ladder reaching up into the clouds!', emoji: '☁️', choices: [{text:'Climb up!', next:'climb'}, {text:'Call out hello!', next:'hello'}, {text:'Blow a magic bubble up!', next:'bubble'}] },
+      climb: { text: 'At the top was a castle made of clouds! A cloud kitten bounced over to her!', emoji: '🐱', choices: [{text:'Play with the kitten!', next:'kitten'}, {text:'Explore the castle!', next:'explore'}, {text:'Jump on the cloud trampoline!', next:'trampoline'}] },
       hello: { text: 'A fluffy cloud bear peeked down! "Come up! We have cloud candy!" he called!', emoji: '🐻', choices: [{text:'Go up for candy!', next:'candy'}, {text:'Invite him down!', next:'invite'}] },
-      kitten: { text: 'The cloud kitten could make shapes! Together they made cloud animals for everyone below!', emoji: '✨', choices: null },
-      explore: { text: 'Inside was a room of star crystals! Skye brought one home and it lit up her room like the sky!', emoji: '💎', choices: null },
+      bubble: { text: 'The magic bubble floated up and came back with a cloud puppy inside! It popped and the puppy bounced out!', emoji: '🫧', choices: [{text:'Play with the cloud puppy!', next:'cloud-puppy'}, {text:'Ride the puppy to the clouds!', next:'ride-puppy'}] },
+      kitten: { text: 'The cloud kitten could make shapes! She made a cloud castle, a cloud dragon, and a cloud crown!', emoji: '✨', choices: [{text:'Make cloud animals for everyone below!', next:'kitten-shapes'}, {text:'Keep the cloud crown!', next:'kitten-crown'}] },
+      'kitten-shapes': { text: 'Everyone below looked up and saw amazing cloud animals! Skye gave the whole world a show!', emoji: '🎭', choices: null },
+      'kitten-crown': { text: 'The cloud crown sparkled on her head! Skye was crowned the Princess of the Sky!', emoji: '👑', choices: null },
+      explore: { text: 'Inside the castle she found two magical rooms!', emoji: '🚪', choices: [{text:'The star crystal room!', next:'crystal-room'}, {text:'The rainbow slide room!', next:'slide-room'}] },
+      'crystal-room': { text: 'The star crystals lit up her room at home like the night sky! She never had a bad dream again!', emoji: '💎', choices: null },
+      'slide-room': { text: 'The rainbow slide went all the way down to her backyard! She could visit the clouds anytime!', emoji: '🌈', choices: null },
       candy: { text: 'Cloud candy tasted like cotton candy mixed with sunshine! Skye became a Cloud Princess!', emoji: '🍭', choices: null },
-      invite: { text: 'The cloud bear came down and became the kingdom\'s fluffiest, most huggable friend!', emoji: '🤗', choices: null },
+      invite: { text: 'The cloud bear came down! But he brought a friend too!', emoji: '🤗', choices: [{text:'Play with both of them!', next:'bear-play'}, {text:'Have a picnic together!', next:'bear-picnic'}] },
+      'bear-play': { text: 'They played cloud-ball! It was like snowball fights but soft and fluffy! Best game ever!', emoji: '⚽', choices: null },
+      'bear-picnic': { text: 'They ate cloud sandwiches and star-juice! The bears came back every weekend for picnics!', emoji: '🧺', choices: null },
+      'cloud-puppy': { text: 'The cloud puppy could float! Skye and the puppy bounced on clouds all day long!', emoji: '🐶', choices: null },
+      'ride-puppy': { text: 'The cloud puppy flew Skye to the castle! She became the first princess to ride a cloud puppy!', emoji: '🐕', choices: null },
+      trampoline: { text: 'Skye bounced SO high she could touch the stars! She grabbed a tiny one and it became her nightlight!', emoji: '🌟', choices: null },
     }
   },
   {
     title: 'The Kindness Quest', icon: '💝',
     nodes: {
-      start: { text: 'Princess Joy found a map that said: "Do 3 kind things and find the treasure!"', emoji: '🗺️', choices: [{text:'Help the lost puppy first!', next:'puppy'}, {text:'Help the crying flower first!', next:'flower'}] },
+      start: { text: 'Princess Joy found a map that said: "Do 3 kind things and find the treasure!"', emoji: '🗺️', choices: [{text:'Help the lost puppy first!', next:'puppy'}, {text:'Help the crying flower first!', next:'flower'}, {text:'Help the hungry bunny first!', next:'bunny'}] },
       puppy: { text: 'She walked the puppy home! Kindness #1 done! A golden star appeared on her map!', emoji: '🐶', choices: [{text:'Read to the baby dragon!', next:'read'}, {text:'Help granny carry groceries!', next:'granny'}] },
       flower: { text: 'She watered the wilting flower! It bloomed beautifully! A golden star appeared!', emoji: '🌺', choices: [{text:'Cheer up the shy snail!', next:'snail'}, {text:'Sing to the sleepy owl!', next:'owl'}] },
-      read: { text: 'The dragon loved the story! Golden star #2! One more kind deed to go!', emoji: '📖', choices: [{text:'Share your lunch with a friend!', next:'treasure'}] },
-      granny: { text: 'Granny was so grateful! Star #2 appeared! Almost there!', emoji: '👵', choices: [{text:'Compliment a stranger!', next:'treasure'}] },
-      snail: { text: '"You have the prettiest shell!" Joy said. The snail blushed! Star #2!', emoji: '🐌', choices: [{text:'Make someone smile!', next:'treasure'}] },
-      owl: { text: 'Her lullaby was so sweet the owl gave her a feather of wisdom! Star #2!', emoji: '🦉', choices: [{text:'One more kind thing!', next:'treasure'}] },
-      treasure: { text: 'The map glowed! The treasure was... a mirror! "The treasure was YOU all along — a kind heart!"', emoji: '💝', choices: null },
+      bunny: { text: 'Joy shared her carrots with the bunny! It wiggled its nose happily! Star #1!', emoji: '🐰', choices: [{text:'Fix the bird\'s broken wing!', next:'bird'}, {text:'Help the turtle cross the road!', next:'turtle-cross'}] },
+      read: { text: 'The dragon loved the story so much he cried happy fire-tears! Star #2!', emoji: '📖', choices: [{text:'Share your lunch with a friend!', next:'treasure-lunch'}, {text:'Compliment a stranger!', next:'treasure-compliment'}] },
+      granny: { text: 'Granny was so grateful she baked Joy a pie! Star #2!', emoji: '👵', choices: [{text:'Help a lost kitten!', next:'treasure-kitten'}, {text:'Clean up the park!', next:'treasure-park'}] },
+      snail: { text: '"You have the prettiest shell!" Joy said. The snail blushed and smiled! Star #2!', emoji: '🐌', choices: [{text:'Make someone laugh!', next:'treasure-laugh'}, {text:'Give a friend a hug!', next:'treasure-hug'}] },
+      owl: { text: 'Her lullaby was so sweet the owl gave her a feather of wisdom! Star #2!', emoji: '🦉', choices: [{text:'Write a thank-you note!', next:'treasure-note'}, {text:'Pick up litter!', next:'treasure-litter'}] },
+      bird: { text: 'Joy bandaged the bird\'s wing so gently! The bird sang her a thank-you song! Star #2!', emoji: '🐦', choices: [{text:'Make a welcome sign for new neighbors!', next:'treasure-sign'}, {text:'Plant a tree for shade!', next:'treasure-tree'}] },
+      'turtle-cross': { text: 'Joy helped the turtle safely across! He was so slow but so sweet! Star #2!', emoji: '🐢', choices: [{text:'Hold the door for someone!', next:'treasure-door'}, {text:'Say something nice to everyone!', next:'treasure-nice'}] },
+      'treasure-lunch': { text: 'The map glowed gold! The treasure was a mirror! "The real treasure is your kind heart!"', emoji: '💝', choices: null },
+      'treasure-compliment': { text: 'Three stars! The map burst into butterflies! They spelled out: "Kindness is the greatest magic!"', emoji: '🦋', choices: null },
+      'treasure-kitten': { text: 'The treasure chest opened! Inside was a golden badge that said "World\'s Kindest Princess!"', emoji: '🏅', choices: null },
+      'treasure-park': { text: 'The park sparkled! A rainbow appeared with a sign: "Thank you, Joy! Kindness makes the world shine!"', emoji: '🌈', choices: null },
+      'treasure-laugh': { text: 'Joy told a silly joke and everyone laughed! The treasure was all around her — happy friends!', emoji: '😄', choices: null },
+      'treasure-hug': { text: 'The hug felt so warm! A little star floated down: "The best treasure is love you give away!"', emoji: '🤗', choices: null },
+      'treasure-note': { text: 'Joy wrote "You are amazing!" and left it for someone to find. The treasure? Making others smile!', emoji: '💌', choices: null },
+      'treasure-litter': { text: 'The park was sparkling clean! All the animals threw Joy a thank-you parade!', emoji: '🎉', choices: null },
+      'treasure-sign': { text: 'The new neighbors loved the sign! They became Joy\'s best friends! That was the real treasure!', emoji: '🏠', choices: null },
+      'treasure-tree': { text: 'The tree grew super fast and gave the best shade! Everyone gathered there and Joy felt so proud!', emoji: '🌳', choices: null },
+      'treasure-door': { text: 'The person smiled SO big! Joy realized the treasure was all the smiles she collected!', emoji: '😊', choices: null },
+      'treasure-nice': { text: 'Joy said something nice to EVERYONE! By the end, the whole kingdom was glowing with happiness!', emoji: '✨', choices: null },
     }
   },
 ];
