@@ -82,6 +82,8 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .module-card:nth-child(5) .icon { animation-delay: 2s; }
 .module-card:nth-child(6) { border-color: #fca5a5; background: linear-gradient(145deg, #fff 30%, #fef2f2); }
 .module-card:nth-child(6) .icon { animation-delay: 2.5s; }
+.module-card:nth-child(7) { border-color: #67e8f9; background: linear-gradient(145deg, #fff 30%, #ecfeff); animation-delay: 0.35s; }
+.module-card:nth-child(7) .icon { animation-delay: 3s; }
 
 /* DAILY QUEST CARD */
 .daily-quest-card { background: linear-gradient(135deg, #fef3c7, #fde68a, #fbbf24); border-radius: 14px; padding: 8px 14px; margin: 0 auto 10px; max-width: 520px; box-shadow: 0 2px 10px rgba(251,191,36,0.25); border: 2px solid #f59e0b; text-align: left; animation: bounceIn 0.5s ease-out; position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -136,6 +138,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .progress-bar-fill.calm { background: linear-gradient(90deg, #06b6d4, #67e8f9); }
 .progress-bar-fill.stories { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
 .progress-bar-fill.social { background: linear-gradient(90deg, #10b981, #6ee7b7); }
+.progress-bar-fill.letters { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
 
 /* TROUBLE SPOTS */
 .trouble-spots { margin: 8px 0; }
@@ -475,6 +478,11 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="name">Dress-Up Palace</div>
       <div class="desc">Pretty outfits!</div>
     </div>
+    <div class="module-card" onclick="openModule('letters')">
+      <span class="icon">🔤</span>
+      <div class="name">Letter Land</div>
+      <div class="desc">Learn ABCs!</div>
+    </div>
   </div>
   <div style="text-align:center;margin:16px auto;max-width:520px">
     <div class="module-card" onclick="surpriseMe()" style="background:linear-gradient(135deg,#fde68a,#fbcfe8,#c4b5fd,#93c5fd);border-color:#fbbf24;max-width:260px;margin:0 auto">
@@ -506,6 +514,10 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
         <div class="mode-card" onclick="startRhyming()">
           <span class="mode-icon">🎵</span>
           <div class="mode-label">Rhyme Time</div>
+        </div>
+        <div class="mode-card" style="grid-column: 1 / -1; max-width: 180px; margin: 0 auto;" onclick="startSentences()">
+          <span class="mode-icon">📝</span>
+          <div class="mode-label">Read Sentences</div>
         </div>
       </div>
     </div>
@@ -543,6 +555,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="quiz-options" id="ml-options" style="grid-template-columns: repeat(4, 1fr);"></div>
       <div id="ml-hint" class="scenario-text" style="font-size:14px;color:#a78bfa;margin-top:8px"></div>
     </div>
+    <div id="sentence-area" style="display:none"></div>
   </div>
 </div>
 
@@ -568,9 +581,17 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
           <span class="mode-icon">🔮</span>
           <div class="mode-label">What's Next?</div>
         </div>
-        <div class="mode-card" style="grid-column: 1 / -1; max-width: 180px; margin: 0 auto;" onclick="startCompare()">
+        <div class="mode-card" onclick="startCompare()">
           <span class="mode-icon">⚖️</span>
           <div class="mode-label">Compare</div>
+        </div>
+        <div class="mode-card" onclick="startClock()">
+          <span class="mode-icon">🕐</span>
+          <div class="mode-label">What Time?</div>
+        </div>
+        <div class="mode-card" style="grid-column: 1 / -1; max-width: 180px; margin: 0 auto;" onclick="startShapes()">
+          <span class="mode-icon">🔷</span>
+          <div class="mode-label">Shapes!</div>
         </div>
       </div>
     </div>
@@ -610,6 +631,8 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="answer-options" id="skip-answers"></div>
       <div id="skip-hint" class="scenario-text" style="font-size:14px;color:#a78bfa;margin-top:8px"></div>
     </div>
+    <div id="clock-area" style="display:none"></div>
+    <div id="shapes-area" style="display:none"></div>
   </div>
 </div>
 
@@ -730,6 +753,27 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
   </div>
 </div>
 
+<!-- LETTER LAND -->
+<div id="letters-screen" class="screen">
+  <div class="game-area">
+    <div class="game-title">🔤 Letter Land</div>
+    <div id="letter-mode-select">
+      <div class="mode-grid">
+        <div class="mode-card" onclick="startAbcSounds()">
+          <span class="mode-icon">🅰️</span>
+          <div class="mode-label">ABC Sounds</div>
+        </div>
+        <div class="mode-card" onclick="startSoundMatch()">
+          <span class="mode-icon">👂</span>
+          <div class="mode-label">Sound Match</div>
+        </div>
+      </div>
+    </div>
+    <div id="abc-area" style="display:none"></div>
+    <div id="sound-match-area" style="display:none"></div>
+  </div>
+</div>
+
 
 <script>
 // ==================== BACKGROUND SPARKLES ====================
@@ -788,7 +832,13 @@ const defaultState = {
   sessionTimeLimit: 0,    // minutes, 0 = unlimited
   sessionStartTime: null, // ISO string when current session began
   speechEnabled: true,    // speech synthesis toggle
-  tutorialsSeen: []       // first-use tutorial hints seen
+  tutorialsSeen: [],      // first-use tutorial hints seen
+  // Stage 3 new content
+  lettersKnown: [],       // letters the child has practiced in Letter Land
+  letterAccuracy: {},     // per-letter {correct, wrong} tracking
+  sentencesRead: 0,       // sentences read in Word Garden
+  clockCompleted: 0,      // clock problems solved
+  shapesCompleted: 0      // shape quizzes completed
 };
 let state = JSON.parse(localStorage.getItem('princessQuest') || 'null') || {...defaultState};
 // Merge in any new fields from defaultState that old saves don't have
@@ -831,6 +881,10 @@ const allBadges = [
   { id: 'fashionista', name: 'Fashionista', icon: '👗', desc: 'Unlock 5 wardrobe items', check: () => state.unlockedItems.length >= 5 },
   { id: 'daily-5', name: 'Busy Bee', icon: '🐝', desc: 'Do 5 activities in one day', check: () => state.dailyActivities >= 5 },
   { id: 'explorer', name: 'Castle Explorer', icon: '🏰', desc: 'Complete 20 total activities', check: () => state.totalActivities >= 20 },
+  { id: 'abc-10', name: 'ABC Explorer', icon: '🔤', desc: 'Learn 10 letter sounds', check: () => (state.lettersKnown||[]).length >= 10 },
+  { id: 'sentence-10', name: 'Sentence Star', icon: '📝', desc: 'Read 10 sentences', check: () => (state.sentencesRead||0) >= 10 },
+  { id: 'clock-5', name: 'Clock Watcher', icon: '🕐', desc: 'Tell time 5 times', check: () => (state.clockCompleted||0) >= 5 },
+  { id: 'shapes-8', name: 'Shape Master', icon: '🔷', desc: 'Learn all 8 shapes', check: () => (state.shapesCompleted||0) >= 8 },
 ];
 
 function checkBadges() {
@@ -1302,6 +1356,7 @@ function openModule(mod) {
     if (mod === 'uhoh') initUhOh();
     if (mod === 'stories') initStories();
     if (mod === 'dressup') initDressUp();
+    if (mod === 'letters') initLetters();
   });
 }
 
@@ -1422,6 +1477,10 @@ function openDashboard() {
   const calmPct = Math.min(100, Math.round((state.calmCompleted / 20) * 100));
   const storyPct = Math.min(100, Math.round((state.storiesCompleted / 9) * 100));
   const socialPct = Math.min(100, Math.round((state.scenariosCompleted / 18) * 100));
+  const letterPct = Math.min(100, Math.round(((state.lettersKnown||[]).length / 26) * 100));
+  const clockPct = Math.min(100, Math.round(((state.clockCompleted||0) / 20) * 100));
+  const shapesPct = Math.min(100, Math.round(((state.shapesCompleted||0) / 16) * 100));
+  const sentencePct = Math.min(100, Math.round(((state.sentencesRead||0) / 25) * 100));
   const badgePct = Math.round((state.badges.length / allBadges.length) * 100);
 
   // Feelings summary
@@ -1529,6 +1588,10 @@ function openDashboard() {
       <div class="progress-bar-row">
         <div class="progress-bar-label">🤗 Social</div>
         <div class="progress-bar-track"><div class="progress-bar-fill social" style="width:${socialPct}%" data-pct="${socialPct}%"></div></div>
+      </div>
+      <div class="progress-bar-row">
+        <div class="progress-bar-label">🔤 Letters</div>
+        <div class="progress-bar-track"><div class="progress-bar-fill letters" style="width:${letterPct}%" data-pct="${letterPct}%"></div></div>
       </div>
     </div>
     ${troubleWordsHtml}
@@ -1712,7 +1775,7 @@ let currentWordIdx = 0;
 
 function initWords() {
   document.getElementById('word-mode-select').style.display = 'block';
-  ['sight-word-area','word-match-area','word-build-area','rhyme-area','missing-letter-area'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['sight-word-area','word-match-area','word-build-area','rhyme-area','missing-letter-area','sentence-area'].forEach(id => document.getElementById(id).style.display = 'none');
   document.getElementById('word-diff').innerHTML = getDiffStars(state.wordLevel, 4);
   showTutorialHint('words', '📚 Tap a word to hear it!');
 }
@@ -2040,7 +2103,7 @@ let countTarget = 0, currentCount = 0;
 
 function initNumbers() {
   document.getElementById('number-mode-select').style.display = 'block';
-  ['counting-area','addition-area','pattern-area','compare-area','subtraction-area','skip-count-area'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['counting-area','addition-area','pattern-area','compare-area','subtraction-area','skip-count-area','clock-area','shapes-area'].forEach(id => document.getElementById(id).style.display = 'none');
   document.getElementById('math-diff').innerHTML = getDiffStars(state.mathLevel, 4);
   // Show subtraction with lock if math level < 2
   const subCard = document.getElementById('subtract-card');
@@ -3473,6 +3536,8 @@ const dailyQuests = [
   { type: 'uhoh', text: 'Practice 2 social scenarios!', icon: '🤗', target: 2, stateKey: 'scenariosCompleted' },
   { type: 'any', text: 'Complete 3 activities!', icon: '🌟', target: 3, stateKey: 'totalActivities' },
   { type: 'any', text: 'Earn 10 gems today!', icon: '💎', target: 10, stateKey: 'gemsToday' },
+  { type: 'letters', text: 'Practice 5 letter sounds!', icon: '🔤', target: 5, stateKey: 'lettersKnownCount' },
+  { type: 'math', text: 'Tell time on 3 clocks!', icon: '🕐', target: 3, stateKey: 'clockCompleted' },
 ];
 
 function getTodayStr() { return new Date().toISOString().slice(0, 10); }
@@ -3511,6 +3576,7 @@ function initDailyQuest() {
 function getQuestValue(key) {
   if (key === 'wordsToday') return (state.lettersLearned || []).length; // count of sight words practiced
   if (key === 'gemsToday') return state.gems || 0;
+  if (key === 'lettersKnownCount') return (state.lettersKnown || []).length;
   return state[key] || 0;
 }
 
@@ -3679,19 +3745,472 @@ function showTutorialHint(moduleId, text) {
   setTimeout(() => hint.remove(), 4000);
 }
 
+// ==================== LETTER LAND ====================
+const letterData = [
+  {letter:'A', sound:'ah', word:'apple', emoji:'🍎'},
+  {letter:'B', sound:'buh', word:'ball', emoji:'⚽'},
+  {letter:'C', sound:'kuh', word:'cat', emoji:'🐱'},
+  {letter:'D', sound:'duh', word:'dog', emoji:'🐶'},
+  {letter:'E', sound:'eh', word:'egg', emoji:'🥚'},
+  {letter:'F', sound:'fuh', word:'fish', emoji:'🐟'},
+  {letter:'G', sound:'guh', word:'goat', emoji:'🐐'},
+  {letter:'H', sound:'huh', word:'hat', emoji:'🎩'},
+  {letter:'I', sound:'ih', word:'igloo', emoji:'🏠'},
+  {letter:'J', sound:'juh', word:'jam', emoji:'🍯'},
+  {letter:'K', sound:'kuh', word:'kite', emoji:'🪁'},
+  {letter:'L', sound:'luh', word:'lion', emoji:'🦁'},
+  {letter:'M', sound:'mmm', word:'moon', emoji:'🌙'},
+  {letter:'N', sound:'nuh', word:'nest', emoji:'🪺'},
+  {letter:'O', sound:'oh', word:'orange', emoji:'🍊'},
+  {letter:'P', sound:'puh', word:'pig', emoji:'🐷'},
+  {letter:'Q', sound:'kwuh', word:'queen', emoji:'👑'},
+  {letter:'R', sound:'ruh', word:'rainbow', emoji:'🌈'},
+  {letter:'S', sound:'sss', word:'sun', emoji:'☀️'},
+  {letter:'T', sound:'tuh', word:'tree', emoji:'🌳'},
+  {letter:'U', sound:'uh', word:'umbrella', emoji:'☂️'},
+  {letter:'V', sound:'vvv', word:'van', emoji:'🚐'},
+  {letter:'W', sound:'wuh', word:'water', emoji:'💧'},
+  {letter:'X', sound:'ks', word:'fox', emoji:'🦊'},
+  {letter:'Y', sound:'yuh', word:'yarn', emoji:'🧶'},
+  {letter:'Z', sound:'zzz', word:'zebra', emoji:'🦓'},
+];
+
+let currentLetterIdx = 0;
+
+function initLetters() {
+  document.getElementById('letter-mode-select').style.display = 'block';
+  document.getElementById('abc-area').style.display = 'none';
+  document.getElementById('sound-match-area').style.display = 'none';
+  showTutorialHint('letters', '🔤 Learn your ABCs!');
+}
+
+function startAbcSounds() {
+  document.getElementById('letter-mode-select').style.display = 'none';
+  document.getElementById('abc-area').style.display = 'block';
+  currentLetterIdx = 0;
+  showAbcLetter();
+}
+
+function showAbcLetter() {
+  const ld = letterData[currentLetterIdx];
+  if (!state.lettersKnown) state.lettersKnown = [];
+  if (!state.lettersKnown.includes(ld.letter)) {
+    state.lettersKnown.push(ld.letter);
+    saveState();
+  }
+  const area = document.getElementById('abc-area');
+  let navHtml = '<div class="letter-nav">';
+  letterData.forEach((l, i) => {
+    navHtml += '<button class="letter-btn ' + (i === currentLetterIdx ? 'current' : '') + '" onclick="currentLetterIdx=' + i + ';showAbcLetter()">' + l.letter + '</button>';
+  });
+  navHtml += '</div>';
+  area.innerHTML =
+    '<div class="letter-display">' + ld.letter + '</div>' +
+    '<div class="letter-image">' + ld.emoji + '</div>' +
+    '<div class="letter-word">' + ld.letter + ' says \'' + ld.sound + '\' like ' + ld.word + '!</div>' +
+    '<div style="text-align:center">' +
+      '<button class="big-btn pink" onclick="speakAbcLetter()">🔊 Hear It!</button>' +
+      '<button class="big-btn green" onclick="nextAbcLetter()">Next Letter! ➡️</button>' +
+    '</div>' +
+    navHtml;
+}
+
+function speakAbcLetter() {
+  const ld = letterData[currentLetterIdx];
+  speak(ld.letter + '. ' + ld.sound + '. ' + ld.letter + ' is for ' + ld.word + '!');
+}
+
+function nextAbcLetter() {
+  currentLetterIdx = (currentLetterIdx + 1) % letterData.length;
+  showAbcLetter();
+  playSound('click');
+  speakAbcLetter();
+}
+
+function startSoundMatch() {
+  document.getElementById('letter-mode-select').style.display = 'none';
+  document.getElementById('sound-match-area').style.display = 'block';
+  generateSoundMatch();
+}
+
+function generateSoundMatch() {
+  const targetIdx = Math.floor(Math.random() * letterData.length);
+  const target = letterData[targetIdx];
+  // Pick 3 wrong letters
+  let options = [target.letter];
+  while (options.length < 4) {
+    const r = letterData[Math.floor(Math.random() * letterData.length)].letter;
+    if (!options.includes(r)) options.push(r);
+  }
+  options.sort(() => Math.random() - 0.5);
+
+  const area = document.getElementById('sound-match-area');
+  area.innerHTML =
+    '<div class="scenario-text" style="margin-bottom:14px">What letter makes the \'' + target.sound + '\' sound?</div>' +
+    '<div class="letter-image" style="font-size:80px">' + target.emoji + '</div>' +
+    '<div class="letter-word">Like ' + target.word + '!</div>' +
+    '<div style="text-align:center;margin-bottom:14px"><button class="big-btn pink" onclick="speakSoundMatchHint()">🔊 Hear Again</button></div>' +
+    '<div class="quiz-options" id="sm-options"></div>';
+
+  speak('What letter makes the ' + target.sound + ' sound? Like ' + target.word + '!');
+
+  // Store target for replay
+  area.dataset.sound = target.sound;
+  area.dataset.word = target.word;
+
+  const container = document.getElementById('sm-options');
+  options.forEach(opt => {
+    const btn = document.createElement('div');
+    btn.className = 'quiz-option';
+    btn.style.fontSize = '36px';
+    btn.textContent = opt;
+    btn.onclick = (e) => {
+      if (opt === target.letter) {
+        btn.classList.add('correct');
+        playSound('correct');
+        showReaction('correct');
+        addStreak();
+        createStarBurst(e.clientX, e.clientY, 6);
+        // Track accuracy
+        if (!state.letterAccuracy) state.letterAccuracy = {};
+        if (!state.letterAccuracy[target.letter]) state.letterAccuracy[target.letter] = {correct:0, wrong:0};
+        state.letterAccuracy[target.letter].correct++;
+        if (!state.lettersKnown) state.lettersKnown = [];
+        if (!state.lettersKnown.includes(target.letter)) state.lettersKnown.push(target.letter);
+        saveState();
+        showReward('🔤', target.letter + ' says ' + target.sound + '!', 5);
+        setTimeout(generateSoundMatch, 1800);
+      } else {
+        btn.classList.add('wrong');
+        playSound('wrong');
+        showReaction('wrong');
+        resetStreak();
+        if (!state.letterAccuracy) state.letterAccuracy = {};
+        if (!state.letterAccuracy[target.letter]) state.letterAccuracy[target.letter] = {correct:0, wrong:0};
+        state.letterAccuracy[target.letter].wrong++;
+        saveState();
+        speak('Not quite! Try again!');
+        setTimeout(() => btn.classList.remove('wrong'), 600);
+      }
+    };
+    container.appendChild(btn);
+  });
+}
+
+function speakSoundMatchHint() {
+  const area = document.getElementById('sound-match-area');
+  speak('What letter makes the ' + area.dataset.sound + ' sound? Like ' + area.dataset.word + '!');
+}
+
+// ==================== READ SENTENCES (Word Garden) ====================
+const simpleSentences = [
+  {text: 'The cat is big', emoji: '🐱'},
+  {text: 'I see a red dog', emoji: '🐶'},
+  {text: 'Mom can run fast', emoji: '🏃'},
+  {text: 'The sun is hot', emoji: '☀️'},
+  {text: 'Dad has a hat', emoji: '🎩'},
+  {text: 'A fish can swim', emoji: '🐟'},
+  {text: 'I love my mom', emoji: '❤️'},
+  {text: 'The bird can fly', emoji: '🐦'},
+  {text: 'Look at the moon', emoji: '🌙'},
+  {text: 'The frog can hop', emoji: '🐸'},
+  {text: 'I see a big tree', emoji: '🌳'},
+  {text: 'The duck is fun', emoji: '🦆'},
+  {text: 'A star is bright', emoji: '⭐'},
+  {text: 'Rain on the cake', emoji: '🎂'},
+  {text: 'I can play a game', emoji: '🎮'},
+  {text: 'The bear is big', emoji: '🐻'},
+  {text: 'A cup of milk', emoji: '🥛'},
+  {text: 'The king has a ring', emoji: '👑'},
+  {text: 'My bed is soft', emoji: '🛏️'},
+  {text: 'The boat can go', emoji: '⛵'},
+  {text: 'I like the rain', emoji: '🌧️'},
+  {text: 'A gift for you', emoji: '🎁'},
+  {text: 'The bus is red', emoji: '🚌'},
+  {text: 'Jump up and down', emoji: '⬆️'},
+  {text: 'Hug your mom', emoji: '🤗'},
+];
+let sentenceSessionCount = 0;
+
+function startSentences() {
+  document.getElementById('word-mode-select').style.display = 'none';
+  document.getElementById('sentence-area').style.display = 'block';
+  sentenceSessionCount = 0;
+  showSentence();
+}
+
+function showSentence() {
+  const s = simpleSentences[Math.floor(Math.random() * simpleSentences.length)];
+  const words = s.text.split(' ');
+  let wordsHtml = '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:18px 0">';
+  words.forEach(w => {
+    wordsHtml += '<span style="font-family:Fredoka One,cursive;font-size:28px;color:#581c87;background:white;border:3px solid #d8b4fe;border-radius:14px;padding:8px 16px;cursor:pointer;transition:all 0.2s;min-height:48px;display:inline-flex;align-items:center" onclick="this.style.background=\'#e9d5ff\';speak(\'' + w.replace(/'/g, "\\'") + '\');setTimeout(()=>this.style.background=\'white\',400)">' + w + '</span>';
+  });
+  wordsHtml += '</div>';
+
+  const area = document.getElementById('sentence-area');
+  area.innerHTML =
+    '<div class="letter-image" style="font-size:100px">' + s.emoji + '</div>' +
+    wordsHtml +
+    '<div style="text-align:center">' +
+      '<button class="big-btn pink" onclick="speak(\'' + s.text.replace(/'/g, "\\'") + '\')">🔊 Read It All!</button>' +
+      '<button class="big-btn green" onclick="nextSentence()">Next! ➡️</button>' +
+    '</div>';
+}
+
+function nextSentence() {
+  sentenceSessionCount++;
+  if (!state.sentencesRead) state.sentencesRead = 0;
+  state.sentencesRead++;
+  saveState();
+  playSound('click');
+  // Award gems every 3 sentences
+  if (sentenceSessionCount > 0 && sentenceSessionCount % 3 === 0) {
+    showReward('📝', 'Great reading!', 5);
+  }
+  showSentence();
+  checkBadges();
+}
+
+// ==================== CLOCK ACTIVITY (Number Kingdom) ====================
+let clockCorrectCount = 0;
+let clockUseHalfHours = false;
+
+function startClock() {
+  document.getElementById('number-mode-select').style.display = 'none';
+  document.getElementById('clock-area').style.display = 'block';
+  clockCorrectCount = 0;
+  clockUseHalfHours = false;
+  generateClockProblem();
+}
+
+function drawClock(hour, minutes) {
+  const h12 = hour % 12 || 12;
+  // Hour hand angle: 360/12 = 30 degrees per hour, plus half-hour offset
+  const hourAngle = (h12 * 30) + (minutes * 0.5) - 90;
+  // Minute hand angle
+  const minAngle = (minutes * 6) - 90;
+  const hourRad = hourAngle * Math.PI / 180;
+  const minRad = minAngle * Math.PI / 180;
+  // Hour hand endpoint
+  const hx = 100 + Math.cos(hourRad) * 45;
+  const hy = 100 + Math.sin(hourRad) * 45;
+  // Minute hand endpoint
+  const mx = 100 + Math.cos(minRad) * 65;
+  const my = 100 + Math.sin(minRad) * 65;
+
+  let numbersHtml = '';
+  for (let i = 1; i <= 12; i++) {
+    const angle = (i * 30 - 90) * Math.PI / 180;
+    const nx = 100 + Math.cos(angle) * 78;
+    const ny = 100 + Math.sin(angle) * 78;
+    numbersHtml += '<text x="' + nx + '" y="' + (ny + 5) + '" text-anchor="middle" font-family="Fredoka One,cursive" font-size="16" fill="#581c87">' + i + '</text>';
+  }
+
+  let svg = '<svg viewBox="0 0 200 200" style="width:220px;height:220px;display:block;margin:0 auto">';
+  svg += '<circle cx="100" cy="100" r="95" fill="white" stroke="#d8b4fe" stroke-width="4"/>';
+  svg += '<circle cx="100" cy="100" r="88" fill="none" stroke="#f3e8ff" stroke-width="1"/>';
+  svg += numbersHtml;
+  // Hour hand
+  svg += '<line x1="100" y1="100" x2="' + hx + '" y2="' + hy + '" stroke="#7c3aed" stroke-width="6" stroke-linecap="round"/>';
+  // Minute hand (only for half-hours)
+  if (minutes > 0) {
+    svg += '<line x1="100" y1="100" x2="' + mx + '" y2="' + my + '" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>';
+  }
+  // Center dot
+  svg += '<circle cx="100" cy="100" r="5" fill="#7c3aed"/>';
+  svg += '</svg>';
+  return svg;
+}
+
+function generateClockProblem() {
+  let hour, minutes, timeStr;
+  if (clockUseHalfHours && Math.random() > 0.5) {
+    hour = Math.floor(Math.random() * 12) + 1;
+    minutes = 30;
+    timeStr = hour + ':30';
+  } else {
+    hour = Math.floor(Math.random() * 12) + 1;
+    minutes = 0;
+    timeStr = hour + ':00';
+  }
+
+  const clockSvg = drawClock(hour, minutes);
+  // Generate wrong answers
+  let options = [timeStr];
+  while (options.length < 4) {
+    let rh = Math.floor(Math.random() * 12) + 1;
+    let rm = clockUseHalfHours && Math.random() > 0.5 ? 30 : 0;
+    let rs = rh + ':' + (rm === 0 ? '00' : '30');
+    if (!options.includes(rs)) options.push(rs);
+  }
+  options.sort(() => Math.random() - 0.5);
+
+  const area = document.getElementById('clock-area');
+  area.innerHTML =
+    '<div class="scenario-text" style="margin-bottom:10px">What time does the clock show?</div>' +
+    clockSvg +
+    '<div class="answer-options" id="clock-answers" style="margin-top:18px"></div>';
+  speak('What time does the clock show?');
+
+  const container = document.getElementById('clock-answers');
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'answer-btn';
+    btn.style.width = '80px';
+    btn.style.height = '60px';
+    btn.style.fontSize = '20px';
+    btn.style.borderRadius = '16px';
+    btn.textContent = opt;
+    btn.onclick = (e) => {
+      if (opt === timeStr) {
+        btn.classList.add('correct');
+        playSound('correct');
+        showReaction('correct');
+        addStreak();
+        createStarBurst(e.clientX, e.clientY, 6);
+        clockCorrectCount++;
+        if (!state.clockCompleted) state.clockCompleted = 0;
+        state.clockCompleted++;
+        state.mathCompleted++;
+        maybeIncreaseDifficulty('math');
+        saveState();
+        // Advance to half-hours after 10 correct
+        if (clockCorrectCount >= 10) clockUseHalfHours = true;
+        showReward('🕐', 'It\'s ' + timeStr + '!', 5);
+        setTimeout(generateClockProblem, 1800);
+      } else {
+        btn.classList.add('wrong');
+        playSound('wrong');
+        showReaction('wrong');
+        resetStreak();
+        speak('Not quite! Look at where the hands point!');
+        setTimeout(() => btn.classList.remove('wrong'), 600);
+      }
+    };
+    container.appendChild(btn);
+  });
+}
+
+// ==================== SHAPES ACTIVITY (Number Kingdom) ====================
+const shapeData = [
+  {name:'Circle', emoji:'⭕', svg:'circle'},
+  {name:'Square', emoji:'🟦', svg:'square'},
+  {name:'Triangle', emoji:'🔺', svg:'triangle'},
+  {name:'Star', emoji:'⭐', svg:'star'},
+  {name:'Heart', emoji:'❤️', svg:'heart'},
+  {name:'Diamond', emoji:'💎', svg:'diamond'},
+  {name:'Rectangle', emoji:'🟩', svg:'rectangle'},
+  {name:'Oval', emoji:'🥚', svg:'oval'},
+];
+let shapeQuizType = 'name'; // alternates between 'name' and 'find'
+
+function startShapes() {
+  document.getElementById('number-mode-select').style.display = 'none';
+  document.getElementById('shapes-area').style.display = 'block';
+  shapeQuizType = 'name';
+  generateShapeQuiz();
+}
+
+function generateShapeQuiz() {
+  const targetIdx = Math.floor(Math.random() * shapeData.length);
+  const target = shapeData[targetIdx];
+
+  if (shapeQuizType === 'name') {
+    // Show shape emoji, pick the name
+    let options = [target.name];
+    while (options.length < 4) {
+      const r = shapeData[Math.floor(Math.random() * shapeData.length)].name;
+      if (!options.includes(r)) options.push(r);
+    }
+    options.sort(() => Math.random() - 0.5);
+
+    const area = document.getElementById('shapes-area');
+    area.innerHTML =
+      '<div class="scenario-text" style="margin-bottom:8px">What shape is this?</div>' +
+      '<div style="font-size:100px;text-align:center;margin:14px 0;animation:wiggle 2s ease-in-out infinite">' + target.emoji + '</div>' +
+      '<div class="quiz-options" id="shape-answers"></div>';
+    speak('What shape is this?');
+
+    const container = document.getElementById('shape-answers');
+    options.forEach(opt => {
+      const btn = document.createElement('div');
+      btn.className = 'quiz-option';
+      btn.style.fontSize = '18px';
+      btn.textContent = opt;
+      btn.onclick = (e) => handleShapeAnswer(btn, opt, target.name, e);
+      container.appendChild(btn);
+    });
+  } else {
+    // Show name, pick the matching shape emoji
+    let options = [target.emoji];
+    while (options.length < 4) {
+      const r = shapeData[Math.floor(Math.random() * shapeData.length)].emoji;
+      if (!options.includes(r)) options.push(r);
+    }
+    options.sort(() => Math.random() - 0.5);
+
+    const area = document.getElementById('shapes-area');
+    area.innerHTML =
+      '<div class="scenario-text" style="margin-bottom:8px">Find the <strong>' + target.name + '</strong>!</div>' +
+      '<div class="quiz-options" id="shape-answers" style="margin-top:18px"></div>';
+    speak('Find the ' + target.name + '!');
+
+    const container = document.getElementById('shape-answers');
+    options.forEach(opt => {
+      const btn = document.createElement('div');
+      btn.className = 'quiz-option';
+      btn.style.fontSize = '48px';
+      btn.textContent = opt;
+      btn.onclick = (e) => handleShapeAnswer(btn, opt, target.emoji, e);
+      container.appendChild(btn);
+    });
+  }
+
+  // Alternate quiz type for next round
+  shapeQuizType = shapeQuizType === 'name' ? 'find' : 'name';
+}
+
+function handleShapeAnswer(btn, chosen, correct, e) {
+  if (chosen === correct) {
+    btn.classList.add('correct');
+    playSound('correct');
+    showReaction('correct');
+    addStreak();
+    createStarBurst(e.clientX, e.clientY, 6);
+    if (!state.shapesCompleted) state.shapesCompleted = 0;
+    state.shapesCompleted++;
+    state.mathCompleted++;
+    maybeIncreaseDifficulty('math');
+    saveState();
+    showReward('🔷', 'You know your shapes!', 5);
+    setTimeout(generateShapeQuiz, 1800);
+  } else {
+    btn.classList.add('wrong');
+    playSound('wrong');
+    showReaction('wrong');
+    resetStreak();
+    speak('Not quite! Try again!');
+    setTimeout(() => btn.classList.remove('wrong'), 600);
+  }
+}
+
 // ==================== SURPRISE ME ====================
 function surpriseMe() {
   playSound('click');
-  const modules = ['words', 'numbers', 'stories', 'uhoh'];
+  const modules = ['words', 'numbers', 'stories', 'uhoh', 'letters'];
   const mod = modules[Math.floor(Math.random() * modules.length)];
   openModule(mod);
   // Auto-start a random activity after a brief delay
   setTimeout(() => {
     if (mod === 'words') {
-      const fns = [startSightWords, startWordMatch, startSpellIt, startRhyming];
+      const fns = [startSightWords, startWordMatch, startSpellIt, startRhyming, startSentences];
       fns[Math.floor(Math.random() * fns.length)]();
     } else if (mod === 'numbers') {
-      const fns = [startCounting, startAddition, startSequence, startCompare];
+      const fns = [startCounting, startAddition, startSequence, startCompare, startClock, startShapes];
+      fns[Math.floor(Math.random() * fns.length)]();
+    } else if (mod === 'letters') {
+      const fns = [startAbcSounds, startSoundMatch];
       fns[Math.floor(Math.random() * fns.length)]();
     }
     // Stories and UhOh auto-init when opened, so no extra action needed
