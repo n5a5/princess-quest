@@ -35,6 +35,8 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 @keyframes wrongShake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
 @keyframes screenSlideIn { 0% { transform: translateX(30px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
 @keyframes fadeScale { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes pageTurnIn { 0% { transform: perspective(1200px) rotateY(-90deg); opacity: 0; transform-origin: left center; } 100% { transform: perspective(1200px) rotateY(0deg); opacity: 1; transform-origin: left center; } }
+@keyframes pageTurnOut { 0% { transform: perspective(1200px) rotateY(0deg); opacity: 1; transform-origin: right center; } 100% { transform: perspective(1200px) rotateY(90deg); opacity: 0; transform-origin: right center; } }
 
 /* GEM BAR */
 #gem-bar { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: linear-gradient(90deg, #7c3aed, #a855f7, #c084fc); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 1000; box-shadow: 0 4px 20px rgba(124,58,237,0.4); }
@@ -47,7 +49,8 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 
 /* MAIN CONTENT */
 .screen { display: none; padding: 74px 16px 30px; min-height: 100vh; position: relative; z-index: 1; }
-.screen.active { display: block; animation: screenSlideIn 0.45s ease-out; }
+.screen.active { display: block; animation: pageTurnIn 0.5s ease-out; }
+.screen.exiting { animation: pageTurnOut 0.3s ease-in forwards; }
 
 /* CASTLE MAP */
 #map-screen { text-align: center; }
@@ -81,6 +84,31 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .module-card:nth-child(6) .icon { animation-delay: 2.5s; }
 .module-card:nth-child(7) { border-color: #fde68a; background: linear-gradient(145deg, #fff 30%, #fefce8); animation-delay: 0.35s; }
 .module-card:nth-child(7) .icon { animation-delay: 3s; }
+
+/* DAILY QUEST CARD */
+.daily-quest-card { background: linear-gradient(135deg, #fef3c7, #fde68a, #fbbf24); border-radius: 20px; padding: 16px 18px; margin: 0 auto 18px; max-width: 520px; box-shadow: 0 4px 18px rgba(251,191,36,0.3); border: 3px solid #f59e0b; text-align: center; animation: bounceIn 0.5s ease-out; position: relative; overflow: hidden; }
+.daily-quest-card::before { content: ''; position: absolute; top: -30%; left: -30%; width: 160%; height: 160%; background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%); pointer-events: none; }
+.daily-quest-card .quest-label { font-family: 'Fredoka One', cursive; font-size: 14px; color: #92400e; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+.daily-quest-card .quest-text { font-family: 'Fredoka One', cursive; font-size: 18px; color: #78350f; margin-bottom: 6px; }
+.daily-quest-card .quest-reward { font-size: 14px; color: #92400e; font-weight: 700; }
+.daily-quest-card .quest-progress { height: 8px; background: rgba(120,53,15,0.15); border-radius: 6px; margin: 8px 0 4px; overflow: hidden; }
+.daily-quest-card .quest-fill { height: 100%; background: linear-gradient(90deg, #f59e0b, #ef4444); border-radius: 6px; transition: width 0.5s ease; }
+.daily-quest-card.completed { background: linear-gradient(135deg, #dcfce7, #86efac, #34d399); border-color: #10b981; }
+.daily-quest-card.completed .quest-label { color: #065f46; }
+.daily-quest-card.completed .quest-text { color: #064e3b; }
+.daily-quest-card.completed .quest-reward { color: #065f46; }
+
+/* STREAK CALENDAR */
+.streak-calendar { margin: 12px 0; }
+.streak-calendar .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.streak-calendar .cal-title { font-family: 'Fredoka One', cursive; font-size: 15px; color: #7c3aed; }
+.streak-calendar .cal-streak { font-size: 14px; font-weight: 700; color: #ef4444; }
+.streak-calendar .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.streak-calendar .cal-day-label { font-size: 10px; color: #a78bfa; text-align: center; font-weight: 700; }
+.streak-calendar .cal-day { width: 100%; aspect-ratio: 1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #d1d5db; }
+.streak-calendar .cal-day.active { background: linear-gradient(135deg, #a855f7, #ec4899); color: white; box-shadow: 0 2px 6px rgba(168,85,247,0.3); }
+.streak-calendar .cal-day.today { border: 2px solid #7c3aed; }
+.streak-calendar .cal-day.empty { visibility: hidden; }
 
 /* SHARED GAME STYLES */
 .game-title { font-family: 'Fredoka One', cursive; font-size: 28px; color: #7c3aed; text-align: center; margin: 8px 0 18px; letter-spacing: 1px; }
@@ -371,6 +399,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     </div>
     <div class="level-track"><div class="level-fill" id="level-fill" style="width:0%"></div></div>
   </div>
+  <div id="daily-quest-container"></div>
   <div class="castle-subtitle">Pick a room, Princess! &#128149;</div>
   <div class="module-grid">
     <div class="module-card" onclick="openModule('words')">
@@ -738,7 +767,11 @@ const defaultState = {
   storyPaths: {},     // {storyTitle: [pathIds explored]}
   mathWrong: {},      // {range: wrongCount} for trouble spot tracking
   colorCombosFound: [], // discovered color mixing combos
-  lastDrawing: null   // data URL of last saved drawing
+  lastDrawing: null,  // data URL of last saved drawing
+  // Stage 3 additions
+  dailyQuest: null,       // {date, type, target, progress, completed, claimed}
+  activeDays: [],         // ['2026-03-15', ...] dates the child used the app
+  currentStreak: 0        // consecutive days streak
 };
 let state = JSON.parse(localStorage.getItem('princessQuest') || 'null') || {...defaultState};
 // Merge in any new fields from defaultState that old saves don't have
@@ -1053,42 +1086,66 @@ function getAudioCtx() {
   return audioCtx;
 }
 
+function playNote(ctx, freq, type, startTime, duration, volume, dest) {
+  // Rich note with ADSR envelope and optional harmonics
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  const o2 = ctx.createOscillator(); // harmonic layer
+  const g2 = ctx.createGain();
+  o.connect(g); g.connect(dest || ctx.destination);
+  o2.connect(g2); g2.connect(dest || ctx.destination);
+  o.frequency.value = freq;
+  o.type = type || 'triangle';
+  o2.frequency.value = freq * 2; // octave harmonic
+  o2.type = 'sine';
+  const t = startTime;
+  const vol = volume || 0.08;
+  // ADSR: Attack 0.02s, Decay 0.1s, Sustain 60%, Release to end
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.02);
+  g.gain.linearRampToValueAtTime(vol * 0.6, t + 0.12);
+  g.gain.linearRampToValueAtTime(vol * 0.4, t + duration * 0.7);
+  g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+  g2.gain.setValueAtTime(0, t);
+  g2.gain.linearRampToValueAtTime(vol * 0.15, t + 0.03);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + duration * 0.8);
+  o.start(t); o.stop(t + duration + 0.05);
+  o2.start(t); o2.stop(t + duration + 0.05);
+}
+
 function playSound(type) {
   if (soundMuted) return;
   try {
     const ctx = getAudioCtx();
+    const t = ctx.currentTime;
     if (type === 'correct') {
-      [523, 659, 784].forEach((freq, i) => {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.connect(g); g.connect(ctx.destination);
-        o.frequency.value = freq; o.type = 'triangle';
-        g.gain.setValueAtTime(0.12, ctx.currentTime + i * 0.12);
-        g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.12 + 0.35);
-        o.start(ctx.currentTime + i * 0.12); o.stop(ctx.currentTime + i * 0.12 + 0.35);
+      // Happy major chord arpeggio (C E G C')
+      [523, 659, 784, 1047].forEach((freq, i) => {
+        playNote(ctx, freq, 'triangle', t + i * 0.09, 0.35, 0.07);
       });
     } else if (type === 'wrong') {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.frequency.value = 220; o.type = 'sine';
-      g.gain.setValueAtTime(0.08, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-      o.start(); o.stop(ctx.currentTime + 0.25);
+      // Minor second dissonance, gentle
+      playNote(ctx, 233, 'sine', t, 0.3, 0.06);
+      playNote(ctx, 220, 'sine', t + 0.05, 0.25, 0.05);
     } else if (type === 'reward') {
-      [523, 659, 784, 1047].forEach((freq, i) => {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.connect(g); g.connect(ctx.destination);
-        o.frequency.value = freq; o.type = 'sine';
-        g.gain.setValueAtTime(0.1, ctx.currentTime + i * 0.13);
-        g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.13 + 0.4);
-        o.start(ctx.currentTime + i * 0.13); o.stop(ctx.currentTime + i * 0.13 + 0.4);
+      // Little fanfare: C-E-G chord then high C with harmonics
+      [523, 659, 784].forEach((freq, i) => {
+        playNote(ctx, freq, 'triangle', t + i * 0.08, 0.4, 0.06);
       });
+      // Triumphant high note
+      playNote(ctx, 1047, 'sine', t + 0.3, 0.5, 0.08);
+      playNote(ctx, 1318, 'sine', t + 0.4, 0.45, 0.05); // high E
+      playNote(ctx, 1568, 'sine', t + 0.5, 0.4, 0.04); // high G
     } else if (type === 'click') {
+      // Soft pop
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.connect(g); g.connect(ctx.destination);
-      o.frequency.value = 600; o.type = 'sine';
-      g.gain.setValueAtTime(0.06, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
-      o.start(); o.stop(ctx.currentTime + 0.08);
+      o.frequency.setValueAtTime(800, t);
+      o.frequency.exponentialRampToValueAtTime(400, t + 0.06);
+      o.type = 'sine';
+      g.gain.setValueAtTime(0.05, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      o.start(t); o.stop(t + 0.1);
     }
   } catch(e) {}
 }
@@ -1254,31 +1311,60 @@ function speak(text) {
 }
 
 // ==================== NAVIGATION ====================
+function transitionScreens(fromScreen, toScreen, cb) {
+  if (fromScreen) {
+    fromScreen.classList.add('exiting');
+    fromScreen.addEventListener('animationend', function handler() {
+      fromScreen.removeEventListener('animationend', handler);
+      fromScreen.classList.remove('active', 'exiting');
+      toScreen.classList.add('active');
+      if (cb) cb();
+    }, { once: true });
+    // Safety fallback in case animationend doesn't fire
+    setTimeout(() => {
+      fromScreen.classList.remove('active', 'exiting');
+      if (!toScreen.classList.contains('active')) {
+        toScreen.classList.add('active');
+        if (cb) cb();
+      }
+    }, 400);
+  } else {
+    toScreen.classList.add('active');
+    if (cb) cb();
+  }
+}
+
 function openModule(mod) {
   playSound('click');
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(mod + '-screen').classList.add('active');
-  document.getElementById('back-btn').style.display = 'block';
-  if (mod === 'words') initWords();
-  if (mod === 'numbers') initNumbers();
-  if (mod === 'calm') initCalm();
-  if (mod === 'uhoh') initUhOh();
-  if (mod === 'stories') initStories();
-  if (mod === 'dressup') initDressUp();
-  if (mod === 'creative') initCreative();
+  const currentScreen = document.querySelector('.screen.active');
+  const nextScreen = document.getElementById(mod + '-screen');
+  document.querySelectorAll('.screen').forEach(s => { if (s !== currentScreen) s.classList.remove('active'); });
+  transitionScreens(currentScreen, nextScreen, () => {
+    document.getElementById('back-btn').style.display = 'block';
+    if (mod === 'words') initWords();
+    if (mod === 'numbers') initNumbers();
+    if (mod === 'calm') initCalm();
+    if (mod === 'uhoh') initUhOh();
+    if (mod === 'stories') initStories();
+    if (mod === 'dressup') initDressUp();
+    if (mod === 'creative') initCreative();
+  });
 }
 
 function goHome() {
   playSound('click');
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('map-screen').classList.add('active');
-  document.getElementById('back-btn').style.display = 'none';
+  const currentScreen = document.querySelector('.screen.active');
+  const mapScreen = document.getElementById('map-screen');
+  document.querySelectorAll('.screen').forEach(s => { if (s !== currentScreen) s.classList.remove('active'); });
+  transitionScreens(currentScreen, mapScreen, () => {
+    document.getElementById('back-btn').style.display = 'none';
+    updateLevelDisplay();
+    updateDailyQuest();
+    if (badgesExpanded) renderBadgeGrid();
+  });
   // Stop all ongoing activity timers and speech
   clearTimeout(calmTimer);
   speechSynthesis.cancel();
-  // Refresh map displays
-  updateLevelDisplay();
-  if (badgesExpanded) renderBadgeGrid();
 }
 
 function showReward(emoji, text, gems) {
@@ -1306,6 +1392,8 @@ function showReward(emoji, text, gems) {
   setTimeout(() => gemEl.style.animation = '', 600);
   // Check badges after reward
   setTimeout(checkBadges, 500);
+  // Update daily quest progress
+  setTimeout(checkDailyQuestProgress, 600);
 }
 
 function closeReward() { document.getElementById('reward-popup').classList.remove('show'); }
@@ -1360,6 +1448,9 @@ function openDashboard() {
     <div class="stat"><strong>📖 Stories Read:</strong> ${state.storiesCompleted}</div>
     <div class="stat"><strong>👗 Wardrobe:</strong> ${state.unlockedItems.length} / ${wardrobeItems.length} items unlocked</div>
     ${feelingsSummary ? '<hr style="margin:12px 0;border-color:#e5e7eb"><div style="font-family:Fredoka One,cursive;font-size:15px;color:#7c3aed;margin-bottom:8px">💜 Emotional Wellness</div>' + feelingsSummary : ''}
+    <hr style="margin:12px 0;border-color:#e5e7eb">
+    <div style="font-family:Fredoka One,cursive;font-size:15px;color:#7c3aed;margin-bottom:8px">📅 Activity Calendar</div>
+    ${renderStreakCalendar()}
     <hr style="margin:12px 0;border-color:#e5e7eb">
     <div style="font-family:Fredoka One,cursive;font-size:15px;color:#7c3aed;margin-bottom:8px">⚙️ Settings</div>
     <div class="stat" style="display:flex;align-items:center;justify-content:space-between">
@@ -3586,6 +3677,203 @@ function renderBadgeGrid() {
   });
 }
 
+// ==================== DAILY QUEST SYSTEM ====================
+const dailyQuests = [
+  { type: 'math', text: 'Solve 3 math problems!', icon: '🔢', target: 3, stateKey: 'mathCompleted' },
+  { type: 'math', text: 'Solve 5 math problems!', icon: '⭐', target: 5, stateKey: 'mathCompleted' },
+  { type: 'words', text: 'Practice 5 sight words!', icon: '📚', target: 5, stateKey: 'wordsToday' },
+  { type: 'words', text: 'Practice 3 sight words!', icon: '📖', target: 3, stateKey: 'wordsToday' },
+  { type: 'calm', text: 'Try a calm exercise!', icon: '🦄', target: 1, stateKey: 'calmCompleted' },
+  { type: 'stories', text: 'Read a story!', icon: '📖', target: 1, stateKey: 'storiesCompleted' },
+  { type: 'uhoh', text: 'Practice 2 social scenarios!', icon: '🤗', target: 2, stateKey: 'scenariosCompleted' },
+  { type: 'creative', text: 'Create a drawing!', icon: '🎨', target: 1, stateKey: 'drawingsToday' },
+  { type: 'any', text: 'Complete 3 activities!', icon: '🌟', target: 3, stateKey: 'totalActivities' },
+  { type: 'any', text: 'Earn 10 gems today!', icon: '💎', target: 10, stateKey: 'gemsToday' },
+];
+
+function getTodayStr() { return new Date().toISOString().slice(0, 10); }
+
+function initDailyQuest() {
+  const today = getTodayStr();
+  // Record today as an active day
+  if (!state.activeDays) state.activeDays = [];
+  if (!state.activeDays.includes(today)) {
+    state.activeDays.push(today);
+    updateDayStreak();
+  }
+  // Generate new quest if needed
+  if (!state.dailyQuest || state.dailyQuest.date !== today) {
+    // Seed a deterministic pick from the date
+    const seed = today.split('-').join('');
+    const idx = parseInt(seed) % dailyQuests.length;
+    const quest = dailyQuests[idx];
+    // Snapshot baseline values so we measure progress from today's start
+    state.dailyQuest = {
+      date: today,
+      type: quest.type,
+      text: quest.text,
+      icon: quest.icon,
+      target: quest.target,
+      stateKey: quest.stateKey,
+      baseline: getQuestValue(quest.stateKey),
+      completed: false,
+      claimed: false
+    };
+  }
+  saveState();
+  updateDailyQuest();
+}
+
+function getQuestValue(key) {
+  if (key === 'wordsToday') return state.dailyActivities || 0; // approximate with daily activities for words
+  if (key === 'drawingsToday') return state.lastDrawing ? 1 : 0;
+  if (key === 'gemsToday') return 0; // reset daily
+  return state[key] || 0;
+}
+
+function getQuestProgress() {
+  const q = state.dailyQuest;
+  if (!q) return 0;
+  const current = getQuestValue(q.stateKey);
+  const progress = current - (q.baseline || 0);
+  return Math.min(progress, q.target);
+}
+
+function updateDailyQuest() {
+  const container = document.getElementById('daily-quest-container');
+  if (!container) return;
+  const q = state.dailyQuest;
+  if (!q || q.date !== getTodayStr()) { initDailyQuest(); return; }
+
+  const progress = getQuestProgress();
+  const pct = Math.min(100, Math.round((progress / q.target) * 100));
+
+  // Check if just completed
+  if (progress >= q.target && !q.completed) {
+    q.completed = true;
+    saveState();
+  }
+
+  const isComplete = q.completed;
+  const isClaimed = q.claimed;
+
+  container.innerHTML = `
+    <div class="daily-quest-card ${isComplete ? 'completed' : ''}">
+      <div class="quest-label">${isComplete ? '✅ Quest Complete!' : '⚔️ Daily Quest'}</div>
+      <div class="quest-text">${q.icon} ${q.text}</div>
+      <div class="quest-progress"><div class="quest-fill" style="width:${pct}%"></div></div>
+      <div class="quest-reward">${isComplete && !isClaimed ? '<button onclick="claimDailyQuest()" class="big-btn green" style="padding:8px 20px;font-size:14px;margin:6px 0 0">Claim 5 Bonus Gems! 💎</button>' : isComplete ? '🎉 Bonus claimed! Come back tomorrow!' : progress + ' / ' + q.target + ' — Bonus: 5 💎'}</div>
+    </div>
+  `;
+}
+
+function claimDailyQuest() {
+  if (!state.dailyQuest || state.dailyQuest.claimed) return;
+  state.dailyQuest.claimed = true;
+  addGems(5);
+  addXp(8);
+  saveState();
+  playSound('reward');
+  createConfetti(30);
+  speak('Amazing! You finished your daily quest!');
+  updateDailyQuest();
+}
+
+// Called after each activity completion to refresh quest progress
+function checkDailyQuestProgress() {
+  if (state.dailyQuest && state.dailyQuest.date === getTodayStr() && !state.dailyQuest.completed) {
+    updateDailyQuest();
+  }
+}
+
+// ==================== DAY STREAK SYSTEM ====================
+function updateDayStreak() {
+  if (!state.activeDays) state.activeDays = [];
+  // Sort dates
+  const sorted = [...new Set(state.activeDays)].sort();
+  if (sorted.length === 0) { state.currentStreak = 0; saveState(); return; }
+  // Count consecutive days ending at today or yesterday
+  const today = new Date(getTodayStr());
+  let streak = 0;
+  let checkDate = new Date(today);
+  for (let i = 0; i < 365; i++) {
+    const dateStr = checkDate.toISOString().slice(0, 10);
+    if (sorted.includes(dateStr)) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  state.currentStreak = streak;
+  saveState();
+}
+
+// ==================== STREAK CALENDAR (for parent dashboard) ====================
+function renderStreakCalendar() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0=Sun
+  const today = now.getDate();
+  const todayStr = getTodayStr();
+  const activeDays = state.activeDays || [];
+
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayLabels = ['S','M','T','W','T','F','S'];
+
+  let html = '<div class="streak-calendar">';
+  html += '<div class="cal-header">';
+  html += '<div class="cal-title">📅 ' + monthNames[month] + ' ' + year + '</div>';
+  html += '<div class="cal-streak">🔥 ' + (state.currentStreak || 0) + ' day streak</div>';
+  html += '</div>';
+  html += '<div class="cal-grid">';
+  // Day labels
+  dayLabels.forEach(d => { html += '<div class="cal-day-label">' + d + '</div>'; });
+  // Empty cells before first day
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    html += '<div class="cal-day empty"></div>';
+  }
+  // Days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const isActive = activeDays.includes(dateStr);
+    const isToday = dateStr === todayStr;
+    let cls = 'cal-day';
+    if (isActive) cls += ' active';
+    if (isToday) cls += ' today';
+    html += '<div class="' + cls + '">' + d + '</div>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+// ==================== PARALLAX TILT ON MODULE CARDS ====================
+function initParallaxTilt() {
+  document.querySelectorAll('.module-card').forEach(card => {
+    card.addEventListener('touchmove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const touch = e.touches[0];
+      const x = (touch.clientX - rect.left) / rect.width - 0.5;
+      const y = (touch.clientY - rect.top) / rect.height - 0.5;
+      card.style.transform = 'perspective(600px) rotateY(' + (x * 10) + 'deg) rotateX(' + (-y * 10) + 'deg) scale(1.03)';
+    }, { passive: true });
+    card.addEventListener('touchend', () => {
+      card.style.transform = '';
+    });
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      card.style.transform = 'perspective(600px) rotateY(' + (x * 10) + 'deg) rotateX(' + (-y * 10) + 'deg) scale(1.03)';
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = '';
+    });
+  });
+}
+
 // ==================== DIFFICULTY INDICATOR ====================
 function getDiffStars(level, max) {
   let html = '';
@@ -3600,6 +3888,8 @@ saveState();
 updateLevelDisplay();
 checkBadges();
 updateSoundButtons();
+initDailyQuest();
+initParallaxTilt();
 
 // Read aloud module names on hover/focus for emerging readers
 document.querySelectorAll('.module-card').forEach(card => {
