@@ -82,16 +82,14 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .module-card:nth-child(5) .icon { animation-delay: 2s; }
 .module-card:nth-child(6) { border-color: #fca5a5; background: linear-gradient(145deg, #fff 30%, #fef2f2); }
 .module-card:nth-child(6) .icon { animation-delay: 2.5s; }
-.module-card:nth-child(7) { border-color: #fde68a; background: linear-gradient(145deg, #fff 30%, #fefce8); animation-delay: 0.35s; }
-.module-card:nth-child(7) .icon { animation-delay: 3s; }
 
 /* DAILY QUEST CARD */
-.daily-quest-card { background: linear-gradient(135deg, #fef3c7, #fde68a, #fbbf24); border-radius: 20px; padding: 16px 18px; margin: 0 auto 18px; max-width: 520px; box-shadow: 0 4px 18px rgba(251,191,36,0.3); border: 3px solid #f59e0b; text-align: center; animation: bounceIn 0.5s ease-out; position: relative; overflow: hidden; }
+.daily-quest-card { background: linear-gradient(135deg, #fef3c7, #fde68a, #fbbf24); border-radius: 14px; padding: 8px 14px; margin: 0 auto 10px; max-width: 520px; box-shadow: 0 2px 10px rgba(251,191,36,0.25); border: 2px solid #f59e0b; text-align: left; animation: bounceIn 0.5s ease-out; position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .daily-quest-card::before { content: ''; position: absolute; top: -30%; left: -30%; width: 160%; height: 160%; background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%); pointer-events: none; }
-.daily-quest-card .quest-label { font-family: 'Fredoka One', cursive; font-size: 14px; color: #92400e; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
-.daily-quest-card .quest-text { font-family: 'Fredoka One', cursive; font-size: 18px; color: #78350f; margin-bottom: 6px; }
-.daily-quest-card .quest-reward { font-size: 14px; color: #92400e; font-weight: 700; }
-.daily-quest-card .quest-progress { height: 8px; background: rgba(120,53,15,0.15); border-radius: 6px; margin: 8px 0 4px; overflow: hidden; }
+.daily-quest-card .quest-label { font-family: 'Fredoka One', cursive; font-size: 11px; color: #92400e; letter-spacing: 1px; text-transform: uppercase; }
+.daily-quest-card .quest-text { font-family: 'Fredoka One', cursive; font-size: 14px; color: #78350f; flex: 1; min-width: 120px; }
+.daily-quest-card .quest-reward { font-size: 12px; color: #92400e; font-weight: 700; }
+.daily-quest-card .quest-progress { height: 6px; background: rgba(120,53,15,0.15); border-radius: 6px; overflow: hidden; flex: 1; min-width: 60px; }
 .daily-quest-card .quest-fill { height: 100%; background: linear-gradient(90deg, #f59e0b, #ef4444); border-radius: 6px; transition: width 0.5s ease; }
 .daily-quest-card.completed { background: linear-gradient(135deg, #dcfce7, #86efac, #34d399); border-color: #10b981; }
 .daily-quest-card.completed .quest-label { color: #065f46; }
@@ -138,7 +136,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .progress-bar-fill.calm { background: linear-gradient(90deg, #06b6d4, #67e8f9); }
 .progress-bar-fill.stories { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
 .progress-bar-fill.social { background: linear-gradient(90deg, #10b981, #6ee7b7); }
-.progress-bar-fill.creative { background: linear-gradient(90deg, #ef4444, #fca5a5); }
 
 /* TROUBLE SPOTS */
 .trouble-spots { margin: 8px 0; }
@@ -288,18 +285,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 /* FLOATING SPARKLES */
 .sparkle { position: fixed; pointer-events: none; z-index: 1500; animation: sparkle 1s forwards; }
 
-/* LEVEL BAR */
-.level-bar-wrap { max-width: 520px; margin: 0 auto 8px; padding: 0 6px; }
-.level-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.level-label { font-family: 'Fredoka One', cursive; font-size: 15px; color: #7c3aed; }
-.level-xp { font-size: 12px; color: #a78bfa; font-weight: 700; }
-.level-track { height: 14px; background: rgba(124,58,237,0.12); border-radius: 10px; overflow: hidden; position: relative; }
-.level-fill { height: 100%; background: linear-gradient(90deg, #a855f7, #ec4899, #f59e0b); border-radius: 10px; transition: width 0.6s cubic-bezier(.34,1.56,.64,1); min-width: 4px; position: relative; }
-.level-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); background-size: 200% 100%; animation: shimmer 2s linear infinite; }
 
-/* STREAK NOTICE */
-#streak-notice { position: fixed; top: 68px; left: 50%; transform: translateX(-50%) translateY(-20px); background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; font-family: 'Fredoka One', cursive; font-size: 16px; padding: 8px 20px; border-radius: 20px; z-index: 1600; opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; box-shadow: 0 4px 16px rgba(239,68,68,0.3); white-space: nowrap; }
-#streak-notice.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* BADGE POPUP */
 #badge-popup { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) scale(0.8); background: white; border-radius: 24px; padding: 20px 28px; z-index: 1900; opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; box-shadow: 0 10px 40px rgba(0,0,0,0.2); border: 3px solid #fbbf24; text-align: center; min-width: 220px; }
@@ -309,14 +295,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 #badge-popup .badge-name { font-family: 'Fredoka One', cursive; font-size: 18px; color: #581c87; }
 #badge-popup .badge-desc { font-size: 13px; color: #6b7280; margin-top: 2px; font-weight: 600; }
 
-/* BADGE SHOWCASE */
-.badge-showcase { max-width: 520px; margin: 10px auto 0; padding: 0 6px; }
-.badge-showcase-title { font-family: 'Fredoka One', cursive; font-size: 14px; color: #a78bfa; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-.badge-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.badge-item { width: 52px; height: 52px; border-radius: 50%; background: white; border: 3px solid #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 26px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: transform 0.2s; }
-.badge-item.earned { border-color: #fbbf24; background: linear-gradient(145deg, #fffbeb, #fef3c7); box-shadow: 0 0 12px rgba(251,191,36,0.3); animation: popIn 0.4s ease-out; }
-.badge-item.locked { opacity: 0.3; filter: grayscale(1); }
-.badge-item:active { transform: scale(0.9); }
 
 /* DIFFICULTY INDICATOR */
 .diff-indicator { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800; color: #a855f7; background: rgba(168,85,247,0.1); padding: 3px 10px; border-radius: 12px; margin-left: 8px; }
@@ -361,8 +339,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
   .emotion-btn { padding: 12px 6px; }
   .emotion-btn .em-icon { font-size: 32px; }
   .emotion-btn .em-name { font-size: 11px; }
-  .level-bar-wrap { padding: 0 4px; }
-  .level-label { font-size: 13px; }
   .wardrobe { grid-template-columns: repeat(4, 1fr); gap: 6px; }
   .wardrobe-item { padding: 8px 4px; }
   .wardrobe-item .item-icon { font-size: 28px; }
@@ -407,9 +383,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div class="gems"><span class="gem-icon">&#128142;</span> <span id="gem-count">0</span></div>
   </div>
 </div>
-
-<!-- STREAK NOTICE -->
-<div id="streak-notice"></div>
 
 <!-- BADGE EARNED POPUP -->
 <div id="badge-popup">
@@ -457,13 +430,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 <!-- MAP SCREEN -->
 <div id="map-screen" class="screen active">
   <div class="castle-title">&#127984; Princess Quest &#127984;</div>
-  <div class="level-bar-wrap">
-    <div class="level-header">
-      <div class="level-label" id="level-label">&#128120; New Princess</div>
-      <div class="level-xp" id="level-xp">0 / 20 XP</div>
-    </div>
-    <div class="level-track"><div class="level-fill" id="level-fill" style="width:0%"></div></div>
-  </div>
   <div id="daily-quest-container"></div>
   <div class="castle-subtitle">Pick a room, Princess! &#128149;</div>
   <div class="module-grid">
@@ -497,15 +463,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="name">Dress-Up Palace</div>
       <div class="desc">Pretty outfits!</div>
     </div>
-    <div class="module-card" onclick="openModule('creative')">
-      <span class="icon">&#127912;</span>
-      <div class="name">Creative Corner</div>
-      <div class="desc">Draw & create!</div>
-    </div>
-  </div>
-  <div class="badge-showcase">
-    <div class="badge-showcase-title" onclick="toggleBadges()">&#127942; My Badges (<span id="badge-count">0</span>) &#9660;</div>
-    <div class="badge-grid" id="badge-grid"></div>
   </div>
 </div>
 
@@ -516,9 +473,8 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div id="word-mode-select" style="text-align:center">
       <button class="big-btn pink" onclick="startSightWords()">&#128149; Read Words!</button>
       <button class="big-btn green" onclick="startWordMatch()">&#127912; Match Words!</button>
-      <button class="big-btn" onclick="startWordBuild()">&#129513; Build Words!</button>
+      <button class="big-btn" onclick="startSpellIt()">&#9999;&#65039; Spell It!</button>
       <button class="big-btn pink" onclick="startRhyming()">&#127925; Rhyme Time!</button>
-      <button class="big-btn green" onclick="startMissingLetter()">&#128269; Missing Letter!</button>
     </div>
     <div id="sight-word-area" style="display:none">
       <div class="letter-image" id="sw-image"></div>
@@ -564,11 +520,9 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div id="number-mode-select" style="text-align:center">
       <button class="big-btn pink" onclick="startCounting()">&#129412; Count Things!</button>
       <button class="big-btn green" onclick="startAddition()">&#10133; Add Them Up!</button>
-      <button class="big-btn" id="subtract-btn" onclick="startSubtraction()" style="display:none">&#10134; Take Away!</button>
-      <button class="big-btn pink" onclick="startSkipCounting()">&#128290; Count by 2s, 5s, 10s!</button>
-      <button class="big-btn" onclick="startNumberPatterns()">&#128302; Number Patterns!</button>
-      <button class="big-btn pink" onclick="startCompare()">&#9878;&#65039; Bigger or Smaller!</button>
-      <button class="big-btn green" onclick="startNumberTracing()">&#9997;&#65039; Trace Numbers!</button>
+      <button class="big-btn" id="subtract-btn" onclick="startSubtraction()">&#10134; Take Away!</button>
+      <button class="big-btn pink" onclick="startSequence()">&#128302; What Comes Next?</button>
+      <button class="big-btn" onclick="startCompare()">&#9878;&#65039; Bigger or Smaller!</button>
     </div>
     <div id="counting-area" style="display:none">
       <div class="scenario-text" id="count-instruction"></div>
@@ -606,13 +560,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="answer-options" id="skip-answers"></div>
       <div id="skip-hint" class="scenario-text" style="font-size:14px;color:#a78bfa;margin-top:8px"></div>
     </div>
-    <div id="trace-area" style="display:none">
-      <div class="scenario-text" id="trace-instruction">Tap the dots in order to draw the number!</div>
-      <canvas id="trace-canvas" width="300" height="300" style="display:block;margin:0 auto;border-radius:20px;background:white;box-shadow:0 4px 16px rgba(0,0,0,0.08);touch-action:none"></canvas>
-      <div style="text-align:center;margin-top:12px">
-        <button class="big-btn green" onclick="nextTraceNumber()">Next! &#10145;&#65039;</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -641,10 +588,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
         <div class="calm-card" onclick="startVisualization()">
           <div class="icon">&#127752;</div>
           <div class="label">Happy Place</div>
-        </div>
-        <div class="calm-card" onclick="startFeelingsJournal()">
-          <div class="icon">&#128211;</div>
-          <div class="label">Feelings Journal</div>
         </div>
       </div>
     </div>
@@ -679,14 +622,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="breathe-circle" id="viz-circle" style="font-size:60px"></div>
       <div class="breathe-label" id="viz-instruction"></div>
       <div style="text-align:center; margin-top:18px">
-        <button class="big-btn" onclick="endCalmActivity()">All Done &#128522;</button>
-      </div>
-    </div>
-    <div id="journal-area" style="display:none">
-      <div class="breathe-label">&#128211; How do you feel today? Tap one!</div>
-      <div id="journal-emoji-grid" class="emotion-grid"></div>
-      <div id="journal-history" style="margin-top:16px"></div>
-      <div style="text-align:center; margin-top:14px">
         <button class="big-btn" onclick="endCalmActivity()">All Done &#128522;</button>
       </div>
     </div>
@@ -745,45 +680,6 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
   </div>
 </div>
 
-<!-- CREATIVE CORNER -->
-<div id="creative-screen" class="screen">
-  <div class="game-area">
-    <div class="game-title">&#127912; Creative Corner</div>
-    <div id="creative-menu" style="text-align:center">
-      <div id="last-drawing-preview" style="display:none;margin:0 auto 14px;max-width:160px;border-radius:16px;overflow:hidden;border:3px solid #fde68a;box-shadow:0 4px 12px rgba(0,0,0,0.08)">
-        <img id="last-drawing-img" style="width:100%;display:block" alt="Last drawing">
-      </div>
-      <button class="big-btn pink" onclick="startDrawing()">&#127912; Magic Drawing!</button>
-      <button class="big-btn green" onclick="startColorMixing()">&#127752; Color Mixing Lab!</button>
-    </div>
-    <div id="drawing-area" style="display:none">
-      <div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:8px" id="drawing-palette"></div>
-      <div style="display:flex;justify-content:center;gap:6px;margin-bottom:8px" id="drawing-tools"></div>
-      <canvas id="draw-canvas" width="340" height="340" style="display:block;margin:0 auto;border-radius:20px;background:white;box-shadow:0 4px 20px rgba(0,0,0,0.1);touch-action:none;cursor:crosshair"></canvas>
-      <div style="text-align:center;margin-top:10px">
-        <button class="big-btn" onclick="undoDrawing()" style="font-size:14px;padding:8px 16px">&#8617; Undo</button>
-        <button class="big-btn pink" onclick="clearDrawing()" style="font-size:14px;padding:8px 16px">&#128465; Clear</button>
-        <button class="big-btn green" onclick="saveDrawing()" style="font-size:14px;padding:8px 16px">&#128190; Save</button>
-      </div>
-    </div>
-    <div id="color-mix-area" style="display:none;text-align:center">
-      <div class="scenario-text" id="mix-instruction">Pick two colors to mix!</div>
-      <div id="mix-circles" style="display:flex;justify-content:center;align-items:center;gap:20px;margin:20px 0">
-        <div id="mix-circle-1" style="width:80px;height:80px;border-radius:50%;border:4px solid #e5e7eb;cursor:pointer;transition:all 0.3s"></div>
-        <div style="font-size:30px;font-family:Fredoka One,cursive;color:#7c3aed">+</div>
-        <div id="mix-circle-2" style="width:80px;height:80px;border-radius:50%;border:4px solid #e5e7eb;cursor:pointer;transition:all 0.3s"></div>
-        <div style="font-size:30px;font-family:Fredoka One,cursive;color:#7c3aed">=</div>
-        <div id="mix-result" style="width:80px;height:80px;border-radius:50%;border:4px solid #e5e7eb;transition:all 0.3s"></div>
-      </div>
-      <div id="color-picker" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:14px 0"></div>
-      <div id="mix-feedback" style="font-family:Fredoka One,cursive;font-size:18px;color:#7c3aed;min-height:28px"></div>
-      <div style="margin-top:10px;font-size:13px;color:#a78bfa;font-weight:700" id="combos-found"></div>
-      <div style="text-align:center;margin-top:10px">
-        <button class="big-btn" onclick="resetMix()">Try Again! &#128260;</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script>
 // ==================== BACKGROUND SPARKLES ====================
@@ -847,53 +743,6 @@ let state = JSON.parse(localStorage.getItem('princessQuest') || 'null') || {...d
 // Merge in any new fields from defaultState that old saves don't have
 Object.keys(defaultState).forEach(k => { if (!(k in state)) state[k] = defaultState[k]; });
 
-// ==================== LEVEL SYSTEM ====================
-const levelThresholds = [0, 20, 50, 100, 180, 280, 400, 550, 750, 1000, 1300];
-const levelTitles = ['New Princess','Brave Princess','Clever Princess','Star Princess','Super Princess',
-  'Magic Princess','Rainbow Princess','Crystal Princess','Diamond Princess','Ultimate Princess','Legendary Princess'];
-const levelEmojis = ['👸','🌸','📖','⭐','💪','🔮','🌈','💎','👑','🏆','✨'];
-
-function getXpForLevel(lvl) { return levelThresholds[Math.min(lvl, levelThresholds.length-1)]; }
-function getXpForNextLevel() { return getXpForLevel(state.level); }
-function getXpProgress() {
-  const prev = getXpForLevel(state.level - 1);
-  const next = getXpForLevel(state.level);
-  if (next <= prev) return 1;
-  return Math.min(1, (state.xp - prev) / (next - prev));
-}
-
-function addXp(amount) {
-  state.xp += amount;
-  const oldLevel = state.level;
-  while (state.level < levelThresholds.length && state.xp >= getXpForLevel(state.level)) {
-    state.level++;
-  }
-  if (state.level > oldLevel) {
-    // Level up!
-    setTimeout(() => {
-      showReward(levelEmojis[state.level-1] || '👑', 'Level ' + state.level + ': ' + (levelTitles[state.level-1] || 'Princess'), 10);
-      speak('Wow! You are now level ' + state.level + '! ' + (levelTitles[state.level-1] || 'Amazing Princess') + '!');
-      createConfetti(50);
-    }, 300);
-    checkBadges();
-  }
-  updateLevelDisplay();
-}
-
-function updateLevelDisplay() {
-  const bar = document.getElementById('level-fill');
-  const label = document.getElementById('level-label');
-  const xpText = document.getElementById('level-xp');
-  if (bar) bar.style.width = (getXpProgress() * 100) + '%';
-  if (label) label.textContent = levelEmojis[state.level-1] + ' ' + (levelTitles[state.level-1] || 'Princess');
-  if (xpText) {
-    const next = getXpForLevel(state.level);
-    xpText.textContent = state.xp + ' / ' + next + ' XP';
-  }
-  // Update badge count
-  const bc = document.getElementById('badge-count');
-  if (bc) bc.textContent = state.badges.length;
-}
 
 // ==================== STREAK SYSTEM ====================
 function addStreak() {
@@ -901,27 +750,15 @@ function addStreak() {
   if (state.streak > state.bestStreak) state.bestStreak = state.streak;
   // Bonus gems for streaks
   let bonus = 0;
-  if (state.streak === 3) { bonus = 3; showStreakNotice(3); }
-  else if (state.streak === 5) { bonus = 5; showStreakNotice(5); }
-  else if (state.streak === 10) { bonus = 10; showStreakNotice(10); }
-  else if (state.streak % 10 === 0) { bonus = 15; showStreakNotice(state.streak); }
-  if (bonus > 0) state.gems += bonus;
+  if (state.streak === 3) bonus = 3;
+  else if (state.streak === 5) bonus = 5;
+  else if (state.streak === 10) bonus = 10;
+  else if (state.streak % 10 === 0) bonus = 15;
+  if (bonus > 0) { state.gems += bonus; playSound('reward'); createSparkles(6); }
   saveState();
 }
 
 function resetStreak() { state.streak = 0; saveState(); }
-
-function showStreakNotice(count) {
-  const el = document.getElementById('streak-notice');
-  if (!el) return;
-  el.textContent = '🔥 ' + count + ' in a row! +bonus gems!';
-  el.classList.remove('show');
-  void el.offsetWidth;
-  el.classList.add('show');
-  playSound('reward');
-  createSparkles(6);
-  setTimeout(() => el.classList.remove('show'), 2500);
-}
 
 // ==================== ACHIEVEMENT BADGES ====================
 const allBadges = [
@@ -941,8 +778,6 @@ const allBadges = [
   { id: 'gem-collector', name: 'Gem Collector', icon: '💎', desc: 'Earn 50 total gems', check: () => state.gems >= 50 },
   { id: 'gem-hoarder', name: 'Gem Hoarder', icon: '💰', desc: 'Earn 200 total gems', check: () => state.gems >= 200 },
   { id: 'fashionista', name: 'Fashionista', icon: '👗', desc: 'Unlock 5 wardrobe items', check: () => state.unlockedItems.length >= 5 },
-  { id: 'level-5', name: 'Rising Star', icon: '🌠', desc: 'Reach level 5', check: () => state.level >= 5 },
-  { id: 'level-10', name: 'Royal Champion', icon: '👑', desc: 'Reach level 10', check: () => state.level >= 10 },
   { id: 'daily-5', name: 'Busy Bee', icon: '🐝', desc: 'Do 5 activities in one day', check: () => state.dailyActivities >= 5 },
   { id: 'explorer', name: 'Castle Explorer', icon: '🏰', desc: 'Complete 20 total activities', check: () => state.totalActivities >= 20 },
 ];
@@ -959,7 +794,6 @@ function checkBadges() {
     }
   });
   if (newBadge) saveState();
-  updateLevelDisplay();
 }
 
 function showBadgeEarned(badge) {
@@ -1417,7 +1251,6 @@ function openModule(mod) {
     if (mod === 'uhoh') initUhOh();
     if (mod === 'stories') initStories();
     if (mod === 'dressup') initDressUp();
-    if (mod === 'creative') initCreative();
   });
 }
 
@@ -1428,9 +1261,7 @@ function goHome() {
   document.querySelectorAll('.screen').forEach(s => { if (s !== currentScreen) s.classList.remove('active'); });
   transitionScreens(currentScreen, mapScreen, () => {
     document.getElementById('back-btn').style.display = 'none';
-    updateLevelDisplay();
     updateDailyQuest();
-    if (badgesExpanded) renderBadgeGrid();
   });
   // Stop all ongoing activity timers and speech
   clearTimeout(calmTimer);
@@ -1449,8 +1280,6 @@ function showReward(emoji, text, gems) {
   addGems(totalGems);
   state.totalActivities++;
   state.dailyActivities++;
-  // Add XP based on gems earned
-  addXp(gems + Math.floor(gems * 0.5));
   saveState();
   speak(text + '! You got ' + totalGems + ' gems!');
   // Visual celebration
@@ -1619,12 +1448,8 @@ function openDashboard() {
 
   d.innerHTML = `
     <div style="text-align:center;margin-bottom:12px">
-      <span style="font-size:40px">${levelEmojis[state.level-1] || '👸'}</span>
-      <div style="font-family:Fredoka One,cursive;font-size:18px;color:#7c3aed">Level ${state.level}: ${levelTitles[state.level-1] || 'Princess'}</div>
-      <div style="font-size:13px;color:#a78bfa;font-weight:700">${state.xp} / ${getXpForLevel(state.level)} XP</div>
-      <div style="height:10px;background:#f3f4f6;border-radius:8px;margin:6px auto;max-width:200px;overflow:hidden">
-        <div style="height:100%;background:linear-gradient(90deg,#a855f7,#ec4899);border-radius:8px;width:${getXpProgress()*100}%"></div>
-      </div>
+      <span style="font-size:40px">👸</span>
+      <div style="font-family:Fredoka One,cursive;font-size:18px;color:#7c3aed">💎 ${state.gems} Gems &nbsp;|&nbsp; 📅 ${daysSince} Days Active</div>
     </div>
     ${weeklySummaryHtml}
     <div class="stat"><strong>Days Active:</strong> ${daysSince}</div>
@@ -1802,7 +1627,6 @@ const sightWords = [
   {word:'CLAP', emoji:'👏', hint:'Hit your hands together!', tier:3},
   {word:'SWIM', emoji:'🏊', hint:'Move through water!', tier:3},
   {word:'STOP', emoji:'🛑', hint:'Do not go!', tier:3},
-  {word:'FROG', emoji:'🐸', hint:'Hops on lily pads!', tier:3},
   {word:'DRUM', emoji:'🥁', hint:'Bang bang music!', tier:3},
   {word:'STEP', emoji:'👣', hint:'Walk one foot forward!', tier:3},
   {word:'SNAP', emoji:'🫰', hint:'Click your fingers!', tier:3},
@@ -1923,13 +1747,28 @@ function generateWordMatch() {
   });
 }
 
-// --- WORD BUILD (Spell the word letter by letter) ---
+// --- SPELL IT! (combines Build Words + Missing Letter) ---
 let buildTarget = null, buildProgress = '';
+let spellItMode = 'build'; // 'build' or 'missing'
 
-function startWordBuild() {
+function startSpellIt() {
   document.getElementById('word-mode-select').style.display = 'none';
-  document.getElementById('word-build-area').style.display = 'block';
-  generateWordBuild();
+  generateSpellIt();
+}
+
+function generateSpellIt() {
+  // Randomly pick between build and missing letter modes
+  if (Math.random() < 0.5) {
+    spellItMode = 'build';
+    document.getElementById('word-build-area').style.display = 'block';
+    document.getElementById('missing-letter-area').style.display = 'none';
+    generateWordBuild();
+  } else {
+    spellItMode = 'missing';
+    document.getElementById('word-build-area').style.display = 'none';
+    document.getElementById('missing-letter-area').style.display = 'block';
+    generateMissingLetter();
+  }
 }
 
 function generateWordBuild() {
@@ -1986,7 +1825,7 @@ function showBuildLetters() {
           trackWordAccuracy(buildTarget.word, true);
           maybeIncreaseDifficulty('word');
           showReward('✏️', 'You spelled ' + buildTarget.word + '!', 8);
-          setTimeout(generateWordBuild, 1800);
+          setTimeout(generateSpellIt, 1800);
         }
       } else {
         btn.classList.add('wrong');
@@ -2081,12 +1920,6 @@ function generateRhyme() {
 // --- MISSING LETTER ---
 let mlWrongCount = 0;
 
-function startMissingLetter() {
-  document.getElementById('word-mode-select').style.display = 'none';
-  document.getElementById('missing-letter-area').style.display = 'block';
-  generateMissingLetter();
-}
-
 function generateMissingLetter() {
   mlWrongCount = 0;
   const pool = getWordDifficulty();
@@ -2132,7 +1965,7 @@ function generateMissingLetter() {
         trackWordAccuracy(word, true);
         maybeIncreaseDifficulty('word');
         showReward('🔍', 'You found the ' + missingLetter + ' in ' + word + '!', 6);
-        setTimeout(generateMissingLetter, 1800);
+        setTimeout(generateSpellIt, 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -2155,10 +1988,17 @@ let countTarget = 0, currentCount = 0;
 
 function initNumbers() {
   document.getElementById('number-mode-select').style.display = 'block';
-  ['counting-area','addition-area','pattern-area','compare-area','subtraction-area','skip-count-area','trace-area'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['counting-area','addition-area','pattern-area','compare-area','subtraction-area','skip-count-area'].forEach(id => document.getElementById(id).style.display = 'none');
   document.getElementById('math-diff').innerHTML = getDiffStars(state.mathLevel, 4);
-  // Show subtraction after math level 2
-  document.getElementById('subtract-btn').style.display = state.mathLevel >= 2 ? 'inline-block' : 'none';
+  // Show subtraction with lock if math level < 2
+  const subBtn = document.getElementById('subtract-btn');
+  if (state.mathLevel >= 2) {
+    subBtn.textContent = '➖ Take Away!';
+    subBtn.onclick = startSubtraction;
+  } else {
+    subBtn.textContent = '🔒 Take Away!';
+    subBtn.onclick = () => { speak('Keep practicing to unlock!'); playSound('wrong'); };
+  }
 }
 
 function startCounting() {
@@ -2266,13 +2106,21 @@ function generateAddition() {
   });
 }
 
-// --- NUMBER PATTERNS ---
+// --- WHAT COMES NEXT? (combines patterns + skip counting) ---
 let patternWrongCount = 0;
 
-function startNumberPatterns() {
+function startSequence() {
   document.getElementById('number-mode-select').style.display = 'none';
-  document.getElementById('pattern-area').style.display = 'block';
-  generatePattern();
+  // Randomly use pattern-area or skip-count-area
+  if (Math.random() < 0.5) {
+    document.getElementById('pattern-area').style.display = 'block';
+    document.getElementById('skip-count-area').style.display = 'none';
+    generatePattern();
+  } else {
+    document.getElementById('skip-count-area').style.display = 'block';
+    document.getElementById('pattern-area').style.display = 'none';
+    generateSkipCount();
+  }
 }
 
 function generatePattern() {
@@ -2330,7 +2178,7 @@ function generatePattern() {
         state.mathCompleted++;
         maybeIncreaseDifficulty('math');
         showReward('🔮', sequence.join(', ') + ', ' + correct + '!', 6);
-        setTimeout(generatePattern, 1800);
+        setTimeout(() => startSequence(), 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -2478,12 +2326,6 @@ function generateSubtraction() {
 // --- SKIP COUNTING (interactive count by 2s, 5s, 10s) ---
 let skipStep = 2, skipCurrent = 0, skipTarget = 0;
 
-function startSkipCounting() {
-  document.getElementById('number-mode-select').style.display = 'none';
-  document.getElementById('skip-count-area').style.display = 'block';
-  generateSkipCount();
-}
-
 function generateSkipCount() {
   document.getElementById('skip-hint').textContent = '';
   const steps = [2, 5, 10];
@@ -2530,7 +2372,7 @@ function generateSkipCount() {
         state.mathCompleted++;
         maybeIncreaseDifficulty('math');
         showReward('🔢', 'Count by ' + skipStep + 's!', 6);
-        setTimeout(generateSkipCount, 1800);
+        setTimeout(() => startSequence(), 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -2548,108 +2390,13 @@ function generateSkipCount() {
   });
 }
 
-// --- NUMBER TRACING ---
-let traceNumber = 1;
-const traceDots = {
-  0: [[150,40],[220,60],[240,150],[220,240],[150,260],[80,240],[60,150],[80,60],[150,40]],
-  1: [[120,60],[150,40],[150,260]],
-  2: [[80,80],[120,40],[200,40],[230,80],[230,120],[80,260],[230,260]],
-  3: [[80,40],[220,40],[150,140],[220,140],[240,200],[200,260],[100,260]],
-  4: [[180,260],[180,40],[60,180],[240,180]],
-  5: [[220,40],[80,40],[80,130],[180,130],[230,180],[200,260],[100,260]],
-  6: [[200,40],[100,40],[60,150],[80,240],[150,260],[220,220],[200,150],[120,130]],
-  7: [[80,40],[230,40],[150,260]],
-  8: [[150,40],[80,70],[80,120],[150,140],[220,170],[220,230],[150,260],[80,230],[80,170],[150,140]],
-  9: [[180,140],[150,40],[80,70],[80,130],[150,150],[220,130],[220,60],[150,40]]
-};
-
-function startNumberTracing() {
-  document.getElementById('number-mode-select').style.display = 'none';
-  document.getElementById('trace-area').style.display = 'block';
-  traceNumber = Math.floor(Math.random() * 10);
-  drawTraceNumber();
-}
-
-function drawTraceNumber() {
-  const canvas = document.getElementById('trace-canvas');
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, 300, 300);
-  const dots = traceDots[traceNumber] || traceDots[0];
-  document.getElementById('trace-instruction').textContent = 'Tap the dots in order to draw ' + traceNumber + '!';
-  speak('Tap the dots to draw the number ' + traceNumber + '!');
-
-  let nextDot = 0;
-
-  function drawDots() {
-    ctx.clearRect(0, 0, 300, 300);
-    // Draw completed lines
-    if (nextDot > 0) {
-      ctx.beginPath();
-      ctx.strokeStyle = '#a855f7';
-      ctx.lineWidth = 6;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.moveTo(dots[0][0], dots[0][1]);
-      for (let i = 1; i < nextDot; i++) ctx.lineTo(dots[i][0], dots[i][1]);
-      ctx.stroke();
-    }
-    // Draw dots
-    dots.forEach((dot, i) => {
-      ctx.beginPath();
-      if (i < nextDot) {
-        ctx.fillStyle = '#22c55e';
-        ctx.arc(dot[0], dot[1], 10, 0, Math.PI * 2);
-      } else if (i === nextDot) {
-        ctx.fillStyle = '#ec4899';
-        ctx.arc(dot[0], dot[1], 14, 0, Math.PI * 2);
-      } else {
-        ctx.fillStyle = '#d8b4fe';
-        ctx.arc(dot[0], dot[1], 10, 0, Math.PI * 2);
-      }
-      ctx.fill();
-      // Number label
-      ctx.fillStyle = 'white';
-      ctx.font = 'bold 12px Nunito';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(i + 1, dot[0], dot[1]);
-    });
-  }
-
-  drawDots();
-
-  canvas.onclick = function(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (300 / rect.width);
-    const y = (e.clientY - rect.top) * (300 / rect.height);
-    if (nextDot >= dots.length) return;
-    const target = dots[nextDot];
-    const dist = Math.sqrt((x - target[0]) ** 2 + (y - target[1]) ** 2);
-    if (dist < 30) {
-      nextDot++;
-      playSound('click');
-      drawDots();
-      if (nextDot >= dots.length) {
-        state.mathCompleted++;
-        maybeIncreaseDifficulty('math');
-        showReward('✏️', 'You drew ' + traceNumber + '!', 5);
-      }
-    }
-  };
-}
-
-function nextTraceNumber() {
-  traceNumber = Math.floor(Math.random() * 10);
-  drawTraceNumber();
-  playSound('click');
-}
 
 // ==================== CALM CASTLE ====================
 let calmTimer;
 
 function initCalm() {
   document.getElementById('calm-menu').style.display = 'block';
-  ['calm-activity','emotion-checkin','visualization-area','journal-area'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['calm-activity','emotion-checkin','visualization-area'].forEach(id => document.getElementById(id).style.display = 'none');
   clearTimeout(calmTimer);
 }
 
@@ -2852,6 +2599,19 @@ function selectEmotion(em) {
   state.calmCompleted++;
   saveState();
   checkBadges();
+
+  // Show recent journal entries below the coping tip
+  const recent = state.feelingsLog.slice(-5).reverse();
+  if (recent.length > 0) {
+    let journalHtml = '<div style="margin-top:14px;text-align:center"><div style="font-family:Fredoka One,cursive;font-size:14px;color:#7c3aed;margin-bottom:6px">Recent Feelings:</div><div>';
+    recent.forEach(entry => {
+      const d = new Date(entry.time);
+      const timeStr = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+      journalHtml += '<span class="journal-entry"><span class="je-emoji">' + entry.emoji + '</span><span class="je-time">' + timeStr + '</span></span>';
+    });
+    journalHtml += '</div></div>';
+    copingEl.innerHTML += journalHtml;
+  }
 }
 
 // --- HAPPY PLACE VISUALIZATION ---
@@ -2912,55 +2672,6 @@ function startVisualization() {
   nextStep();
 }
 
-// --- FEELINGS JOURNAL ---
-function startFeelingsJournal() {
-  document.getElementById('calm-menu').style.display = 'none';
-  document.getElementById('journal-area').style.display = 'block';
-  if (!state.feelingsLog) state.feelingsLog = [];
-
-  const grid = document.getElementById('journal-emoji-grid');
-  grid.innerHTML = '';
-  emotions.forEach(em => {
-    const btn = document.createElement('div');
-    btn.className = 'emotion-btn';
-    btn.innerHTML = '<span class="em-icon">' + em.emoji + '</span><span class="em-name">' + em.name + '</span>';
-    btn.onclick = () => {
-      state.feelingsLog.push({ emoji: em.emoji, name: em.name, time: Date.now() });
-      if (state.feelingsLog.length > 30) state.feelingsLog = state.feelingsLog.slice(-30);
-      saveState();
-      playSound('click');
-      createSparkles(4);
-      speak("You feel " + em.name + ". That's okay!");
-      btn.classList.add('selected');
-      setTimeout(() => btn.classList.remove('selected'), 800);
-      renderJournalHistory();
-    };
-    grid.appendChild(btn);
-  });
-  renderJournalHistory();
-}
-
-function renderJournalHistory() {
-  const container = document.getElementById('journal-history');
-  if (!state.feelingsLog || state.feelingsLog.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:#a78bfa;font-weight:700;font-size:14px">Tap how you feel to start your journal!</div>';
-    return;
-  }
-  const recent = state.feelingsLog.slice(-10).reverse();
-  container.innerHTML = '<div style="text-align:center;font-family:Fredoka One,cursive;font-size:14px;color:#7c3aed;margin-bottom:8px">Recent Feelings:</div>';
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'text-align:center';
-  recent.forEach(entry => {
-    const el = document.createElement('span');
-    el.className = 'journal-entry';
-    const d = new Date(entry.time);
-    const timeStr = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
-    el.innerHTML = '<span class="je-emoji">' + entry.emoji + '</span><span class="je-time">' + timeStr + '</span>';
-    el.title = entry.name;
-    wrap.appendChild(el);
-  });
-  container.appendChild(wrap);
-}
 
 function endCalmActivity() {
   clearTimeout(calmTimer);
@@ -3686,266 +3397,7 @@ function initDressUp() {
 
 function updatePrincessDisplay() { renderPrincess(); }
 
-// ==================== CREATIVE CORNER ====================
-function initCreative() {
-  document.getElementById('creative-menu').style.display = 'block';
-  document.getElementById('drawing-area').style.display = 'none';
-  document.getElementById('color-mix-area').style.display = 'none';
-  // Show last drawing thumbnail if exists
-  const preview = document.getElementById('last-drawing-preview');
-  const img = document.getElementById('last-drawing-img');
-  if (state.lastDrawing) {
-    img.src = state.lastDrawing;
-    preview.style.display = 'block';
-  } else {
-    preview.style.display = 'none';
-  }
-}
 
-// --- MAGIC DRAWING ---
-let drawCtx, drawing = false, drawColor = '#ec4899', drawSize = 6, drawHistory = [], drawStampMode = null;
-const drawColors = ['#ec4899','#ef4444','#f59e0b','#22c55e','#3b82f6','#8b5cf6','#581c87','#1e293b'];
-const drawStamps = [{icon:'⭐',name:'Star'},{icon:'❤️',name:'Heart'},{icon:'🦄',name:'Unicorn'},{icon:'👑',name:'Crown'},{icon:'🌈',name:'Rainbow'},{icon:'✨',name:'Sparkle'}];
-
-function startDrawing() {
-  document.getElementById('creative-menu').style.display = 'none';
-  document.getElementById('drawing-area').style.display = 'block';
-  const canvas = document.getElementById('draw-canvas');
-  drawCtx = canvas.getContext('2d');
-  drawCtx.fillStyle = 'white';
-  drawCtx.fillRect(0, 0, 340, 340);
-  drawHistory = [];
-  drawStampMode = null;
-  saveDrawState();
-
-  // Build palette
-  const palette = document.getElementById('drawing-palette');
-  palette.innerHTML = '';
-  drawColors.forEach(c => {
-    const btn = document.createElement('div');
-    btn.style.cssText = 'width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid ' + (c === drawColor ? '#fbbf24' : '#e5e7eb') + ';background:' + c + ';transition:all 0.2s';
-    btn.onclick = () => {
-      drawColor = c;
-      drawStampMode = null;
-      palette.querySelectorAll('div').forEach(d => d.style.borderColor = '#e5e7eb');
-      btn.style.borderColor = '#fbbf24';
-    };
-    palette.appendChild(btn);
-  });
-
-  // Build tools row
-  const tools = document.getElementById('drawing-tools');
-  tools.innerHTML = '';
-  // Brush sizes
-  [4, 8, 14].forEach(size => {
-    const btn = document.createElement('div');
-    btn.style.cssText = 'width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid ' + (size === drawSize ? '#fbbf24' : '#d8b4fe') + ';background:#f3e8ff;display:flex;align-items:center;justify-content:center';
-    const dot = document.createElement('div');
-    dot.style.cssText = 'width:' + size + 'px;height:' + size + 'px;border-radius:50%;background:#581c87';
-    btn.appendChild(dot);
-    btn.onclick = () => {
-      drawSize = size;
-      drawStampMode = null;
-      tools.querySelectorAll('div').forEach(d => { if (d.style.borderRadius === '50%' && d.parentElement === tools) d.style.borderColor = '#d8b4fe'; });
-      btn.style.borderColor = '#fbbf24';
-    };
-    tools.appendChild(btn);
-  });
-  // Stamps
-  drawStamps.forEach(stamp => {
-    const btn = document.createElement('div');
-    btn.style.cssText = 'width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid #d8b4fe;background:#f3e8ff;display:flex;align-items:center;justify-content:center;font-size:18px';
-    btn.textContent = stamp.icon;
-    btn.onclick = () => {
-      drawStampMode = stamp.icon;
-      tools.querySelectorAll('div').forEach(d => { if (d.parentElement === tools) d.style.borderColor = '#d8b4fe'; });
-      btn.style.borderColor = '#fbbf24';
-    };
-    tools.appendChild(btn);
-  });
-
-  // Touch/mouse drawing
-  canvas.onmousedown = canvas.ontouchstart = (e) => { e.preventDefault(); if (drawStampMode) { placeStamp(e); } else { drawing = true; drawCtx.beginPath(); const pos = getDrawPos(e); drawCtx.moveTo(pos.x, pos.y); } };
-  canvas.onmousemove = canvas.ontouchmove = (e) => { e.preventDefault(); if (!drawing || drawStampMode) return; const pos = getDrawPos(e); drawCtx.lineTo(pos.x, pos.y); drawCtx.strokeStyle = drawColor; drawCtx.lineWidth = drawSize; drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round'; drawCtx.stroke(); };
-  canvas.onmouseup = canvas.ontouchend = (e) => { if (drawing) { drawing = false; saveDrawState(); } };
-  canvas.onmouseleave = () => { if (drawing) { drawing = false; saveDrawState(); } };
-}
-
-function getDrawPos(e) {
-  const canvas = document.getElementById('draw-canvas');
-  const rect = canvas.getBoundingClientRect();
-  const touch = e.touches ? e.touches[0] : e;
-  return { x: (touch.clientX - rect.left) * (340 / rect.width), y: (touch.clientY - rect.top) * (340 / rect.height) };
-}
-
-function placeStamp(e) {
-  const pos = getDrawPos(e);
-  drawCtx.font = '32px serif';
-  drawCtx.textAlign = 'center';
-  drawCtx.textBaseline = 'middle';
-  drawCtx.fillText(drawStampMode, pos.x, pos.y);
-  playSound('click');
-  saveDrawState();
-}
-
-function saveDrawState() {
-  const canvas = document.getElementById('draw-canvas');
-  drawHistory.push(canvas.toDataURL());
-  if (drawHistory.length > 30) drawHistory.shift();
-}
-
-function undoDrawing() {
-  if (drawHistory.length <= 1) return;
-  drawHistory.pop();
-  const img = new Image();
-  img.onload = () => { drawCtx.clearRect(0, 0, 340, 340); drawCtx.drawImage(img, 0, 0); };
-  img.src = drawHistory[drawHistory.length - 1];
-  playSound('click');
-}
-
-function clearDrawing() {
-  drawCtx.fillStyle = 'white';
-  drawCtx.fillRect(0, 0, 340, 340);
-  saveDrawState();
-  playSound('click');
-}
-
-function saveDrawing() {
-  const canvas = document.getElementById('draw-canvas');
-  state.lastDrawing = canvas.toDataURL('image/jpeg', 0.5);
-  saveState();
-  playSound('reward');
-  createSparkles(6);
-  showReward('🎨', 'Drawing saved!', 5);
-}
-
-// --- COLOR MIXING LAB ---
-const colorMixes = [
-  { a: 'red', b: 'blue', result: 'purple', resultColor: '#8b5cf6', resultName: 'Purple' },
-  { a: 'red', b: 'yellow', result: 'orange', resultColor: '#f59e0b', resultName: 'Orange' },
-  { a: 'blue', b: 'yellow', result: 'green', resultColor: '#22c55e', resultName: 'Green' },
-  { a: 'red', b: 'white', result: 'pink', resultColor: '#f472b6', resultName: 'Pink' },
-  { a: 'blue', b: 'white', result: 'lightblue', resultColor: '#93c5fd', resultName: 'Light Blue' },
-  { a: 'red', b: 'green', result: 'brown', resultColor: '#92400e', resultName: 'Brown' },
-  { a: 'blue', b: 'red', result: 'purple', resultColor: '#8b5cf6', resultName: 'Purple' },
-  { a: 'yellow', b: 'blue', result: 'green', resultColor: '#22c55e', resultName: 'Green' },
-  { a: 'yellow', b: 'red', result: 'orange', resultColor: '#f59e0b', resultName: 'Orange' },
-  { a: 'white', b: 'red', result: 'pink', resultColor: '#f472b6', resultName: 'Pink' },
-];
-const mixColors = {
-  red: '#ef4444', blue: '#3b82f6', yellow: '#facc15', white: '#f8fafc', green: '#22c55e', purple: '#8b5cf6'
-};
-let mixPick1 = null, mixPick2 = null;
-
-function startColorMixing() {
-  document.getElementById('creative-menu').style.display = 'none';
-  document.getElementById('color-mix-area').style.display = 'block';
-  resetMix();
-  updateCombosDisplay();
-  // Build color picker
-  const picker = document.getElementById('color-picker');
-  picker.innerHTML = '';
-  Object.entries(mixColors).forEach(([name, hex]) => {
-    const btn = document.createElement('div');
-    btn.style.cssText = 'width:50px;height:50px;border-radius:50%;cursor:pointer;border:4px solid #e5e7eb;background:' + hex + ';transition:all 0.2s;box-shadow:0 3px 8px rgba(0,0,0,0.1)';
-    btn.onclick = () => pickMixColor(name, hex);
-    picker.appendChild(btn);
-  });
-}
-
-function pickMixColor(name, hex) {
-  if (!mixPick1) {
-    mixPick1 = name;
-    document.getElementById('mix-circle-1').style.background = hex;
-    document.getElementById('mix-circle-1').style.borderColor = hex;
-    playSound('click');
-    speak(name);
-  } else if (!mixPick2) {
-    mixPick2 = name;
-    document.getElementById('mix-circle-2').style.background = hex;
-    document.getElementById('mix-circle-2').style.borderColor = hex;
-    playSound('click');
-    speak(name);
-    // Check mix
-    setTimeout(checkMix, 500);
-  }
-}
-
-function checkMix() {
-  const match = colorMixes.find(m => (m.a === mixPick1 && m.b === mixPick2) || (m.a === mixPick2 && m.b === mixPick1));
-  const resultEl = document.getElementById('mix-result');
-  const feedback = document.getElementById('mix-feedback');
-  if (match) {
-    resultEl.style.background = match.resultColor;
-    resultEl.style.borderColor = match.resultColor;
-    resultEl.style.transform = 'scale(1.2)';
-    setTimeout(() => resultEl.style.transform = 'scale(1)', 400);
-    feedback.textContent = '✨ ' + match.resultName + '!';
-    speak(mixPick1 + ' and ' + mixPick2 + ' makes ' + match.resultName + '!');
-    playSound('correct');
-    createSparkles(5);
-    // Track discovered combo
-    if (!state.colorCombosFound) state.colorCombosFound = [];
-    const comboKey = match.result;
-    if (!state.colorCombosFound.includes(comboKey)) {
-      state.colorCombosFound.push(comboKey);
-      saveState();
-      showReward('🎨', 'New color: ' + match.resultName + '!', 5);
-    }
-    updateCombosDisplay();
-  } else {
-    resultEl.style.background = '#9ca3af';
-    resultEl.style.borderColor = '#9ca3af';
-    feedback.textContent = 'Hmm, try different colors!';
-    speak('Hmm, try different colors!');
-    playSound('wrong');
-  }
-}
-
-function resetMix() {
-  mixPick1 = null;
-  mixPick2 = null;
-  document.getElementById('mix-circle-1').style.background = '';
-  document.getElementById('mix-circle-1').style.borderColor = '#e5e7eb';
-  document.getElementById('mix-circle-2').style.background = '';
-  document.getElementById('mix-circle-2').style.borderColor = '#e5e7eb';
-  document.getElementById('mix-result').style.background = '';
-  document.getElementById('mix-result').style.borderColor = '#e5e7eb';
-  document.getElementById('mix-feedback').textContent = '';
-  document.getElementById('mix-instruction').textContent = 'Pick two colors to mix!';
-}
-
-function updateCombosDisplay() {
-  if (!state.colorCombosFound) state.colorCombosFound = [];
-  const unique = [...new Set(colorMixes.map(m => m.result))];
-  const found = unique.filter(r => state.colorCombosFound.includes(r));
-  document.getElementById('combos-found').textContent = '🎨 Colors discovered: ' + found.length + '/' + unique.length;
-}
-
-// ==================== BADGE GRID & TOGGLE ====================
-let badgesExpanded = false;
-function toggleBadges() {
-  badgesExpanded = !badgesExpanded;
-  renderBadgeGrid();
-}
-
-function renderBadgeGrid() {
-  const grid = document.getElementById('badge-grid');
-  if (!grid) return;
-  if (!badgesExpanded) { grid.innerHTML = ''; return; }
-  grid.innerHTML = '';
-  allBadges.forEach(badge => {
-    const el = document.createElement('div');
-    const earned = state.badges.includes(badge.id);
-    el.className = 'badge-item ' + (earned ? 'earned' : 'locked');
-    el.textContent = badge.icon;
-    el.title = badge.name + ': ' + badge.desc;
-    el.onclick = () => {
-      if (earned) speak(badge.name + '! ' + badge.desc);
-    };
-    grid.appendChild(el);
-  });
-}
 
 // ==================== DAILY QUEST SYSTEM ====================
 const dailyQuests = [
@@ -3956,7 +3408,6 @@ const dailyQuests = [
   { type: 'calm', text: 'Try a calm exercise!', icon: '🦄', target: 1, stateKey: 'calmCompleted' },
   { type: 'stories', text: 'Read a story!', icon: '📖', target: 1, stateKey: 'storiesCompleted' },
   { type: 'uhoh', text: 'Practice 2 social scenarios!', icon: '🤗', target: 2, stateKey: 'scenariosCompleted' },
-  { type: 'creative', text: 'Create a drawing!', icon: '🎨', target: 1, stateKey: 'drawingsToday' },
   { type: 'any', text: 'Complete 3 activities!', icon: '🌟', target: 3, stateKey: 'totalActivities' },
   { type: 'any', text: 'Earn 10 gems today!', icon: '💎', target: 10, stateKey: 'gemsToday' },
 ];
@@ -3995,9 +3446,8 @@ function initDailyQuest() {
 }
 
 function getQuestValue(key) {
-  if (key === 'wordsToday') return state.dailyActivities || 0; // approximate with daily activities for words
-  if (key === 'drawingsToday') return state.lastDrawing ? 1 : 0;
-  if (key === 'gemsToday') return 0; // reset daily
+  if (key === 'wordsToday') return (state.lettersLearned || []).length; // count of sight words practiced
+  if (key === 'gemsToday') return state.gems || 0;
   return state[key] || 0;
 }
 
@@ -4029,10 +3479,10 @@ function updateDailyQuest() {
 
   container.innerHTML = `
     <div class="daily-quest-card ${isComplete ? 'completed' : ''}">
-      <div class="quest-label">${isComplete ? '✅ Quest Complete!' : '⚔️ Daily Quest'}</div>
+      <div class="quest-label">${isComplete ? '✅' : '⚔️'}</div>
       <div class="quest-text">${q.icon} ${q.text}</div>
       <div class="quest-progress"><div class="quest-fill" style="width:${pct}%"></div></div>
-      <div class="quest-reward">${isComplete && !isClaimed ? '<button onclick="claimDailyQuest()" class="big-btn green" style="padding:8px 20px;font-size:14px;margin:6px 0 0">Claim 5 Bonus Gems! 💎</button>' : isComplete ? '🎉 Bonus claimed! Come back tomorrow!' : progress + ' / ' + q.target + ' — Bonus: 5 💎'}</div>
+      <div class="quest-reward">${isComplete && !isClaimed ? '<button onclick="claimDailyQuest()" class="big-btn green" style="padding:6px 14px;font-size:12px;margin:0">Claim 5 💎</button>' : isComplete ? '🎉 Done!' : progress + '/' + q.target + ' — 5💎'}</div>
     </div>
   `;
 }
@@ -4041,7 +3491,6 @@ function claimDailyQuest() {
   if (!state.dailyQuest || state.dailyQuest.claimed) return;
   state.dailyQuest.claimed = true;
   addGems(5);
-  addXp(8);
   saveState();
   playSound('reward');
   createConfetti(30);
@@ -4155,7 +3604,6 @@ function getDiffStars(level, max) {
 
 // ==================== INIT ====================
 saveState();
-updateLevelDisplay();
 checkBadges();
 updateSoundButtons();
 initDailyQuest();
