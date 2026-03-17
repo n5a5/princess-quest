@@ -868,13 +868,13 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
           <span class="mode-icon">🌺</span>
           <div class="mode-label">Medium (12 pairs)</div>
         </div>
-        <div class="mode-card" role="button" onclick="startMemoryGame(14)">
+        <div class="mode-card" role="button" onclick="startMemoryGame(15)">
           <span class="mode-icon">🌻</span>
-          <div class="mode-label">Hard (14 pairs)</div>
+          <div class="mode-label">Hard (15 pairs)</div>
         </div>
-        <div class="mode-card" role="button" onclick="startMemoryGame(16)">
+        <div class="mode-card" role="button" onclick="startMemoryGame(18)">
           <span class="mode-icon">👑</span>
-          <div class="mode-label">Expert (16 pairs)</div>
+          <div class="mode-label">Expert (18 pairs)</div>
         </div>
       </div>
     </div>
@@ -4793,7 +4793,7 @@ function nextSense() {
 }
 
 // ==================== MEMORY PALACE ====================
-const memoryEmojis = ['🦄','🌈','⭐','🦋','🌸','💎','🎀','👑','🍭','🌙','❤️','🔮','🐱','🌻','🎶','🧁'];
+const memoryEmojis = ['🦄','🌈','⭐','🦋','🌸','💎','🎀','👑','🍭','🌙','❤️','🔮','🐱','🌻','🎶','🧁','🐶','🍀'];
 let memoryFlipped = [];
 let memoryMatched = 0;
 let memoryMoves = 0;
@@ -4823,7 +4823,7 @@ function startMemoryGame(pairs) {
   // Set grid columns
   const grid = document.getElementById('memory-grid');
   grid.innerHTML = '';
-  const cols = pairs >= 14 ? 6 : pairs >= 10 ? 5 : 4;
+  const cols = pairs >= 12 ? 6 : pairs >= 10 ? 5 : 4;
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
 
   deck.forEach((emoji, idx) => {
