@@ -290,7 +290,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .diff-star.empty { opacity: 0.25; }
 
 /* SOUND CONTROLS */
-.sound-toggle { background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; font-size: 18px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0; }
+.sound-toggle { background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); color: white; font-size: 18px; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0; }
 .sound-toggle:active { transform: scale(0.9); }
 .sound-toggle.muted { opacity: 0.4; background: rgba(0,0,0,0.2); }
 
@@ -403,9 +403,9 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 /* 3B: NUMBER LINE */
 #number-line-area { text-align: center; }
 .number-line-row { display: flex; justify-content: center; gap: 2px; flex-wrap: wrap; margin: 18px auto; max-width: 480px; }
-.nl-box { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Fredoka One', cursive; font-size: 16px; color: #581c87; background: white; border: 2px solid #d8b4fe; flex-shrink: 0; }
+.nl-box { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Fredoka One', cursive; font-size: 16px; color: #581c87; background: white; border: 2px solid #d8b4fe; flex-shrink: 0; }
 .nl-box.nl-missing { background: linear-gradient(135deg, #fde68a, #fbbf24); border-color: #f59e0b; font-size: 20px; color: #92400e; animation: pulse 1s ease-in-out infinite; }
-@media (max-width: 420px) { .nl-box { width: 28px; height: 28px; font-size: 12px; } .nl-box.nl-missing { font-size: 14px; } }
+@media (max-width: 420px) { .nl-box { width: 38px; height: 38px; font-size: 14px; } .nl-box.nl-missing { font-size: 16px; } }
 
 /* 3C: LETTER TRACING */
 #letter-trace-area { text-align: center; }
@@ -428,7 +428,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .module-card:nth-child(7) .icon { animation-delay: 3s; }
 
 /* MEMORY PALACE */
-.memory-grid { display: grid; gap: 8px; max-width: 400px; margin: 16px auto; }
+.memory-grid { display: grid; gap: 6px; max-width: 440px; margin: 16px auto; }
 .memory-card { aspect-ratio: 1; border-radius: 16px; cursor: pointer; position: relative; transform-style: preserve-3d; transition: transform 0.5s; }
 .memory-card.flipped { transform: rotateY(180deg); }
 .memory-card.matched { transform: rotateY(180deg); pointer-events: none; }
@@ -860,21 +860,21 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div class="game-title">🧠 Memory Palace</div>
     <div id="memory-mode-select">
       <div class="mode-grid">
-        <div class="mode-card" role="button" onclick="startMemoryGame(4)">
-          <span class="mode-icon">🌸</span>
-          <div class="mode-label">Easy (4 pairs)</div>
-        </div>
-        <div class="mode-card" role="button" onclick="startMemoryGame(6)">
-          <span class="mode-icon">🌺</span>
-          <div class="mode-label">Medium (6 pairs)</div>
-        </div>
         <div class="mode-card" role="button" onclick="startMemoryGame(8)">
-          <span class="mode-icon">🌻</span>
-          <div class="mode-label">Hard (8 pairs)</div>
+          <span class="mode-icon">🌸</span>
+          <div class="mode-label">Easy (8 pairs)</div>
         </div>
-        <div class="mode-card" role="button" onclick="startMemoryGame(10)">
+        <div class="mode-card" role="button" onclick="startMemoryGame(12)">
+          <span class="mode-icon">🌺</span>
+          <div class="mode-label">Medium (12 pairs)</div>
+        </div>
+        <div class="mode-card" role="button" onclick="startMemoryGame(14)">
+          <span class="mode-icon">🌻</span>
+          <div class="mode-label">Hard (14 pairs)</div>
+        </div>
+        <div class="mode-card" role="button" onclick="startMemoryGame(16)">
           <span class="mode-icon">👑</span>
-          <div class="mode-label">Expert (10 pairs)</div>
+          <div class="mode-label">Expert (16 pairs)</div>
         </div>
       </div>
     </div>
@@ -949,7 +949,14 @@ const defaultState = {
   memoryBestMoves: {},    // best move count per difficulty {4: N, 6: N, 8: N, 10: N}
   hiddenModules: []       // modules hidden by parent ['calm', 'memory', etc.]
 };
-let state = JSON.parse(localStorage.getItem('princessQuest') || 'null') || {...defaultState};
+let state;
+try {
+  state = JSON.parse(localStorage.getItem('princessQuest') || 'null') || {...defaultState};
+} catch (e) {
+  console.warn('State corrupted, resetting:', e);
+  state = {...defaultState};
+  try { localStorage.removeItem('princessQuest'); } catch (e2) {}
+}
 // Merge in any new fields from defaultState that old saves don't have
 Object.keys(defaultState).forEach(k => { if (!(k in state)) state[k] = defaultState[k]; });
 
@@ -1108,8 +1115,9 @@ function saveState() {
     state.dailyActivities = 0;
     state.lastPlayDate = today;
   }
-  localStorage.setItem('princessQuest', JSON.stringify(state));
-  document.getElementById('gem-count').textContent = state.gems;
+  try { localStorage.setItem('princessQuest', JSON.stringify(state)); } catch (e) { console.warn('Storage save failed:', e); }
+  const gemCountEl = document.getElementById('gem-count');
+  if (gemCountEl) gemCountEl.textContent = state.gems;
 }
 
 function addGems(n) {
@@ -1119,8 +1127,10 @@ function addGems(n) {
   playSound('reward');
   // Flash the gem counter
   const gemsEl = document.querySelector('#gem-bar .gems');
-  gemsEl.classList.add('flash');
-  setTimeout(() => gemsEl.classList.remove('flash'), 400);
+  if (gemsEl) {
+    gemsEl.classList.add('flash');
+    setTimeout(() => gemsEl.classList.remove('flash'), 400);
+  }
 }
 
 // ==================== SOUND & MUSIC CONTROLS ====================
@@ -1489,6 +1499,8 @@ function goHome() {
     applyHiddenModules();
   });
   // Stop all ongoing activity timers and speech
+  clearAllActivityTimers();
+  clearHintTimer();
   clearTimeout(calmTimer);
   speechSynthesis.cancel();
 }
@@ -2201,6 +2213,7 @@ function generateWordMatch() {
     btn.style.fontSize = '22px';
     btn.textContent = opt;
     btn.onclick = (e) => {
+      clearHintTimer();
       if (opt === target.word) {
         btn.classList.add('correct');
         playSound('correct');
@@ -2211,7 +2224,7 @@ function generateWordMatch() {
         trackWordAccuracy(target.word, true);
         maybeIncreaseDifficulty('word');
         showReward('📖', 'You read ' + target.word + '!', 5);
-        setTimeout(generateWordMatch, 1800);
+        setActivityTimer(generateWordMatch, 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -2225,6 +2238,7 @@ function generateWordMatch() {
     };
     container.appendChild(btn);
   });
+  startHintTimer('Look at the picture for a clue!');
 }
 
 // --- SPELL IT! (combines Build Words + Missing Letter) ---
@@ -2260,6 +2274,7 @@ function generateWordBuild() {
   speak('Can you spell ' + buildTarget.word + '? Tap the letters!');
   updateBuildDisplay();
   showBuildLetters();
+  startHintTimer('Sound it out! What letter comes next?');
 }
 
 function updateBuildDisplay() {
@@ -2290,6 +2305,7 @@ function showBuildLetters() {
     btn.style.padding = '14px';
     btn.textContent = letter;
     btn.onclick = (e) => {
+      clearHintTimer();
       const nextLetter = buildTarget.word[buildProgress.length];
       if (letter === nextLetter) {
         buildProgress += letter;
@@ -2305,7 +2321,7 @@ function showBuildLetters() {
           trackWordAccuracy(buildTarget.word, true);
           maybeIncreaseDifficulty('word');
           showReward('✏️', 'You spelled ' + buildTarget.word + '!', 8);
-          setTimeout(generateSpellIt, 1800);
+          setActivityTimer(generateSpellIt, 1800);
         }
       } else {
         btn.classList.add('wrong');
@@ -2370,6 +2386,7 @@ function generateRhyme() {
     btn.style.fontSize = '22px';
     btn.textContent = opt;
     btn.onclick = (e) => {
+      clearHintTimer();
       if (opt === correct) {
         btn.classList.add('correct');
         playSound('correct');
@@ -2380,7 +2397,7 @@ function generateRhyme() {
         trackWordAccuracy(target, true);
         maybeIncreaseDifficulty('word');
         showReward('🎵', target + ' and ' + correct + ' rhyme!', 6);
-        setTimeout(generateRhyme, 1800);
+        setActivityTimer(generateRhyme, 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -2397,6 +2414,7 @@ function generateRhyme() {
     };
     container.appendChild(btn);
   });
+  startHintTimer('Which word sounds the same at the end?');
 }
 
 // --- MISSING LETTER ---
@@ -2436,6 +2454,7 @@ function generateMissingLetter() {
     btn.style.fontSize = '26px';
     btn.textContent = opt;
     btn.onclick = (e) => {
+      clearHintTimer();
       if (opt === missingLetter) {
         btn.classList.add('correct');
         document.getElementById('ml-word').textContent = word;
@@ -2447,7 +2466,7 @@ function generateMissingLetter() {
         trackWordAccuracy(word, true);
         maybeIncreaseDifficulty('word');
         showReward('🔍', 'You found the ' + missingLetter + ' in ' + word + '!', 6);
-        setTimeout(generateSpellIt, 1800);
+        setActivityTimer(generateSpellIt, 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -2464,6 +2483,7 @@ function generateMissingLetter() {
     };
     container.appendChild(btn);
   });
+  startHintTimer('Sound it out! What letter comes next?');
 }
 
 // ==================== NUMBER KINGDOM ====================
@@ -2525,16 +2545,18 @@ function generateCountingProblem() {
     };
     area.appendChild(span);
   }
+  startHintTimer('Tap each one to count them!');
 }
 
 function checkCount() {
+  clearHintTimer();
   if (currentCount === countTarget) {
     state.mathCompleted++;
     showReaction('correct');
     addStreak();
     maybeIncreaseDifficulty('math');
     showReward('🔢', 'You counted to ' + countTarget + '!', 5);
-    setTimeout(generateCountingProblem, 1800);
+    setActivityTimer(generateCountingProblem, 1800);
   } else {
     playSound('wrong');
     showReaction('wrong');
@@ -2575,6 +2597,7 @@ function generateAddition() {
     btn.className = 'answer-btn';
     btn.textContent = opt;
     btn.onclick = (e) => {
+      clearHintTimer();
       if (opt === correct) {
         btn.classList.add('correct');
         playSound('correct');
@@ -2584,7 +2607,7 @@ function generateAddition() {
         state.mathCompleted++;
         maybeIncreaseDifficulty('math');
         showReward('🧮', mathA + ' + ' + mathB + ' = ' + correct + '!', 5);
-        setTimeout(generateAddition, 1800);
+        setActivityTimer(generateAddition, 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -2598,6 +2621,7 @@ function generateAddition() {
     };
     container.appendChild(btn);
   });
+  startHintTimer('Try counting on your fingers!');
 }
 
 // --- WHAT COMES NEXT? (combines patterns + skip counting) ---
@@ -2663,6 +2687,7 @@ function generatePattern() {
     btn.className = 'answer-btn';
     btn.textContent = opt;
     btn.onclick = (e) => {
+      clearHintTimer();
       if (opt === correct) {
         btn.classList.add('correct');
         playSound('correct');
@@ -2690,6 +2715,7 @@ function generatePattern() {
     };
     container.appendChild(btn);
   });
+  startHintTimer('Look at the pattern! What comes next?');
 }
 
 // --- BIGGER OR SMALLER ---
@@ -2731,6 +2757,7 @@ function generateCompare() {
     btn.style.fontSize = '36px';
     btn.textContent = opt;
     btn.onclick = (e) => {
+      clearHintTimer();
       if (opt === correct) {
         btn.classList.add('correct');
         playSound('correct');
@@ -2740,7 +2767,7 @@ function generateCompare() {
         state.mathCompleted++;
         maybeIncreaseDifficulty('math');
         showReward(emoji, correct + ' is ' + questionWord + '!', 5);
-        setTimeout(generateCompare, 1800);
+        setActivityTimer(generateCompare, 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -2759,6 +2786,7 @@ function generateCompare() {
     };
     container.appendChild(btn);
   });
+  startHintTimer('Which number is bigger? Think about counting!');
 }
 
 // --- SUBTRACTION (unlocked at math level 2+) ---
@@ -2798,6 +2826,7 @@ function generateSubtraction() {
     btn.className = 'answer-btn';
     btn.textContent = opt;
     btn.onclick = (e) => {
+      clearHintTimer();
       if (opt === correct) {
         btn.classList.add('correct');
         playSound('correct');
@@ -2807,7 +2836,7 @@ function generateSubtraction() {
         state.mathCompleted++;
         maybeIncreaseDifficulty('math');
         showReward('🧮', mathA + ' − ' + mathB + ' = ' + correct + '!', 5);
-        setTimeout(generateSubtraction, 1800);
+        setActivityTimer(generateSubtraction, 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -2821,6 +2850,7 @@ function generateSubtraction() {
     };
     container.appendChild(btn);
   });
+  startHintTimer('Try taking away with your fingers!');
 }
 
 // --- SKIP COUNTING (interactive count by 2s, 5s, 10s) ---
@@ -2895,6 +2925,29 @@ function generateSkipCount() {
 
 // ==================== CALM CASTLE ====================
 let calmTimer;
+
+let activityTimers = []; // registry for setTimeout IDs to clear on navigation
+function setActivityTimer(fn, delay) {
+  const id = setTimeout(fn, delay);
+  activityTimers.push(id);
+  return id;
+}
+function clearAllActivityTimers() {
+  activityTimers.forEach(id => clearTimeout(id));
+  activityTimers = [];
+}
+
+let hintTimer = null;
+function startHintTimer(hintText) {
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => {
+    speak(hintText || 'Take your time! You can do it!');
+  }, 10000);
+}
+function clearHintTimer() {
+  clearTimeout(hintTimer);
+  hintTimer = null;
+}
 
 function initCalm() {
   document.getElementById('calm-menu').style.display = 'block';
@@ -4038,6 +4091,7 @@ function generateSoundMatch() {
     btn.style.fontSize = '36px';
     btn.textContent = opt;
     btn.onclick = (e) => {
+      clearHintTimer();
       if (opt === target.letter) {
         btn.classList.add('correct');
         playSound('correct');
@@ -4052,7 +4106,7 @@ function generateSoundMatch() {
         if (!state.lettersKnown.includes(target.letter)) state.lettersKnown.push(target.letter);
         saveState();
         showReward('🔤', target.letter + ' says ' + target.sound + '!', 5);
-        setTimeout(generateSoundMatch, 1800);
+        setActivityTimer(generateSoundMatch, 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -4069,6 +4123,7 @@ function generateSoundMatch() {
     };
     container.appendChild(btn);
   });
+  startHintTimer('Say the sound out loud! Which letter makes it?');
 }
 
 function speakSoundMatchHint() {
@@ -4236,6 +4291,7 @@ function generateClockProblem() {
     btn.style.borderRadius = '16px';
     btn.textContent = opt;
     btn.onclick = (e) => {
+      clearHintTimer();
       if (opt === timeStr) {
         btn.classList.add('correct');
         playSound('correct');
@@ -4251,7 +4307,7 @@ function generateClockProblem() {
         // Advance to half-hours after 10 correct
         if (clockCorrectCount >= 10) clockUseHalfHours = true;
         showReward('🕐', 'It\'s ' + timeStr + '!', 5);
-        setTimeout(generateClockProblem, 1800);
+        setActivityTimer(generateClockProblem, 1800);
       } else {
         btn.classList.add('wrong');
         playSound('wrong');
@@ -4265,6 +4321,7 @@ function generateClockProblem() {
     };
     container.appendChild(btn);
   });
+  startHintTimer('Look at where the short hand points!');
 }
 
 // ==================== SHAPES ACTIVITY (Number Kingdom) ====================
@@ -4344,9 +4401,11 @@ function generateShapeQuiz() {
 
   // Alternate quiz type for next round
   shapeQuizType = shapeQuizType === 'name' ? 'find' : 'name';
+  startHintTimer('Look carefully at the shape!');
 }
 
 function handleShapeAnswer(btn, chosen, correct, e) {
+  clearHintTimer();
   if (chosen === correct) {
     btn.classList.add('correct');
     playSound('correct');
@@ -4359,7 +4418,7 @@ function handleShapeAnswer(btn, chosen, correct, e) {
     maybeIncreaseDifficulty('math');
     saveState();
     showReward('🔷', 'You know your shapes!', 5);
-    setTimeout(generateShapeQuiz, 1800);
+    setActivityTimer(generateShapeQuiz, 1800);
   } else {
     btn.classList.add('wrong');
     playSound('wrong');
@@ -4424,9 +4483,11 @@ function generateWordCategory() {
     btn.onclick = (e) => checkCategoryWord(btn, word, belongs, e);
     grid.appendChild(btn);
   });
+  startHintTimer('Think about which words belong together!');
 }
 
 function checkCategoryWord(btn, word, belongs, e) {
+  clearHintTimer();
   if (btn.classList.contains('cat-correct')) return;
   haptic('tap');
   if (belongs) {
@@ -4441,7 +4502,7 @@ function checkCategoryWord(btn, word, belongs, e) {
       state.totalActivities++;
       saveState();
       showReward('🗂️', 'Great sorting!', 5);
-      setTimeout(generateWordCategory, 2000);
+      setActivityTimer(generateWordCategory, 2000);
     }
   } else {
     btn.classList.add('cat-wrong');
@@ -4507,9 +4568,11 @@ function generateNumberLine() {
     btn.onclick = (e) => checkNumberLineAnswer(btn, opt, e);
     container.appendChild(btn);
   });
+  startHintTimer('Count the numbers around the question mark!');
 }
 
 function checkNumberLineAnswer(btn, chosen, e) {
+  clearHintTimer();
   if (chosen === nlMissing) {
     btn.classList.add('correct');
     playSound('correct');
@@ -4521,7 +4584,7 @@ function checkNumberLineAnswer(btn, chosen, e) {
     maybeIncreaseDifficulty('math');
     saveState();
     showReward('📏', 'The missing number was ' + nlMissing + '!', 5);
-    setTimeout(generateNumberLine, 1800);
+    setActivityTimer(generateNumberLine, 1800);
   } else {
     btn.classList.add('wrong');
     playSound('wrong');
@@ -4730,7 +4793,7 @@ function nextSense() {
 }
 
 // ==================== MEMORY PALACE ====================
-const memoryEmojis = ['🦄','🌈','⭐','🦋','🌸','💎','🎀','👑','🍭','🌙','❤️','🔮'];
+const memoryEmojis = ['🦄','🌈','⭐','🦋','🌸','💎','🎀','👑','🍭','🌙','❤️','🔮','🐱','🌻','🎶','🧁'];
 let memoryFlipped = [];
 let memoryMatched = 0;
 let memoryMoves = 0;
@@ -4760,7 +4823,7 @@ function startMemoryGame(pairs) {
   // Set grid columns
   const grid = document.getElementById('memory-grid');
   grid.innerHTML = '';
-  const cols = pairs >= 10 ? 5 : 4;
+  const cols = pairs >= 14 ? 6 : pairs >= 10 ? 5 : 4;
   grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
 
   deck.forEach((emoji, idx) => {
@@ -4802,6 +4865,7 @@ function flipCard(card) {
 
         if (memoryMatched === memoryPairs) {
           // All matched — calculate reward
+          if (!state.memoryBestMoves) state.memoryBestMoves = {};
           const best = state.memoryBestMoves[memoryPairs];
           if (!best || memoryMoves < best) {
             state.memoryBestMoves[memoryPairs] = memoryMoves;
