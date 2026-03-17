@@ -1414,8 +1414,8 @@ if ('speechSynthesis' in window) {
   speechSynthesis.onvoiceschanged = loadVoice;
   setTimeout(loadVoice, 100); // Some browsers need a delay
   loadVoice();
-  // Chrome speech synthesis keepalive workaround
-  setInterval(() => { if (speechSynthesis.speaking) { speechSynthesis.pause(); speechSynthesis.resume(); } }, 10000);
+  // Chrome speech synthesis keepalive workaround — must be frequent to prevent cutoff
+  setInterval(() => { if (speechSynthesis.speaking && !speechSynthesis.paused) { speechSynthesis.pause(); speechSynthesis.resume(); } }, 5000);
 }
 
 function speak(text) {
@@ -1424,25 +1424,14 @@ function speak(text) {
   // Clean text of emojis for more natural speech
   const cleanText = text.replace(/[\u{1F300}-\u{1FAF8}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\.{2,}/g, '.').replace(/\s+/g, ' ').trim();
   if (!cleanText) return;
-  // Split into sentences for natural pauses between phrases
-  const sentences = cleanText.split(/(?<=[.!?])\s+/).filter(s => s.trim());
-  sentences.forEach((sentence, i) => {
-    const u = new SpeechSynthesisUtterance(sentence);
-    // Warm, gentle, encouraging — like a kind older sister reading a bedtime story
-    u.rate = 0.82;    // Relaxed pace, easy for a 6yo to follow
-    u.pitch = 1.08;   // Warm but natural, not squeaky or robotic
-    u.volume = 0.92;
-    if (selectedVoice) u.voice = selectedVoice;
-    // Add a tiny pause between sentences for natural cadence
-    if (i > 0) {
-      const pause = new SpeechSynthesisUtterance(' ');
-      pause.volume = 0;
-      pause.rate = 0.5;
-      if (selectedVoice) pause.voice = selectedVoice;
-      speechSynthesis.speak(pause);
-    }
-    speechSynthesis.speak(u);
-  });
+  // Speak as one utterance to avoid Chrome dropping queued utterances
+  const u = new SpeechSynthesisUtterance(cleanText);
+  // Warm, gentle, encouraging — like a kind older sister reading a bedtime story
+  u.rate = 0.82;    // Relaxed pace, easy for a 6yo to follow
+  u.pitch = 1.08;   // Warm but natural, not squeaky or robotic
+  u.volume = 0.92;
+  if (selectedVoice) u.voice = selectedVoice;
+  speechSynthesis.speak(u);
 }
 
 // ==================== NAVIGATION ====================
@@ -4199,10 +4188,8 @@ function drawClock(hour, minutes) {
   svg += numbersHtml;
   // Hour hand
   svg += '<line x1="100" y1="100" x2="' + hx + '" y2="' + hy + '" stroke="#7c3aed" stroke-width="6" stroke-linecap="round"/>';
-  // Minute hand (only for half-hours)
-  if (minutes > 0) {
-    svg += '<line x1="100" y1="100" x2="' + mx + '" y2="' + my + '" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>';
-  }
+  // Minute hand (always shown)
+  svg += '<line x1="100" y1="100" x2="' + mx + '" y2="' + my + '" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>';
   // Center dot
   svg += '<circle cx="100" cy="100" r="5" fill="#7c3aed"/>';
   svg += '</svg>';
