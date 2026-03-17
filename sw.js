@@ -1,8 +1,9 @@
-const CACHE_NAME = 'princess-quest-v2';
+const CACHE_NAME = 'princess-quest-v3';
 const ASSETS = [
   '/princess-quest/',
   '/princess-quest/index.html',
   '/princess-quest/manifest.json',
+  '/princess-quest/princess.png',
   'https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@600;700;800&display=swap'
 ];
 

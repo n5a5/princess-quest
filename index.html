@@ -384,7 +384,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 
 /* 4E: HOME SCREEN CHARACTER */
 .home-princess { text-align: center; margin: 10px auto 0; cursor: pointer; position: relative; }
-.home-princess .princess-emoji { font-size: 60px; display: inline-block; animation: float 3s ease-in-out infinite; }
+.home-princess .princess-emoji { display: inline-block; animation: float 3s ease-in-out infinite; }
 .home-princess .speech-bubble { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: white; border-radius: 16px; padding: 8px 16px; font-family: 'Fredoka One', cursive; font-size: 14px; color: #7c3aed; box-shadow: 0 4px 12px rgba(0,0,0,0.1); white-space: nowrap; animation: bounceIn 0.3s ease-out; pointer-events: none; }
 .home-princess .speech-bubble::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 8px solid transparent; border-top-color: white; }
 @keyframes princessBounce { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15) rotate(5deg); } }
@@ -572,7 +572,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
   </div>
   <div class="home-princess" id="home-princess" onclick="princessTap()">
     <div id="princess-speech" style="display:none"></div>
-    <div class="princess-emoji">👸</div>
+    <img class="princess-emoji" src="princess.png" alt="Princess" style="width:120px;height:auto;display:inline-block;animation:float 3s ease-in-out infinite">
   </div>
 </div>
 
