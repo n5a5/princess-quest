@@ -1424,8 +1424,6 @@ if ('speechSynthesis' in window) {
   speechSynthesis.onvoiceschanged = loadVoice;
   setTimeout(loadVoice, 100); // Some browsers need a delay
   loadVoice();
-  // Chrome speech synthesis keepalive workaround — must be frequent to prevent cutoff
-  setInterval(() => { if (speechSynthesis.speaking && !speechSynthesis.paused) { speechSynthesis.pause(); speechSynthesis.resume(); } }, 5000);
 }
 
 let speakQueue = [];
