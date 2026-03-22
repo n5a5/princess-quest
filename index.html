@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Princess Quest</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#7c3aed">
@@ -1446,22 +1446,24 @@ function speak(text) {
 
 // ==================== NAVIGATION ====================
 function transitionScreens(fromScreen, toScreen, cb) {
+  window.scrollTo(0, 0);
   if (fromScreen) {
+    let done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      fromScreen.classList.remove('active', 'exiting');
+      toScreen.classList.add('active');
+      window.scrollTo(0, 0);
+      if (cb) cb();
+    }
     fromScreen.classList.add('exiting');
     fromScreen.addEventListener('animationend', function handler() {
       fromScreen.removeEventListener('animationend', handler);
-      fromScreen.classList.remove('active', 'exiting');
-      toScreen.classList.add('active');
-      if (cb) cb();
+      finish();
     }, { once: true });
     // Safety fallback in case animationend doesn't fire
-    setTimeout(() => {
-      fromScreen.classList.remove('active', 'exiting');
-      if (!toScreen.classList.contains('active')) {
-        toScreen.classList.add('active');
-        if (cb) cb();
-      }
-    }, 400);
+    setTimeout(finish, 400);
   } else {
     toScreen.classList.add('active');
     if (cb) cb();
@@ -1473,7 +1475,6 @@ function openModule(mod) {
   playSound('module-enter');
   const currentScreen = document.querySelector('.screen.active');
   const nextScreen = document.getElementById(mod + '-screen');
-  document.querySelectorAll('.screen').forEach(s => { if (s !== currentScreen) s.classList.remove('active'); });
   transitionScreens(currentScreen, nextScreen, () => {
     document.getElementById('back-btn').style.display = 'block';
     if (mod === 'words') initWords();
@@ -1490,7 +1491,6 @@ function goHome() {
   playSound('click');
   const currentScreen = document.querySelector('.screen.active');
   const mapScreen = document.getElementById('map-screen');
-  document.querySelectorAll('.screen').forEach(s => { if (s !== currentScreen) s.classList.remove('active'); });
   transitionScreens(currentScreen, mapScreen, () => {
     document.getElementById('back-btn').style.display = 'none';
     updateDailyQuest();
