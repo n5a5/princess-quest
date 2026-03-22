@@ -1428,25 +1428,31 @@ if ('speechSynthesis' in window) {
   setInterval(() => { if (speechSynthesis.speaking && !speechSynthesis.paused) { speechSynthesis.pause(); speechSynthesis.resume(); } }, 5000);
 }
 
+let speakQueue = [];
 function speak(text) {
   if (!('speechSynthesis' in window) || soundMuted || state.speechEnabled === false) return;
   speechSynthesis.cancel();
+  speakQueue = [];
   // Clean text of emojis for more natural speech
   const cleanText = text.replace(/[\u{1F300}-\u{1FAF8}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\.{2,}/g, '.').replace(/\s+/g, ' ').trim();
   if (!cleanText) return;
-  // Split into sentences to avoid Chrome killing long utterances after ~15s
-  const sentences = cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText];
-  sentences.forEach(sentence => {
-    const s = sentence.trim();
-    if (!s) return;
-    const u = new SpeechSynthesisUtterance(s);
-    // Warm, gentle, encouraging — like a kind older sister reading a bedtime story
-    u.rate = 0.82;    // Relaxed pace, easy for a 6yo to follow
-    u.pitch = 1.08;   // Warm but natural, not squeaky or robotic
-    u.volume = 0.92;
-    if (selectedVoice) u.voice = selectedVoice;
-    speechSynthesis.speak(u);
-  });
+  // Split into sentences — mobile Chrome drops queued utterances,
+  // so we chain them via onend instead of queuing all at once
+  const sentences = (cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText]).map(s => s.trim()).filter(s => s);
+  speakQueue = sentences;
+  speakNext();
+}
+function speakNext() {
+  if (!speakQueue.length) return;
+  const s = speakQueue.shift();
+  const u = new SpeechSynthesisUtterance(s);
+  u.rate = 0.82;
+  u.pitch = 1.08;
+  u.volume = 0.92;
+  if (selectedVoice) u.voice = selectedVoice;
+  u.onend = () => speakNext();
+  u.onerror = () => speakNext();
+  speechSynthesis.speak(u);
 }
 
 // ==================== NAVIGATION ====================
@@ -1507,6 +1513,7 @@ function goHome() {
   clearAllActivityTimers();
   clearHintTimer();
   clearTimeout(calmTimer);
+  speakQueue = [];
   speechSynthesis.cancel();
 }
 
