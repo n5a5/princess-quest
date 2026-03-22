@@ -1428,29 +1428,25 @@ if ('speechSynthesis' in window) {
   setInterval(() => { if (speechSynthesis.speaking && !speechSynthesis.paused) { speechSynthesis.pause(); speechSynthesis.resume(); } }, 5000);
 }
 
-let speechKeepAlive = null;
 function speak(text) {
   if (!('speechSynthesis' in window) || soundMuted || state.speechEnabled === false) return;
   speechSynthesis.cancel();
-  clearInterval(speechKeepAlive);
   // Clean text of emojis for more natural speech
   const cleanText = text.replace(/[\u{1F300}-\u{1FAF8}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\.{2,}/g, '.').replace(/\s+/g, ' ').trim();
   if (!cleanText) return;
-  const u = new SpeechSynthesisUtterance(cleanText);
-  // Warm, gentle, encouraging — like a kind older sister reading a bedtime story
-  u.rate = 0.82;    // Relaxed pace, easy for a 6yo to follow
-  u.pitch = 1.08;   // Warm but natural, not squeaky or robotic
-  u.volume = 0.92;
-  if (selectedVoice) u.voice = selectedVoice;
-  // Chrome silently kills long utterances after ~15s; pause/resume keeps it alive
-  speechKeepAlive = setInterval(() => {
-    if (!speechSynthesis.speaking) { clearInterval(speechKeepAlive); return; }
-    speechSynthesis.pause();
-    speechSynthesis.resume();
-  }, 10000);
-  u.onend = () => clearInterval(speechKeepAlive);
-  u.onerror = () => clearInterval(speechKeepAlive);
-  speechSynthesis.speak(u);
+  // Split into sentences to avoid Chrome killing long utterances after ~15s
+  const sentences = cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText];
+  sentences.forEach(sentence => {
+    const s = sentence.trim();
+    if (!s) return;
+    const u = new SpeechSynthesisUtterance(s);
+    // Warm, gentle, encouraging — like a kind older sister reading a bedtime story
+    u.rate = 0.82;    // Relaxed pace, easy for a 6yo to follow
+    u.pitch = 1.08;   // Warm but natural, not squeaky or robotic
+    u.volume = 0.92;
+    if (selectedVoice) u.voice = selectedVoice;
+    speechSynthesis.speak(u);
+  });
 }
 
 // ==================== NAVIGATION ====================
@@ -1511,7 +1507,6 @@ function goHome() {
   clearAllActivityTimers();
   clearHintTimer();
   clearTimeout(calmTimer);
-  clearInterval(speechKeepAlive);
   speechSynthesis.cancel();
 }
 
