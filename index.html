@@ -1429,20 +1429,22 @@ if ('speechSynthesis' in window) {
 }
 
 let speakQueue = [];
+let speakPoll = null;
 function speak(text) {
   if (!('speechSynthesis' in window) || soundMuted || state.speechEnabled === false) return;
   speechSynthesis.cancel();
   speakQueue = [];
+  clearInterval(speakPoll);
   // Clean text of emojis for more natural speech
   const cleanText = text.replace(/[\u{1F300}-\u{1FAF8}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\.{2,}/g, '.').replace(/\s+/g, ' ').trim();
   if (!cleanText) return;
   // Split into short chunks at natural breaks (. ! ? , ; — :)
-  // Mobile browsers kill long utterances; keep each chunk short
   const chunks = cleanText.match(/[^.!?,;:\u2014]+[.!?,;:\u2014]+|[^.!?,;:\u2014]+$/g) || [cleanText];
   speakQueue = chunks.map(s => s.trim()).filter(s => s);
   speakNext();
 }
 function speakNext() {
+  clearInterval(speakPoll);
   if (!speakQueue.length) return;
   const s = speakQueue.shift();
   const u = new SpeechSynthesisUtterance(s);
@@ -1450,9 +1452,14 @@ function speakNext() {
   u.pitch = 1.08;
   u.volume = 0.92;
   if (selectedVoice) u.voice = selectedVoice;
-  u.onend = () => speakNext();
-  u.onerror = () => speakNext();
   speechSynthesis.speak(u);
+  // Mobile browsers don't fire onend reliably; poll to detect when done
+  speakPoll = setInterval(() => {
+    if (!speechSynthesis.speaking) {
+      clearInterval(speakPoll);
+      speakNext();
+    }
+  }, 200);
 }
 
 // ==================== NAVIGATION ====================
@@ -1514,6 +1521,7 @@ function goHome() {
   clearHintTimer();
   clearTimeout(calmTimer);
   speakQueue = [];
+  clearInterval(speakPoll);
   speechSynthesis.cancel();
 }
 
