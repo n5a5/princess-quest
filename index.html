@@ -1429,20 +1429,22 @@ if ('speechSynthesis' in window) {
 }
 
 let speakQueue = [];
+let speechTimer = null;
 function speak(text) {
   if (!('speechSynthesis' in window) || soundMuted || state.speechEnabled === false) return;
   speechSynthesis.cancel();
   speakQueue = [];
+  clearInterval(speechTimer);
   // Clean text of emojis for more natural speech
   const cleanText = text.replace(/[\u{1F300}-\u{1FAF8}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}]/gu, '').replace(/\.{2,}/g, '.').replace(/\s+/g, ' ').trim();
   if (!cleanText) return;
-  // Split into sentences — mobile Chrome drops queued utterances,
-  // so we chain them via onend instead of queuing all at once
+  // Split into sentences and chain via onend (mobile Chrome drops queued utterances)
   const sentences = (cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText]).map(s => s.trim()).filter(s => s);
   speakQueue = sentences;
   speakNext();
 }
 function speakNext() {
+  clearInterval(speechTimer);
   if (!speakQueue.length) return;
   const s = speakQueue.shift();
   const u = new SpeechSynthesisUtterance(s);
@@ -1450,9 +1452,15 @@ function speakNext() {
   u.pitch = 1.08;
   u.volume = 0.92;
   if (selectedVoice) u.voice = selectedVoice;
-  u.onend = () => speakNext();
-  u.onerror = () => speakNext();
+  u.onend = () => { clearInterval(speechTimer); speakNext(); };
+  u.onerror = () => { clearInterval(speechTimer); speakNext(); };
   speechSynthesis.speak(u);
+  // Mobile Chrome kills utterances after a few seconds; pause/resume keeps it alive
+  speechTimer = setInterval(() => {
+    if (!speechSynthesis.speaking) { clearInterval(speechTimer); return; }
+    speechSynthesis.pause();
+    speechSynthesis.resume();
+  }, 5000);
 }
 
 // ==================== NAVIGATION ====================
@@ -1514,6 +1522,7 @@ function goHome() {
   clearHintTimer();
   clearTimeout(calmTimer);
   speakQueue = [];
+  clearInterval(speechTimer);
   speechSynthesis.cancel();
 }
 
