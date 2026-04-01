@@ -9,7 +9,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Princess Quest">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="princess.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>">
+<link rel="icon" type="image/png" href="princess.png">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -483,12 +485,12 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
       <div class="desc">Read adventures!</div>
     </div>
     <div class="module-card" role="button" aria-label="Open Royal Math Academy" onclick="openModule('math')">
-      <span class="icon">&#11088;</span>
+      <span class="icon">&#129518;</span>
       <div class="name">Royal Math</div>
       <div class="desc">Count with me!</div>
     </div>
     <div class="module-card" role="button" aria-label="Open Calm Corner" onclick="openModule('calm')">
-      <span class="icon">&#129412;</span>
+      <span class="icon">🫧</span>
       <div class="name">Calm Corner</div>
       <div class="desc">Feel nice and calm</div>
     </div>
@@ -520,7 +522,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 <!-- ============ ROYAL MATH ACADEMY SCREEN ============ -->
 <div id="math-screen" class="screen">
   <div class="game-area">
-    <div class="game-title">&#11088; Royal Math Academy <span class="diff-indicator" id="math-diff"></span></div>
+    <div class="game-title">&#129518; Royal Math Academy <span class="diff-indicator" id="math-diff"></span></div>
     <div id="math-mode-select">
       <div class="mode-grid">
         <div class="mode-card" role="button" onclick="Modules.math.startCounting()">
@@ -536,7 +538,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
           <div class="mode-label">Subtraction</div>
         </div>
         <div class="mode-card" role="button" onclick="Modules.math.startPatterns()">
-          <span class="mode-icon">&#128302;</span>
+          <span class="mode-icon">&#128311;</span>
           <div class="mode-label">Patterns</div>
         </div>
         <div class="mode-card" role="button" onclick="Modules.math.startCompare()">
@@ -544,7 +546,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
           <div class="mode-label">Compare</div>
         </div>
         <div class="mode-card" role="button" onclick="Modules.math.startShapes()">
-          <span class="mode-icon">&#128311;</span>
+          <span class="mode-icon">&#128314;</span>
           <div class="mode-label">Shapes</div>
         </div>
         <div class="mode-card" role="button" onclick="Modules.math.startClock()">
@@ -564,12 +566,12 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 <!-- ============ CALM CORNER SCREEN ============ -->
 <div id="calm-screen" class="screen">
   <div class="game-area">
-    <div class="game-title">&#129412; Calm Corner</div>
+    <div class="game-title">🫧 Calm Corner</div>
     <div id="calm-mode-select">
       <div class="calm-options">
         <div class="calm-card" role="button" onclick="Modules.calm.startBreathing()">
-          <div class="icon">&#129412;</div>
-          <div class="label">Unicorn Breathing</div>
+          <div class="icon">🫧</div>
+          <div class="label">Bubble Breathing</div>
         </div>
         <div class="calm-card" role="button" onclick="Modules.calm.startEmotions()">
           <div class="icon">&#128156;</div>
@@ -764,7 +766,7 @@ const allBadges = [
   { id: 'first-math', name: 'Number Star', icon: '\u2B50', desc: 'First math problem', check: () => state.mathCompleted >= 1 },
   { id: 'math-whiz', name: 'Math Whiz', icon: '\uD83E\uDDEE', desc: '10 math problems', check: () => state.mathCompleted >= 10 },
   { id: 'math-genius', name: 'Math Genius', icon: '\uD83C\uDF1F', desc: '25 math problems', check: () => state.mathCompleted >= 25 },
-  { id: 'calm-beginner', name: 'Calm Starter', icon: '\uD83E\uDD84', desc: '1 calm exercise', check: () => state.calmCompleted >= 1 },
+  { id: 'calm-beginner', name: 'Calm Starter', icon: '\uD83E\uDEE7', desc: '1 calm exercise', check: () => state.calmCompleted >= 1 },
   { id: 'zen-master', name: 'Zen Master', icon: '\uD83E\uDDD8', desc: '5 calm exercises', check: () => state.calmCompleted >= 5 },
   { id: 'storyteller', name: 'Storyteller', icon: '\uD83D\uDCD5', desc: 'Read 3 stories', check: () => state.storiesCompleted >= 3 },
   { id: 'problem-solver', name: 'Problem Solver', icon: '\uD83E\uDD17', desc: '3 scenarios', check: () => state.scenariosCompleted >= 3 },
@@ -3214,7 +3216,7 @@ registerModule('calm', {
     clearInterval(this._breatheInterval);
     state.calmCompleted++;
     saveState();
-    showReward('\uD83E\uDD84', 'Great breathing!', 5);
+    showReward('\uD83E\uDEE7', 'Great breathing!', 5);
     setActivityTimer(() => this.startBreathing(), 2000);
   },
 
@@ -4511,9 +4513,9 @@ registerModule('daily', {
 (function() {
   // Override the stubs from Part 1
   const questTypes = [
-    {text:'Complete 2 math problems',icon:'\u2B50',target:2,check:()=>state.mathCompleted,reward:5},
+    {text:'Complete 2 math problems',icon:'\uD83E\uDDEE',target:2,check:()=>state.mathCompleted,reward:5},
     {text:'Read a story',icon:'\uD83D\uDCD6',target:1,check:()=>state.storiesCompleted,reward:5},
-    {text:'Do a breathing exercise',icon:'\uD83E\uDD84',target:1,check:()=>state.calmCompleted,reward:5},
+    {text:'Do a breathing exercise',icon:'\uD83E\uDEE7',target:1,check:()=>state.calmCompleted,reward:5},
     {text:'Practice 3 words',icon:'\uD83D\uDD24',target:3,check:()=>(state.lettersLearned||[]).length,reward:5},
     {text:'Complete daily challenge',icon:'\uD83C\uDF1F',target:1,check:()=>(state.dailyChallengeHistory||[]).length,reward:8},
     {text:'Place an item in your kingdom',icon:'\uD83C\uDFF0',target:1,check:()=>Object.keys((state.kingdom||{}).grid||{}).length,reward:5},
