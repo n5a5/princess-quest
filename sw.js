@@ -1,4 +1,4 @@
-const CACHE_NAME = 'princess-quest-v9';
+const CACHE_NAME = 'princess-quest-v10';
 const ASSETS = [
   '/princess-quest/',
   '/princess-quest/index.html',

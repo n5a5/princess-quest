@@ -317,6 +317,15 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 .kingdom-toolbar button { font-family: 'Fredoka One', cursive; font-size: 13px; padding: 8px 16px; border-radius: 14px; border: 2px solid #86efac; background: #dcfce7; color: #065f46; cursor: pointer; min-height: 48px; }
 .kingdom-toolbar button:active { transform: scale(0.93); }
 
+.goodbye-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; background: linear-gradient(180deg, #fef3c7 0%, #fde68a 30%, #fb923c 60%, #f87171 85%, #581c87 100%); animation: fadeIn 1s; }
+.goodbye-overlay .goodbye-moon { font-size: 80px; animation: float 3s ease-in-out infinite; margin-bottom: 16px; }
+.goodbye-overlay .goodbye-title { font-family: 'Fredoka One', cursive; font-size: 32px; color: #581c87; margin-bottom: 8px; }
+.goodbye-overlay .goodbye-sub { font-size: 16px; font-weight: 700; color: #7c2d12; margin-bottom: 20px; }
+.goodbye-overlay .goodbye-preview { background: rgba(255,255,255,0.85); border-radius: 20px; padding: 16px 24px; max-width: 340px; margin: 12px auto; border: 3px solid #fbbf24; }
+.goodbye-overlay .goodbye-preview-title { font-family: 'Fredoka One', cursive; font-size: 14px; color: #92400e; margin-bottom: 8px; }
+.goodbye-overlay .goodbye-stars { font-size: 28px; margin: 12px 0; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
 /* RESPONSE BUTTONS */
 .response-options { display: flex; flex-direction: column; gap: 10px; max-width: 480px; margin: 16px auto; }
 .response-btn { padding: 16px 18px; font-size: 17px; font-weight: 700; border-radius: 18px; border: 3px solid #d8b4fe; background: white; cursor: pointer; text-align: left; transition: all 0.2s; display: flex; align-items: center; gap: 12px; box-shadow: 0 3px 12px rgba(0,0,0,0.05); min-height: 56px; }
@@ -725,7 +734,9 @@ function saveState() {
 }
 
 // ==================== STREAK SYSTEM ====================
+let wrongCountSinceCorrect = 0;
 function addStreak() {
+  wrongCountSinceCorrect = 0;
   state.streak++;
   if (state.streak > state.bestStreak) state.bestStreak = state.streak;
   let bonus = 0;
@@ -736,7 +747,14 @@ function addStreak() {
   if (bonus > 0) { state.gems += bonus; playSound('reward'); createSparkles(6); }
   saveState();
 }
-function resetStreak() { state.streak = 0; saveState(); }
+function resetStreak() {
+  wrongCountSinceCorrect++;
+  if (wrongCountSinceCorrect >= 2) {
+    state.streak = 0;
+    wrongCountSinceCorrect = 0;
+  }
+  saveState();
+}
 
 // ==================== BADGES ====================
 const allBadges = [
@@ -1466,9 +1484,54 @@ function initSessionTimer() {
     const mins = Math.floor(remaining);
     const secs = Math.floor((remaining - mins) * 60);
     timerEl.textContent = '\u23F0 ' + mins + ':' + String(secs).padStart(2, '0') + ' left';
-    timerEl.classList.toggle('warning', remaining <= 2);
-    if (remaining <= 0) { clearInterval(sessionTimerInterval); timerEl.textContent = '\u23F0 Time is up!'; speak('Time is up! Great job today, princess!'); }
+    if (remaining <= 2 && remaining > 0) {
+      timerEl.classList.add('warning');
+      if (remaining <= 2 && remaining > 1.95) {
+        speak('Almost time to go! Finish this last one!');
+      }
+    }
+    if (remaining <= 0) {
+      clearInterval(sessionTimerInterval);
+      timerEl.style.display = 'none';
+      showGoodbyeScreen();
+    }
   }, 1000);
+}
+
+function showGoodbyeScreen() {
+  // Remove any existing
+  const existing = document.getElementById('goodbye-overlay');
+  if (existing) existing.remove();
+
+  // Generate tomorrow preview
+  const tomorrowHash = new Date().getDate() + 1 + new Date().getMonth() * 31;
+  const challengeTypes = ['Quick Count \uD83D\uDD22', 'Word Scramble \uD83D\uDD24', 'Story Fill-in \uD83D\uDCD6', 'Pattern Blast \u26A1', 'Feeling Check \uD83D\uDC9C'];
+  const tomorrowChallenge = challengeTypes[tomorrowHash % challengeTypes.length];
+
+  // Stats summary
+  const todayActivities = state.dailyActivities || 0;
+  const totalGems = state.gems || 0;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'goodbye-overlay';
+  overlay.className = 'goodbye-overlay';
+  overlay.innerHTML =
+    '<div class="goodbye-moon">\uD83C\uDF19</div>' +
+    '<div class="goodbye-title">See You Tomorrow!</div>' +
+    '<div class="goodbye-sub">Great job today, Princess! \uD83D\uDC51</div>' +
+    '<div class="goodbye-stars">' + '\u2B50'.repeat(Math.min(todayActivities, 5)) + '</div>' +
+    '<div style="font-size:14px;font-weight:700;color:#581c87;margin-bottom:16px">' +
+      'You did ' + todayActivities + ' activit' + (todayActivities === 1 ? 'y' : 'ies') + ' and have ' + totalGems + ' gems! \uD83D\uDC8E</div>' +
+    '<div class="goodbye-preview">' +
+      '<div class="goodbye-preview-title">\uD83C\uDF1F Tomorrow\'s Challenge:</div>' +
+      '<div style="font-size:20px;font-weight:800;color:#7c3aed">' + tomorrowChallenge + '</div>' +
+    '</div>' +
+    '<div style="margin-top:24px;font-size:13px;color:#581c87;font-weight:700;opacity:0.7">Sweet dreams! \uD83D\uDCA4</div>';
+
+  document.body.appendChild(overlay);
+  speak('Great job today, Princess! See you tomorrow!');
+  playSound('reward');
+  createConfetti(30);
 }
 
 // ==================== OFFLINE DETECTION ====================
@@ -2410,6 +2473,7 @@ registerModule('story', {
         '<div class="mode-card" onclick="Modules.story.startReadStory()"><span class="mode-icon">\uD83D\uDCD6</span><div class="mode-label">Read a Story</div></div>' +
         '<div class="mode-card" onclick="Modules.story.startPracticeWords()"><span class="mode-icon">\uD83D\uDD24</span><div class="mode-label">Practice Words</div></div>' +
         '<div class="mode-card" onclick="Modules.story.startTraceLetters()"><span class="mode-icon">\u270D\uFE0F</span><div class="mode-label">Trace Letters</div></div>' +
+        '<div class="mode-card" onclick="Modules.story.startSequence()"><span class="mode-icon">\uD83D\uDD22</span><div class="mode-label">Story Sequence</div></div>' +
       '</div>';
     this._mode = null;
   },
@@ -2571,12 +2635,46 @@ registerModule('story', {
   // ============ PRACTICE WORDS ============
   startPracticeWords() {
     const area = document.getElementById('story-game-area');
-    area.innerHTML =
-      '<div class="mode-grid">' +
-        '<div class="mode-card" onclick="Modules.story._flashcardMode()"><span class="mode-icon">\uD83D\uDCCB</span><div class="mode-label">Flashcards</div></div>' +
-        '<div class="mode-card" onclick="Modules.story._wordMatchMode()"><span class="mode-icon">\uD83C\uDFAF</span><div class="mode-label">Word Match</div></div>' +
-        '<div class="mode-card" onclick="Modules.story._spellItMode()"><span class="mode-icon">\u2328\uFE0F</span><div class="mode-label">Spell It</div></div>' +
+    const modes = [
+      {label:'Flashcards', icon:'\uD83D\uDCCB', fn:'_flashcardMode', back:'\uD83C\uDF1F'},
+      {label:'Word Match', icon:'\uD83C\uDFAF', fn:'_wordMatchMode', back:'\uD83D\uDC9C'},
+      {label:'Spell It', icon:'\u2328\uFE0F', fn:'_spellItMode', back:'\u2728'},
+    ];
+    // Shuffle
+    const shuffled = [...modes].sort(() => Math.random() - 0.5);
+
+    let html = '<div class="scenario-text" style="margin-bottom:16px">Pick a mystery card!</div>' +
+      '<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin:20px 0">';
+    shuffled.forEach((m, i) => {
+      html += '<div class="mystery-card" id="mystery-' + i + '" onclick="Modules.story._flipCard(' + i + ',\'' + m.fn + '\')" ' +
+        'style="width:100px;height:140px;border-radius:18px;border:3px solid #d8b4fe;background:linear-gradient(135deg,#7c3aed,#a855f7);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:48px;color:white;transition:transform 0.6s;transform-style:preserve-3d;box-shadow:0 6px 20px rgba(124,58,237,0.3);user-select:none;-webkit-user-select:none" ' +
+        'data-icon="' + m.icon + '" data-label="' + m.label + '" data-back="' + m.back + '">' +
+        '<span style="animation:float 2s ease-in-out infinite;animation-delay:' + (i * 0.3) + 's">' + m.back + '</span>' +
       '</div>';
+    });
+    html += '</div>';
+    area.innerHTML = html;
+    speak('Pick a mystery card!');
+  },
+
+  _flipCard(idx, fn) {
+    const card = document.getElementById('mystery-' + idx);
+    if (!card || card.dataset.flipped) return;
+    card.dataset.flipped = 'true';
+    playSound('click');
+    haptic('light');
+    // Flip animation
+    card.style.transform = 'rotateY(180deg)';
+    card.style.background = 'linear-gradient(135deg, #dcfce7, #bbf7d0)';
+    card.style.border = '3px solid #22c55e';
+    setTimeout(() => {
+      card.style.transform = 'rotateY(0deg)';
+      card.innerHTML = '<div style="text-align:center"><div style="font-size:40px">' + card.dataset.icon + '</div><div style="font-family:Fredoka One,cursive;font-size:13px;color:#065f46;margin-top:4px">' + card.dataset.label + '</div></div>';
+      speak(card.dataset.label + '!');
+      createSparkles(4);
+      // Launch activity after brief reveal
+      setActivityTimer(() => this[fn](), 1200);
+    }, 300);
   },
 
   _getWordPool() {
@@ -2833,6 +2931,158 @@ registerModule('story', {
       speak('Try tracing more of the letter!');
     }
   },
+
+  // ============ STORY SEQUENCE ============
+  startSequence() {
+    const area = document.getElementById('story-game-area');
+    // Show only completed stories
+    const completed = stories.filter(s => (state.storyPaths[s.id] || {}).completed);
+    if (completed.length === 0) {
+      area.innerHTML = '<div style="text-align:center"><div style="font-size:64px;margin:20px 0">\uD83D\uDCD6</div>' +
+        '<div class="scenario-text">Read a story first to unlock sequencing!</div>' +
+        '<button class="big-btn" onclick="Modules.story.startReadStory()">Read a Story \uD83D\uDCD6</button></div>';
+      speak('Read a story first to unlock sequencing!');
+      return;
+    }
+    let html = '<div class="scenario-text" style="margin-bottom:16px">Pick a story to sequence!</div><div class="calm-options">';
+    completed.forEach((s, i) => {
+      const si = stories.indexOf(s);
+      html += '<div class="calm-card" onclick="Modules.story._beginSequence(' + si + ')">' +
+        '<div class="icon">' + s.emoji + '</div><div class="label">' + s.title + '</div></div>';
+    });
+    html += '</div>';
+    area.innerHTML = html;
+    speak('Pick a story to put in order!');
+  },
+
+  _beginSequence(storyIdx) {
+    const area = document.getElementById('story-game-area');
+    const story = stories[storyIdx];
+    // Build a simple linear path through the story
+    const events = [];
+    const visited = new Set();
+    let current = 'start';
+    while (current && events.length < 6) {
+      if (visited.has(current)) break;
+      visited.add(current);
+      const node = story.nodes[current];
+      if (node) {
+        events.push({key: current, text: node.text.replace(/\*/g, '').split('.')[0] + '.'});
+        // Follow first choice
+        if (node.choices && node.choices.length > 0) current = node.choices[0].next;
+        else current = null;
+      } else break;
+    }
+    // Pick 4 evenly spaced events
+    let selected;
+    if (events.length <= 4) {
+      selected = events;
+    } else {
+      const step = (events.length - 1) / 3;
+      selected = [0, 1, 2, 3].map(i => events[Math.min(Math.round(i * step), events.length - 1)]);
+    }
+    // Deduplicate
+    const seen = new Set();
+    selected = selected.filter(e => { if (seen.has(e.key)) return false; seen.add(e.key); return true; });
+
+    const shuffled = [...selected].sort(() => Math.random() - 0.5);
+    // Make sure it's actually shuffled
+    while (shuffled.length > 1 && shuffled.every((e, i) => e === selected[i])) {
+      shuffled.sort(() => Math.random() - 0.5);
+    }
+
+    this._seqCorrect = selected;
+    this._seqShuffled = shuffled;
+    this._seqPicked = [];
+    this._seqStoryIdx = storyIdx;
+    this._renderSequence();
+  },
+
+  _renderSequence() {
+    const area = document.getElementById('story-game-area');
+    const story = stories[this._seqStoryIdx];
+    const shuffled = this._seqShuffled;
+    const picked = this._seqPicked;
+    const correct = this._seqCorrect;
+
+    let html = '<div style="text-align:center">' +
+      '<div style="font-size:40px;margin-bottom:8px">' + story.emoji + '</div>' +
+      '<div class="scenario-text" style="font-size:16px;margin-bottom:12px">Tap the events in the right order! (' + picked.length + '/' + correct.length + ')</div></div>';
+
+    html += '<div style="display:flex;flex-direction:column;gap:10px;max-width:440px;margin:0 auto">';
+    shuffled.forEach((evt, i) => {
+      const alreadyPicked = picked.includes(i);
+      const pickNumber = picked.indexOf(i);
+      html += '<div class="seq-card" data-idx="' + i + '" style="' +
+        'display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:16px;cursor:pointer;' +
+        'border:3px solid ' + (alreadyPicked ? '#22c55e' : '#d8b4fe') + ';' +
+        'background:' + (alreadyPicked ? '#dcfce7' : 'white') + ';' +
+        'opacity:' + (alreadyPicked ? '0.7' : '1') + ';' +
+        'transition:all 0.3s;box-shadow:0 3px 12px rgba(0,0,0,0.06);' +
+        'font-size:14px;font-weight:700;color:#374151;line-height:1.4;text-align:left' +
+        '">' +
+        '<div style="min-width:32px;height:32px;border-radius:50%;background:' + (alreadyPicked ? '#22c55e' : '#e5e7eb') + ';display:flex;align-items:center;justify-content:center;font-family:Fredoka One,cursive;font-size:16px;color:' + (alreadyPicked ? 'white' : '#9ca3af') + '">' +
+          (alreadyPicked ? (pickNumber + 1) : '?') +
+        '</div>' +
+        '<div style="flex:1">' + evt.text.slice(0, 80) + (evt.text.length > 80 ? '...' : '') + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    if (picked.length > 0) {
+      html += '<div style="text-align:center;margin-top:10px"><button class="big-btn pink" style="font-size:13px;padding:8px 14px" onclick="Modules.story._seqUndo()">\u21A9\uFE0F Undo</button></div>';
+    }
+
+    area.innerHTML = html;
+
+    // Attach click handlers
+    const self = this;
+    area.querySelectorAll('.seq-card').forEach(card => {
+      card.onclick = function() {
+        const idx = parseInt(card.dataset.idx);
+        if (picked.includes(idx)) return;
+        self._seqPick(idx);
+      };
+    });
+  },
+
+  _seqPick(idx) {
+    this._seqPicked.push(idx);
+    playSound('click');
+
+    if (this._seqPicked.length === this._seqCorrect.length) {
+      // Check if order is correct
+      const isCorrect = this._seqPicked.every((pickIdx, pos) => {
+        return this._seqShuffled[pickIdx] === this._seqCorrect[pos];
+      });
+
+      if (isCorrect) {
+        playSound('correct');
+        showReaction('correct');
+        createConfetti(20);
+        addStreak();
+        speak('Perfect! You put the story in the right order!');
+        showReward('\uD83D\uDD22', 'Story sequenced!', 8);
+        setActivityTimer(() => this.startSequence(), 2000);
+      } else {
+        playSound('wrong');
+        showReaction('wrong');
+        speak('Not quite! Let\'s try again!');
+        this._seqPicked = [];
+        setActivityTimer(() => this._renderSequence(), 1200);
+      }
+    } else {
+      this._renderSequence();
+    }
+  },
+
+  _seqUndo() {
+    if (this._seqPicked.length > 0) {
+      this._seqPicked.pop();
+      playSound('click');
+      this._renderSequence();
+    }
+  },
 });
 
 // =====================================================================
@@ -3002,11 +3252,25 @@ registerModule('calm', {
   _pickEmotion(name, emoji, tip, el) {
     playSound('click');
     const resp = document.getElementById('emotion-response');
+    // Determine suggested activity based on emotion
+    let routeHtml = '';
+    const routes = {
+      'Angry': {activity: 'startBreathing', label: '\uD83C\uDF2C\uFE0F Try Breathing', speak: 'Want to try some calming breaths?'},
+      'Sad': {activity: '_startCalmStories', label: '\uD83D\uDCDA Hear a Calm Story', speak: 'A calm story might help you feel better.'},
+      'Scared': {activity: 'startBodyScan', label: '\uD83E\uDDD8 Try Body Scan', speak: 'A body scan can help you feel safe.'},
+      'Tired': {activity: 'startBreathing', label: '\uD83C\uDF19 Try Gentle Breathing', speak: 'Some gentle breathing might help.'},
+    };
+    const route = routes[name];
+    if (route) {
+      routeHtml = '<div style="margin-top:12px"><button class="big-btn" style="font-size:14px;padding:10px 18px" onclick="Modules.calm.' + route.activity + '()">' + route.label + '</button></div>';
+    }
+
     resp.innerHTML =
       '<div style="font-size:64px;animation:bounceIn 0.4s">' + emoji + '</div>' +
       '<div style="font-family:Fredoka One,cursive;font-size:18px;color:#7c3aed;margin:8px 0">You feel ' + name + '</div>' +
-      '<div style="font-size:15px;color:#6b7280;font-weight:700;max-width:300px;margin:0 auto">' + tip + '</div>';
-    speak('You feel ' + name + '. ' + tip);
+      '<div style="font-size:15px;color:#6b7280;font-weight:700;max-width:300px;margin:0 auto">' + tip + '</div>' +
+      routeHtml;
+    speak('You feel ' + name + '. ' + tip + (route ? ' ' + route.speak : ''));
     if (!state.feelingsLog) state.feelingsLog = [];
     state.feelingsLog.push({emotion:name, timestamp:Date.now()});
     state.calmCompleted++;
