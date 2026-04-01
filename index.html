@@ -294,18 +294,24 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
 #offline-indicator.show { display: block; animation: bounceIn 0.4s ease-out; }
 
 /* KINGDOM BUILDER */
-.kingdom-grid-container { max-width: 480px; margin: 0 auto; position: relative; border-radius: 20px; overflow: hidden; border: 4px solid #86efac; background: linear-gradient(180deg, #bfdbfe 0%, #bbf7d0 40%, #86efac 100%); min-height: 360px; }
+.kingdom-grid-container { max-width: 480px; margin: 0 auto; position: relative; border-radius: 20px; overflow: hidden; border: 4px solid #86efac; background: linear-gradient(180deg, #bfdbfe 0%, #bbf7d0 40%, #86efac 100%); min-height: 360px; touch-action: pan-y; }
 .kingdom-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(6, 1fr); gap: 2px; padding: 4px; min-height: 360px; }
-.kingdom-cell { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.15); border: 1px dashed rgba(255,255,255,0.3); min-height: 48px; }
+.kingdom-cell { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; transition: background 0.2s, border-color 0.2s, box-shadow 0.2s; background: rgba(255,255,255,0.15); border: 2px dashed rgba(255,255,255,0.3); min-height: 48px; user-select: none; -webkit-user-select: none; }
 .kingdom-cell:hover { background: rgba(255,255,255,0.35); }
-.kingdom-cell.occupied { border: none; background: rgba(255,255,255,0.25); }
+.kingdom-cell.occupied { border: 2px solid transparent; background: rgba(255,255,255,0.25); cursor: grab; }
+.kingdom-cell.drop-target { background: rgba(34,197,94,0.25); border: 2px dashed #22c55e; box-shadow: inset 0 0 12px rgba(34,197,94,0.2); }
+.kingdom-cell.drag-source { opacity: 0.3; }
 .kingdom-shop { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 12px; background: white; border-radius: 16px; margin: 12px auto; max-width: 480px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); border: 3px solid #86efac; }
-.shop-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 10px; border-radius: 14px; border: 2px solid #e5e7eb; cursor: pointer; transition: all 0.2s; background: #f0fdf4; min-width: 60px; min-height: 48px; }
+.shop-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 10px; border-radius: 14px; border: 2px solid #e5e7eb; cursor: grab; transition: all 0.2s; background: #f0fdf4; min-width: 60px; min-height: 48px; user-select: none; -webkit-user-select: none; touch-action: none; }
 .shop-item:active { transform: scale(0.92); }
 .shop-item.selected { border-color: #22c55e; background: #dcfce7; box-shadow: 0 0 12px rgba(34,197,94,0.3); }
-.shop-item .shop-emoji { font-size: 28px; }
-.shop-item .shop-cost { font-family: 'Fredoka One', cursive; font-size: 11px; color: #059669; }
+.shop-item .shop-emoji { font-size: 28px; pointer-events: none; }
+.shop-item .shop-cost { font-family: 'Fredoka One', cursive; font-size: 11px; color: #059669; pointer-events: none; }
 .shop-item.locked { opacity: 0.4; cursor: not-allowed; }
+.kingdom-drag-ghost { position: fixed; pointer-events: none; z-index: 9999; font-size: 48px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3)); transition: none; transform: translate(-50%, -50%); animation: float 1.5s ease-in-out infinite; will-change: left, top; }
+.kingdom-trash { display: none; text-align: center; padding: 10px; margin: 8px auto; max-width: 480px; border-radius: 14px; border: 3px dashed #f87171; background: rgba(254,226,226,0.7); font-family: 'Fredoka One', cursive; font-size: 14px; color: #dc2626; transition: all 0.3s; }
+.kingdom-trash.active { display: block; animation: bounceIn 0.3s; }
+.kingdom-trash.hover { background: #fecaca; border-color: #ef4444; transform: scale(1.05); }
 .kingdom-name-display { font-family: 'Fredoka One', cursive; font-size: 18px; color: #059669; text-align: center; margin: 4px 0; }
 .kingdom-toolbar { display: flex; gap: 8px; justify-content: center; margin: 8px 0; }
 .kingdom-toolbar button { font-family: 'Fredoka One', cursive; font-size: 13px; padding: 8px 16px; border-radius: 14px; border: 2px solid #86efac; background: #dcfce7; color: #065f46; cursor: pointer; min-height: 48px; }
@@ -591,6 +597,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif; background: linear-
     <div id="kingdom-grid-container" class="kingdom-grid-container">
       <div id="kingdom-grid" class="kingdom-grid"></div>
     </div>
+    <div id="kingdom-trash" class="kingdom-trash">🗑️ Drop here to remove (50% gem refund)</div>
     <div id="kingdom-shop" class="kingdom-shop"></div>
   </div>
 </div>
@@ -3324,6 +3331,15 @@ registerModule('kingdom', {
   _selectedItem: null,
   _selectedCell: null,
   _currentCat: 'castle',
+  // Drag state
+  _dragging: false,
+  _dragItemId: null,
+  _dragFromCell: null, // non-null if dragging from grid (move/remove)
+  _dragGhost: null,
+  _dragStartX: 0,
+  _dragStartY: 0,
+  _dragStarted: false, // true once moved past threshold
+  _highlightedCell: null,
 
   init() {},
 
@@ -3331,20 +3347,20 @@ registerModule('kingdom', {
     this._selectedItem = null;
     this._selectedCell = null;
     this._currentCat = 'castle';
+    this._dragging = false;
     this._renderAll();
   },
 
-  close() {},
+  close() {
+    this._endDrag(true);
+  },
 
   _renderAll() {
     const nameEl = document.getElementById('kingdom-name');
     nameEl.textContent = '\uD83C\uDFF0 ' + (state.kingdom.name || 'My Kingdom');
 
-    // Toolbar
     const toolbar = document.getElementById('kingdom-toolbar');
-    toolbar.innerHTML =
-      '<button onclick="Modules.kingdom._renamekingdom()">Rename</button>' +
-      '<button onclick="Modules.kingdom._clearSelected()">Deselect</button>';
+    toolbar.innerHTML = '<button onclick="Modules.kingdom._renamekingdom()">Rename</button>';
 
     this._renderGrid();
     this._renderShop();
@@ -3358,6 +3374,7 @@ registerModule('kingdom', {
         const cell = document.createElement('div');
         cell.className = 'kingdom-cell';
         const key = col + ',' + row;
+        cell.dataset.key = key;
         const placed = (state.kingdom.grid || {})[key];
         if (placed) {
           const item = kingdomItems[placed.itemId];
@@ -3365,14 +3382,21 @@ registerModule('kingdom', {
             cell.textContent = item.emoji;
             cell.classList.add('occupied');
             if (item.animate) cell.style.animation = item.animate + ' 2s ease-in-out infinite';
-            cell.onclick = () => this._tapOccupied(key);
+            // Drag from grid cell
+            this._addDragSource(cell, placed.itemId, key);
           }
         } else {
+          // Tap to place (fallback for non-drag)
           cell.onclick = () => this._tapEmpty(key);
         }
+        // Highlight if selected
         if (this._selectedCell === key) {
           cell.style.boxShadow = '0 0 12px rgba(239,68,68,0.5)';
           cell.style.border = '2px solid #ef4444';
+        }
+        // Mark drag source
+        if (this._dragging && this._dragFromCell === key) {
+          cell.classList.add('drag-source');
         }
         grid.appendChild(cell);
       }
@@ -3401,24 +3425,276 @@ registerModule('kingdom', {
       if (item.cat !== this._currentCat) return;
       const canAfford = state.gems >= item.cost;
       const selected = this._selectedItem === id;
-      itemHtml += '<div class="shop-item' + (selected ? ' selected' : '') + (canAfford ? '' : ' locked') + '" onclick="Modules.kingdom._selectItem(\'' + id + '\')">' +
+      itemHtml += '<div class="shop-item' + (selected ? ' selected' : '') + (canAfford ? '' : ' locked') + '" data-item-id="' + id + '">' +
         '<span class="shop-emoji">' + item.emoji + '</span>' +
         '<span class="shop-cost">\uD83D\uDC8E' + item.cost + '</span>' +
       '</div>';
     });
 
-    shop.innerHTML = tabHtml + '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">' + itemHtml + '</div>';
+    shop.innerHTML = tabHtml + '<div class="shop-items-row" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">' + itemHtml + '</div>';
+
+    // Attach drag handlers to shop items
+    shop.querySelectorAll('.shop-item:not(.locked)').forEach(el => {
+      const id = el.dataset.itemId;
+      this._addDragSource(el, id, null);
+      // Tap fallback: select item for tap-to-place
+      el.addEventListener('click', (e) => {
+        if (this._dragStarted) return; // was a drag, not a click
+        this._selectItem(id);
+      });
+    });
+
     if (this._selectedCell) {
       shop.innerHTML += '<div style="text-align:center;margin-top:8px"><button class="big-btn pink" style="font-size:13px;padding:8px 14px" onclick="Modules.kingdom._removeItem()">\uD83D\uDDD1\uFE0F Remove (50% refund)</button></div>';
     }
   },
 
+  // =============== DRAG & DROP ENGINE ===============
+  _addDragSource(el, itemId, fromCell) {
+    const self = this;
+    const start = (x, y, e) => {
+      if (self._dragging) return;
+      // For shop items, check affordability
+      if (!fromCell) {
+        const item = kingdomItems[itemId];
+        if (state.gems < item.cost) return;
+      }
+      self._dragItemId = itemId;
+      self._dragFromCell = fromCell;
+      self._dragStartX = x;
+      self._dragStartY = y;
+      self._dragStarted = false;
+      self._dragging = true;
+    };
+    const startTouch = (e) => {
+      const t = e.touches[0];
+      start(t.clientX, t.clientY, e);
+    };
+    const startMouse = (e) => {
+      if (e.button !== 0) return;
+      start(e.clientX, e.clientY, e);
+    };
+    el.addEventListener('touchstart', startTouch, {passive: true});
+    el.addEventListener('mousedown', startMouse);
+  },
+
+  _onMove(x, y) {
+    if (!this._dragging) return;
+    const dx = x - this._dragStartX;
+    const dy = y - this._dragStartY;
+    // Start drag after 8px threshold (distinguishes tap from drag)
+    if (!this._dragStarted) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      this._dragStarted = true;
+      this._createGhost(x, y);
+      // Show trash zone if dragging from grid
+      if (this._dragFromCell) {
+        const trash = document.getElementById('kingdom-trash');
+        trash.classList.add('active');
+      }
+      // Dim the source cell
+      if (this._dragFromCell) this._renderGrid();
+    }
+    // Move ghost
+    if (this._dragGhost) {
+      this._dragGhost.style.left = x + 'px';
+      this._dragGhost.style.top = y + 'px';
+    }
+    // Find cell under pointer
+    this._updateHighlight(x, y);
+  },
+
+  _createGhost(x, y) {
+    const item = kingdomItems[this._dragItemId];
+    if (!item) return;
+    const ghost = document.createElement('div');
+    ghost.className = 'kingdom-drag-ghost';
+    ghost.textContent = item.emoji;
+    ghost.style.left = x + 'px';
+    ghost.style.top = y + 'px';
+    document.body.appendChild(ghost);
+    this._dragGhost = ghost;
+    haptic('light');
+  },
+
+  _updateHighlight(x, y) {
+    const grid = document.getElementById('kingdom-grid');
+    const cells = grid.querySelectorAll('.kingdom-cell');
+    let found = null;
+    cells.forEach(cell => {
+      const r = cell.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+        found = cell.dataset.key;
+      }
+      cell.classList.remove('drop-target');
+    });
+    // Highlight valid drop target (empty cell, or different occupied cell for swap)
+    if (found) {
+      const placed = (state.kingdom.grid || {})[found];
+      const isSource = found === this._dragFromCell;
+      if (!isSource) {
+        const targetCell = grid.querySelector('[data-key="' + found + '"]');
+        if (targetCell) targetCell.classList.add('drop-target');
+      }
+    }
+    this._highlightedCell = found;
+
+    // Check trash zone hover
+    const trash = document.getElementById('kingdom-trash');
+    if (trash.classList.contains('active')) {
+      const tr = trash.getBoundingClientRect();
+      if (x >= tr.left && x <= tr.right && y >= tr.top && y <= tr.bottom) {
+        trash.classList.add('hover');
+      } else {
+        trash.classList.remove('hover');
+      }
+    }
+  },
+
+  _onEnd(x, y) {
+    if (!this._dragging) return;
+    if (!this._dragStarted) {
+      // Was a tap, not a drag — handle as tap
+      this._dragging = false;
+      if (this._dragFromCell) {
+        this._tapOccupied(this._dragFromCell);
+      }
+      return;
+    }
+
+    const itemId = this._dragItemId;
+    const fromCell = this._dragFromCell;
+    const targetKey = this._highlightedCell;
+
+    // Check trash drop
+    const trash = document.getElementById('kingdom-trash');
+    const tr = trash.getBoundingClientRect();
+    const trashVisible = trash.classList.contains('active');
+    const droppedOnTrash = fromCell && trashVisible && x >= tr.left && x <= tr.right && y >= tr.top && y <= tr.bottom;
+
+    this._endDrag(false);
+
+    if (droppedOnTrash && fromCell) {
+      // Remove item with refund
+      const placed = state.kingdom.grid[fromCell];
+      if (placed) {
+        const item = kingdomItems[placed.itemId];
+        const refund = Math.floor(item.cost / 2);
+        delete state.kingdom.grid[fromCell];
+        state.gems += refund;
+        saveState();
+        speak('Removed! Got ' + refund + ' gems back.');
+        playSound('click');
+        createSparkles(3);
+        this._updateGemDisplay();
+      }
+    } else if (targetKey && targetKey !== fromCell) {
+      const targetPlaced = (state.kingdom.grid || {})[targetKey];
+
+      if (fromCell) {
+        // Moving from grid to grid
+        const sourcePlaced = state.kingdom.grid[fromCell];
+        if (!targetPlaced) {
+          // Move to empty cell
+          state.kingdom.grid[targetKey] = sourcePlaced;
+          delete state.kingdom.grid[fromCell];
+          saveState();
+          playSound('correct');
+          createSparkles(3);
+        } else {
+          // Swap with another item
+          state.kingdom.grid[targetKey] = sourcePlaced;
+          state.kingdom.grid[fromCell] = targetPlaced;
+          saveState();
+          playSound('correct');
+          createSparkles(3);
+        }
+      } else if (!targetPlaced) {
+        // Placing from shop to empty cell
+        const item = kingdomItems[itemId];
+        if (state.gems >= item.cost) {
+          state.gems -= item.cost;
+          if (!state.kingdom.grid) state.kingdom.grid = {};
+          state.kingdom.grid[targetKey] = {itemId: itemId, placedAt: Date.now()};
+          saveState();
+          playSound('correct');
+          createSparkles(4);
+          this._updateGemDisplay();
+          checkBadges();
+        }
+      } else {
+        // Dropping shop item on occupied cell — can't place, cancel
+        playSound('wrong');
+      }
+    }
+    // else: dropped outside grid or on source cell — cancel silently
+
+    this._selectedItem = null;
+    this._selectedCell = null;
+    this._renderGrid();
+    this._renderShop();
+  },
+
+  _endDrag(silent) {
+    if (this._dragGhost) {
+      this._dragGhost.remove();
+      this._dragGhost = null;
+    }
+    this._dragging = false;
+    this._dragStarted = false;
+    this._dragItemId = null;
+    this._dragFromCell = null;
+    this._highlightedCell = null;
+    // Hide trash
+    const trash = document.getElementById('kingdom-trash');
+    if (trash) { trash.classList.remove('active', 'hover'); }
+    // Clear highlights
+    if (!silent) {
+      const grid = document.getElementById('kingdom-grid');
+      if (grid) grid.querySelectorAll('.kingdom-cell').forEach(c => c.classList.remove('drop-target', 'drag-source'));
+    }
+  },
+
+  _updateGemDisplay() {
+    const gemCountEl = document.getElementById('gem-count');
+    if (gemCountEl) gemCountEl.textContent = state.gems;
+  },
+
+  // =============== GLOBAL MOVE/END HANDLERS ===============
+  _boundMove: null,
+  _boundEnd: null,
+  _boundTouchMove: null,
+  _boundTouchEnd: null,
+
+  _initGlobalHandlers() {
+    if (this._boundMove) return; // already set up
+    const self = this;
+    this._boundMove = (e) => self._onMove(e.clientX, e.clientY);
+    this._boundEnd = (e) => self._onEnd(e.clientX, e.clientY);
+    this._boundTouchMove = (e) => {
+      if (!self._dragging) return;
+      const t = e.touches[0];
+      if (self._dragStarted) e.preventDefault(); // prevent scroll during drag
+      self._onMove(t.clientX, t.clientY);
+    };
+    this._boundTouchEnd = (e) => {
+      if (!self._dragging) return;
+      const t = e.changedTouches[0];
+      self._onEnd(t.clientX, t.clientY);
+    };
+    document.addEventListener('mousemove', this._boundMove);
+    document.addEventListener('mouseup', this._boundEnd);
+    document.addEventListener('touchmove', this._boundTouchMove, {passive: false});
+    document.addEventListener('touchend', this._boundTouchEnd);
+  },
+
+  // =============== TAP FALLBACKS ===============
   _switchCat(cat) { this._currentCat = cat; this._renderShop(); },
 
   _selectItem(id) {
     const item = kingdomItems[id];
     if (state.gems < item.cost) { speak('You need more gems!'); playSound('wrong'); return; }
-    this._selectedItem = id;
+    this._selectedItem = this._selectedItem === id ? null : id;
     this._selectedCell = null;
     playSound('click');
     this._renderShop();
@@ -3438,8 +3714,7 @@ registerModule('kingdom', {
     this._selectedItem = null;
     this._renderGrid();
     this._renderShop();
-    const gemCountEl = document.getElementById('gem-count');
-    if (gemCountEl) gemCountEl.textContent = state.gems;
+    this._updateGemDisplay();
     checkBadges();
   },
 
@@ -3465,20 +3740,12 @@ registerModule('kingdom', {
     this._selectedCell = null;
     this._renderGrid();
     this._renderShop();
-    const gemCountEl = document.getElementById('gem-count');
-    if (gemCountEl) gemCountEl.textContent = state.gems;
-  },
-
-  _clearSelected() {
-    this._selectedItem = null;
-    this._selectedCell = null;
-    this._renderGrid();
-    this._renderShop();
+    this._updateGemDisplay();
   },
 
   _renamekingdom() {
     const el = document.getElementById('kingdom-name');
-    if (el.querySelector('input')) return; // already editing
+    if (el.querySelector('input')) return;
     const current = state.kingdom.name || 'My Kingdom';
     el.innerHTML = '🏰 <input id="kingdom-name-input" type="text" value="' + current + '" maxlength="20" style="font-family:Fredoka One,cursive;font-size:18px;color:#059669;border:2px solid #86efac;border-radius:10px;padding:4px 10px;width:140px;text-align:center;outline:none">';
     const inp = document.getElementById('kingdom-name-input');
@@ -3494,6 +3761,9 @@ registerModule('kingdom', {
     inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } };
   },
 });
+
+// Initialize kingdom drag handlers once DOM is ready
+Modules.kingdom._initGlobalHandlers();
 
 // =====================================================================
 // DAILY CHALLENGE MODULE
