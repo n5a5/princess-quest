@@ -671,7 +671,24 @@ const defaultState = {
 
 let state;
 try {
-  state = JSON.parse(localStorage.getItem('princessQuest2') || 'null') || {...defaultState};
+  state = JSON.parse(localStorage.getItem('princessQuest2') || 'null');
+  // Migrate from v1 if no v2 data exists
+  if (!state) {
+    const v1 = JSON.parse(localStorage.getItem('princessQuest') || 'null');
+    if (v1) {
+      state = {...defaultState};
+      // Port compatible fields from v1
+      ['gems','xp','level','streak','bestStreak','badges','totalActivities',
+       'lettersLearned','wordAccuracy','wordsMastered','wordLevel',
+       'mathCompleted','mathLevel','mathWrong','calmCompleted','feelingsLog',
+       'storiesCompleted','storyPaths','scenariosCompleted',
+       'lettersKnown','letterAccuracy','sentencesRead','clockCompleted','shapesCompleted',
+       'activeDays','lastPlayDate','startDate','parentPin','speechEnabled','hiddenModules'
+      ].forEach(k => { if (k in v1) state[k] = v1[k]; });
+    } else {
+      state = {...defaultState};
+    }
+  }
 } catch (e) {
   console.warn('State corrupted, resetting:', e);
   state = {...defaultState};
@@ -2413,6 +2430,7 @@ registerModule('story', {
   },
 
   _renderStoryNode() {
+    clearAllTimers();
     const story = stories[this._storyIdx];
     const node = story.nodes[this._currentNode];
     const area = document.getElementById('story-game-area');
@@ -2421,7 +2439,6 @@ registerModule('story', {
     saveState();
 
     // Wrap words in spans for TTS highlighting
-    let storyHtml = node.text.replace(/\*(\w+)\*/g, '<span style="text-decoration:underline dotted #a855f7;cursor:pointer" onclick="Modules.story._showVocab(\'$1\')">$1</span>');
     const words = node.text.replace(/\*/g, '').split(/\s+/);
     let wordSpans = '';
     words.forEach((w, i) => {
@@ -2429,7 +2446,7 @@ registerModule('story', {
       const punct = w.replace(/[a-zA-Z0-9']/g, '');
       const isVocab = (node.vocab || []).includes(clean.toLowerCase());
       wordSpans += '<span class="story-word" data-idx="' + i + '"' +
-        (isVocab ? ' style="text-decoration:underline dotted #a855f7;cursor:pointer" onclick="Modules.story._showVocab(\'' + clean.toLowerCase() + '\')"' : '') +
+        (isVocab ? ' style="text-decoration:underline dotted #a855f7;cursor:pointer" onclick="Modules.story._showVocab(\'' + clean.toLowerCase().replace(/'/g, '') + '\')"' : '') +
         '>' + clean + punct + '</span> ';
     });
 
@@ -2534,8 +2551,10 @@ registerModule('story', {
 
   _finishStory() {
     const story = stories[this._storyIdx];
+    if (!state.storyPaths[story.id].completed) {
+      state.storiesCompleted++;
+    }
     state.storyPaths[story.id].completed = true;
-    state.storiesCompleted++;
     state.sentencesRead += Object.keys(story.nodes).length;
     saveState();
     showReward('\uD83D\uDCD6', 'Story Complete!', 10);
@@ -2960,7 +2979,7 @@ registerModule('calm', {
 
     let html = '<div class="scenario-text" style="margin-bottom:16px">How are you feeling right now?</div><div class="emotion-grid">';
     emotions.forEach(em => {
-      html += '<div class="emotion-btn" onclick="Modules.calm._pickEmotion(\'' + em.name + '\',\'' + em.emoji + '\',\'' + em.tip.replace(/'/g, "\\'") + '\')">' +
+      html += '<div class="emotion-btn" onclick="Modules.calm._pickEmotion(\'' + em.name + '\',\'' + em.emoji + '\',\'' + em.tip.replace(/'/g, "\\'") + '\', this)">' +
         '<span class="em-icon">' + em.emoji + '</span><span class="em-name">' + em.name + '</span></div>';
     });
     html += '</div><div id="emotion-response" style="text-align:center;margin-top:16px"></div>';
@@ -2973,7 +2992,7 @@ registerModule('calm', {
     speak('How are you feeling right now?');
   },
 
-  _pickEmotion(name, emoji, tip) {
+  _pickEmotion(name, emoji, tip, el) {
     playSound('click');
     const resp = document.getElementById('emotion-response');
     resp.innerHTML =
@@ -2987,7 +3006,7 @@ registerModule('calm', {
     saveState();
     createSparkles(4);
     document.querySelectorAll('.emotion-btn').forEach(b => b.classList.remove('selected'));
-    event.currentTarget.classList.add('selected');
+    if (el) el.classList.add('selected');
     checkBadges();
   },
 
@@ -3458,12 +3477,21 @@ registerModule('kingdom', {
   },
 
   _renamekingdom() {
-    const name = prompt('Name your kingdom:', state.kingdom.name || 'My Kingdom');
-    if (name && name.trim()) {
-      state.kingdom.name = name.trim().slice(0, 20);
+    const el = document.getElementById('kingdom-name');
+    if (el.querySelector('input')) return; // already editing
+    const current = state.kingdom.name || 'My Kingdom';
+    el.innerHTML = '🏰 <input id="kingdom-name-input" type="text" value="' + current + '" maxlength="20" style="font-family:Fredoka One,cursive;font-size:18px;color:#059669;border:2px solid #86efac;border-radius:10px;padding:4px 10px;width:140px;text-align:center;outline:none">';
+    const inp = document.getElementById('kingdom-name-input');
+    inp.focus();
+    inp.select();
+    const save = () => {
+      const name = inp.value.trim() || 'My Kingdom';
+      state.kingdom.name = name.slice(0, 20);
       saveState();
-      document.getElementById('kingdom-name').textContent = '\uD83C\uDFF0 ' + state.kingdom.name;
-    }
+      el.textContent = '🏰 ' + state.kingdom.name;
+    };
+    inp.onblur = save;
+    inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } };
   },
 });
 
