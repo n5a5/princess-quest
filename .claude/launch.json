@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "princess-quest",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "C:\\Users\\nkl98\\Dropbox\\Cowork\\princess-quest", "-p", "8765", "-c-1"],
+      "port": 8765
+    }
+  ]
+}
