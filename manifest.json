@@ -1,7 +1,7 @@
 {
-  "name": "Princess Quest",
-  "short_name": "Princess Quest",
-  "description": "A magical learning adventure for kids!",
+  "name": "Amelia's Princess World",
+  "short_name": "Amelia's World",
+  "description": "A gentle learning world for Amelia — letters, numbers, and castle play!",
   "start_url": "/princess-quest/",
   "display": "standalone",
   "background_color": "#fdf2f8",

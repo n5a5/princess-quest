@@ -1,10 +1,18 @@
-const CACHE_NAME = 'princess-quest-v11';
+const CACHE_NAME = 'amelia-world-v1';
 const ASSETS = [
-  '/princess-quest/',
-  '/princess-quest/index.html',
-  '/princess-quest/manifest.json',
-  '/princess-quest/princess.png',
-  'https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@600;700;800&display=swap'
+  './',
+  './index.html',
+  './styles.css',
+  './data.js',
+  './core.js',
+  './letter-garden.js',
+  './number-meadow.js',
+  './castle.js',
+  './parent.js',
+  './manifest.json',
+  './princess.png',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', event => {
@@ -23,6 +31,7 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
+// Network-first with cache fallback: fresh when online, fully working offline.
 self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(event.request).then(response => {
