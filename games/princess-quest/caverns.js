@@ -183,7 +183,7 @@ const teenTower = {
         const b = el('button', { type: 'button', text: String(v), class: v === it.n ? 'on' : '', 'aria-label': String(v) });
         b.addEventListener('click', async () => {
           audio.stop();
-          if (v === target) { b.classList.add('on'); await audio.say(target + '! ' + praiseLine()); resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4, gpc: 'line' }); }
+          if (v === target) { b.classList.add('on'); await audio.say(target + '! ' + praiseLine()); resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: hi - lo + 1, gpc: 'line' }); }
           else { misses++; b.classList.add('wobble'); setTimeout(() => b.classList.remove('wobble'), 500); stage.luna('think', 900); if (misses === 1) { const right = [...line.children].find(x => x.textContent === String(target)); right.classList.add('glow'); await audio.say('Luna is on ' + it.n + '. ' + (it.after ? 'What comes next?' : 'What comes just before?')); } else { const right = [...line.children].find(x => x.textContent === String(target)); right.click(); } }
         });
         return b;
@@ -370,7 +370,7 @@ function gen(family, stageName) {
     }
     case 'teen': {
       if (stageName === 'teens') return { kind: 'teens', n: rand(11, 19) };
-      if (stageName === 'compare') { const a = rand(2, 12); const b = Math.random() < 0.25 ? a : rand(2, 12); return { kind: 'compare', a, b }; }
+      if (stageName === 'compare') { const a = rand(2, 20); const b = Math.random() < 0.25 ? a : rand(2, 20); return { kind: 'compare', a, b }; }
       return { kind: 'numberline', n: rand(2, 18), after: Math.random() < 0.6 };
     }
     case 'count': {
@@ -454,3 +454,4 @@ function showMenu() {
 
 export async function mount(h, c) { host = h; ctx = c; showMenu(); }
 export function unmount() { cancelled = true; host = null; }
+export const __test = { gen, FAMILIES };

@@ -117,6 +117,8 @@ export function createAdaptive({ economy }) {
       if (outcome === 'revealed' && itemId) api.noteMiss(itemId);
       const result = { promoted: false, reteach: false };
       if (outcome === 'abandoned') { economy.persist(); return result; }
+      // An introduction or a self-check has one "choice": it is exposure, not evidence. Log it, do not score it.
+      if (choices < 2) { economy.persist(); return result; }
       const evidence = outcome === 'firstTry' ? 1 : outcome === 'scaffolded' ? 0.5 : 0;
       const pGuess = Math.min(0.5, 1 / Math.max(2, choices));
       e.p = bktStep(e.p, evidence, pGuess);

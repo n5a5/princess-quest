@@ -30,7 +30,10 @@ const heartCount = w => (SW.words[w] || []).filter(u => u[2]).length;
 let PH = null;
 function stageNeeded(word) {
   if (!PH) return 0;
-  const graphemes = (SW.words[word] || []).filter(u => !u[2] && u[1]).map(u => u[0]);
+  const units = (SW.words[word] || []).filter(u => !u[2] && u[1]);
+  const graphemes = units.map(u => u[0]);
+  // A long vowel spelled with a magic e (make, like, ride) is only decodable once that stage is taught.
+  if (units.some(u => ['ae', 'ee', 'ie', 'oe', 'ue'].includes(u[1]))) return Math.max(0, PH.stages.findIndex(st => st.id === 'f'));
   for (let i = 0; i < PH.stages.length; i++) {
     const pool = new Set(PH.stages.slice(0, i + 1).flatMap(st => st.graphemes));
     if (graphemes.every(g => pool.has(g))) return i;
@@ -89,7 +92,7 @@ const heartIntro = {
     const boxes = soundBoxes(audio, word);
     const units = SW.words[word];
     const hearts = units.filter(u => u[2]).length;
-    const single = units.length === 1;
+    const single = hearts === units.length; // "the", "a", "one": the whole word is remembered by heart
     const prompt = single
       ? 'A new wish word: ' + word + '. This little word we just know by heart.'
       : hearts ? 'A new wish word: ' + word + '. Tap the boxes. The purple one we know by heart.'
@@ -211,7 +214,7 @@ const wishNote = {
     });
     await audio.say('The note says: ' + sentence.text);
     const st = state(word); st.lastSeen = ctx.economy.today(); ctx.economy.persist();
-    return { outcome: result.outcome, choices: sent.buttons.length, gpc: word, review: result.outcome !== 'firstTry' && misses === 0 };
+    return { outcome: result.outcome, choices: sent.buttons.length, gpc: word };
   }
 };
 

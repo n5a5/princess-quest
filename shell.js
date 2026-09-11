@@ -140,7 +140,7 @@ async function openCabinet(r) {
     current = { entry: r, module: mod };
     nav.push(() => closeCabinet());
     $('home').hidden = true; $('cabinet').hidden = false; $('back-btn').hidden = false;
-    $('title').textContent = r.name;
+    $('title').textContent = r.name.split(' ').pop();
     window.scrollTo(0, 0);
     await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, exit: () => nav.toMap(), praise, place: r.place, cabinetId: r.id, refreshBar: updateBar, nav: { push: nav.push, pop: nav.pop } });
   } catch (e) {

@@ -1,5 +1,5 @@
 // sw.js — cache-first with a versioned precache. Bump VERSION on every release.
-const VERSION = 'arcade-v4.0.3';
+const VERSION = 'arcade-v4.1.0';
 const ASSETS = [
   '',
   'assets/audio/phonemes/a.ogg',

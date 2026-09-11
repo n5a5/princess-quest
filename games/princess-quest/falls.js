@@ -66,21 +66,23 @@ const measure = {
     }
     if (it.kind === 'compare') {
       const [a, b] = it.pair;
-      const prompt = it.attr === 'long' ? 'Luna needs the longer one to reach across the falls. Which one is longer?'
+      const prompt = (it.attr === 'long' ? 'Luna needs the longer one to reach across the falls. Which one is longer?'
         : it.attr === 'heavy' ? 'Luna put them on the scale. The heavy side goes down. Which one is heavier?'
         : it.attr === 'tall' ? 'The Squishies built towers. Which tower is taller?'
         : it.attr === 'fill' ? 'Luna poured juice. Which jar has more?'
-        : 'Luna is thirsty. Which one holds more water?';
+        : 'Luna is thirsty. Which one holds more water?') + ' Or are they the same?';
       stage.setPrompt(promptBar(audio, prompt));
-      stage.setObject(it.attr === 'heavy' ? el('div', { html: scaleSVG(a.pic, b.pic, it.answerIsFirst ? -1 : 1) }) : el('div'));
-      const items = [a, b].map(x => ({ id: x.name, pic: x.pic, label: x.name, ok: x === (it.answerIsFirst ? a : b), say: x.name, svg: x.svg }));
+      stage.setObject(it.attr === 'heavy' ? el('div', { html: scaleSVG(a.pic, b.pic, it.equal ? 0 : it.answerIsFirst ? -1 : 1) }) : el('div'));
       const word = { long: 'is longer', heavy: 'is heavier', tall: 'is taller', fill: 'has more', holds: 'holds more' }[it.attr];
-      const grid = choiceGrid({ audio, prompt, items: items.map(i => ({ ...i, pic: i.svg ? { svg: i.svg } : i.pic })), praise: praiseLine(), revealText: 'The ' + (it.answerIsFirst ? a.name : b.name) + ' ' + word + '.' });
+      const sameWord = { long: 'are the same length', heavy: 'weigh the same', tall: 'are the same height', fill: 'have the same', holds: 'hold the same' }[it.attr];
+      // "same" is a real third answer (sometimes the right one), so a tap on it counts like any other choice.
+      const items = [
+        ...[a, b].map(x => ({ id: x.name, pic: x.svg ? { svg: x.svg } : x.pic, label: x.name, ok: !it.equal && x === (it.answerIsFirst ? a : b), say: x.name })),
+        { id: 'same', pic: '', label: 'same', ok: !!it.equal, say: 'the same', textOnly: true }
+      ];
+      const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: it.equal ? 'They ' + sameWord + '.' : 'The ' + (it.answerIsFirst ? a.name : b.name) + ' ' + word + '.' });
       grid.el.classList.add(it.attr === 'long' ? 'one-col' : 'three');
-      // Third option keeps it a real 3-choice item: "the same"
-      const same = el('button', { class: 'choice text-only', type: 'button', 'aria-label': 'the same', text: 'same' });
-      same.addEventListener('click', () => { same.classList.add('dim'); same.setAttribute('disabled', ''); audio.say('Look again. One ' + word + '.'); stage.luna('think', 900); });
-      grid.el.appendChild(same);
+      grid.el.querySelectorAll('.choice').forEach((c, i) => { if (items[i].textOnly) { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); } });
       stage.setBody(grid.el);
       await audio.say(prompt);
       const r = await grid.done;
@@ -152,7 +154,10 @@ const dataSort = {
           if (!picked) { audio.say('Tap something first, then tap a basket.'); return; }
           const item = picked;
           if (item.bin === bin.name) {
-            bin.count++; cell.querySelector('.stack').appendChild(el('span', { text: item.pic, style: 'font-size:22px;line-height:1' }));
+            bin.count++;
+            const chip = item.svg ? el('span', { html: item.svg, style: 'display:inline-block;width:26px;height:26px;line-height:0' }) : el('span', { text: item.pic, style: 'font-size:22px;line-height:1' });
+            if (item.svg) { const svg = chip.querySelector('svg'); if (svg) { svg.setAttribute('width', '26'); svg.setAttribute('height', '26'); } }
+            cell.querySelector('.stack').appendChild(chip);
             const ie = itemEls[it.items.indexOf(item)]; ie.setAttribute('disabled', ''); ie.classList.remove('picked'); ie.style.visibility = 'hidden'; picked = null; placed++;
             if (placed === it.items.length) {
               await audio.say('All sorted! Look, the baskets make a chart. ' + it.question);
@@ -194,7 +199,9 @@ const dataSort = {
 };
 
 // ---------- patterns (Rainbow Path) ----------
-const PATTERN_SETS = [['🩷', '💙', '💛'], ['🌷', '🌼', '🌸'], ['💎', '⭐', '🍀'], ['🟣', '🟢', '🟠']];
+// Four elements per set: a unit uses two or three, so "find the odd one" can always drop in a gem that is
+// clearly foreign to the pattern instead of a neighbour's colour (which would make two gems look wrong).
+const PATTERN_SETS = [['🩷', '💙', '💛', '💚'], ['🌷', '🌼', '🌸', '🍀'], ['💎', '⭐', '🌙', '🔥'], ['🟣', '🟢', '🟠', '🔵']];
 function patternFor(stageName) {
   const set = shuffle(pick(PATTERN_SETS));
   const unit = stageName === 'ab' ? [set[0], set[1]] : stageName === 'abb' ? [set[0], set[1], set[1]] : [set[0], set[1], set[2]];
@@ -213,8 +220,7 @@ const patterns = {
       const shown = it.seq.slice(0, -1);
       const row = el('div', { class: 'pattern-row' }, [...shown.map(p => el('div', { class: 'pat', text: p })), el('div', { class: 'pat hole', text: '?' })]);
       const answer = it.seq[it.seq.length - 1];
-      const options = shuffle([...new Set([answer, ...it.set])]).slice(0, 3);
-      if (!options.includes(answer)) options[0] = answer;
+      const options = [answer, ...it.set.filter(x => x !== answer)].slice(0, 3);
       const items = shuffle(options).map(p => ({ id: p, pic: p, ok: p === answer, say: p === answer ? 'this one' : 'not this one' }));
       const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'The pattern goes ' + it.unit.join(', ') + ', again and again. This comes next.' });
       grid.el.classList.add('three');
@@ -324,19 +330,25 @@ function gen(family, stageName) {
       const attr = pick(['long', 'tall', 'heavy', 'heavy', 'fill', 'holds']);
       if (attr === 'tall') {
         const [o1, o2] = shuffle(OBJECTS).slice(0, 2); const h1 = rand(2, 6); let h2 = rand(2, 6); if (h2 === h1) h2 = h1 + (h1 < 6 ? 1 : -1);
-        return { kind: 'compare', attr, key: 'tower' + h1 + h2, pair: [{ name: 'first tower', svg: towerSVG(h1, o1.color, 'first tower') }, { name: 'second tower', svg: towerSVG(h2, o2.color, 'tower ' + h2) }], answerIsFirst: h1 > h2 };
+        const [k1, k2] = shuffle(SQUISHY_KINDS).slice(0, 2);
+        if (Math.random() < 0.2) h2 = h1;
+        return { kind: 'compare', attr, key: 'tower' + h1 + h2, values: [h1, h2], equal: h1 === h2, pair: [{ name: k1.name + '\'s tower', svg: towerSVG(h1, k1.color, k1.name + '\'s tower') }, { name: k2.name + '\'s tower', svg: towerSVG(h2, k2.color, k2.name + '\'s tower') }], answerIsFirst: h1 > h2 };
       }
       if (attr === 'fill') {
         const f1 = pick([0.25, 0.45, 0.65, 0.9]); let f2 = pick([0.25, 0.45, 0.65, 0.9]); if (f2 === f1) f2 = f1 < 0.9 ? f1 + 0.25 : 0.25;
-        return { kind: 'compare', attr, key: 'jar' + f1 + f2, pair: [{ name: 'pink jar', svg: jarSVG(f1, '#F5A3BD', 'pink jar') }, { name: 'mint jar', svg: jarSVG(f2, '#8FDCCB', 'mint jar') }], answerIsFirst: f1 > f2 };
+        if (Math.random() < 0.2) f2 = f1;
+        return { kind: 'compare', attr, key: 'jar' + f1 + f2, values: [f1, f2], equal: f1 === f2, pair: [{ name: 'pink jar', svg: jarSVG(f1, '#F5A3BD', 'pink jar') }, { name: 'green jar', svg: jarSVG(f2, '#8FDCCB', 'green jar') }], answerIsFirst: f1 > f2 };
       }
       if (attr === 'long') {
         const [o1, o2] = shuffle(OBJECTS).slice(0, 2); const l1 = rand(2, 6); let l2 = rand(2, 6); if (l2 === l1) l2 = l1 + (l1 < 6 ? 1 : -1);
-        return { kind: 'compare', attr, key: o1.name + o2.name, pair: [{ name: o1.name, svg: wandSVG(l1, o1.color, o1.name) }, { name: o2.name, svg: wandSVG(l2, o2.color, o2.name) }], answerIsFirst: l1 > l2 };
+        if (Math.random() < 0.2) l2 = l1;
+        return { kind: 'compare', attr, key: o1.name + o2.name, values: [l1, l2], equal: l1 === l2, pair: [{ name: o1.name, svg: wandSVG(l1, o1.color, o1.name) }, { name: o2.name, svg: wandSVG(l2, o2.color, o2.name) }], answerIsFirst: l1 > l2 };
       }
       const pool = attr === 'heavy' ? HEAVY : HOLDS;
-      let [x, y] = shuffle(pool).slice(0, 2); if (x[2] === y[2]) y = pool.find(p => p[2] !== x[2]);
-      return { kind: 'compare', attr, key: x[0] + y[0], pair: [{ name: x[0], pic: x[1] }, { name: y[0], pic: y[1] }], answerIsFirst: x[2] > y[2] };
+      let [x, y] = shuffle(pool).slice(0, 2);
+      if (Math.random() < 0.2) { const twin = pool.find(p => p !== x && p[2] === x[2]); if (twin) y = twin; }
+      if (x[2] === y[2] && Math.random() >= 0.2) y = pool.find(p => p[2] !== x[2]);
+      return { kind: 'compare', attr, key: x[0] + y[0], values: [x[2], y[2]], equal: x[2] === y[2], pair: [{ name: x[0], pic: x[1] }, { name: y[0], pic: y[1] }], answerIsFirst: x[2] > y[2] };
     }
     if (stageName === 'order') {
       const objs = shuffle(OBJECTS).slice(0, 3); const lens = shuffle([2, 4, 6]);
@@ -351,18 +363,19 @@ function gen(family, stageName) {
     const binCount = st === 'two' ? 2 : 3;
     const bins = set.bins.slice(0, binCount).map(([name, v]) => ({ name, color: typeof v === 'string' ? v : null, pic: Array.isArray(v) ? v[0] : '' }));
     const items = [];
-    const counts = shuffle(binCount === 2 ? [rand(2, 4), rand(2, 4)] : [2, 3, 4]);
+    // Counts are made distinct BEFORE the objects are drawn, so "most" and "fewest" always have one answer.
+    const counts = binCount === 2 ? [rand(2, 4), rand(2, 4)] : shuffle([2, 3, 4]);
+    if (binCount === 2 && counts[0] === counts[1]) counts[1] = counts[1] === 4 ? 3 : counts[1] + 1;
     bins.forEach((b, i) => { const v = set.bins[i][1]; for (let k = 0; k < counts[i]; k++) items.push(typeof v === 'string' ? { name: b.name + ' Squishy', bin: b.name, pic: '', svg: squishySVG({ ...SQUISHY_KINDS[0], color: v, dark: '#33254F' }, { size: 44 }) } : { name: v[k % v.length], bin: b.name, pic: v[k % v.length] }); });
-    if (counts[0] === counts[1] && binCount === 2) counts[1]++;
     const which = rand(0, bins.length - 1);
     const question = ask === 'howmany' ? 'How many are in the ' + bins[which].name + ' basket?' : ask === 'more' ? 'How many more are in the biggest basket than the smallest?' : 'Which basket has the ' + ask + '?';
-    return { attr: set.attr, bins, items: shuffle(items), ask, which, question };
+    return { attr: set.attr, bins, counts, items: shuffle(items), ask, which, question };
   }
   if (family === patterns) {
     if (stageName === 'fix') {
       const p = patternFor(pick(['ab', 'abb', 'abc']));
       const wrongAt = rand(1, p.seq.length - 2);
-      const wrongPic = p.set.find(x => x !== p.seq[wrongAt]);
+      const wrongPic = p.set.find(x => !p.unit.includes(x));
       return { kind: 'fix', ...p, wrongAt, wrongPic };
     }
     return { kind: 'next', ...patternFor(stageName) };
@@ -423,3 +436,5 @@ function showMenu() {
 
 export async function mount(h, c) { host = h; ctx = c; showMenu(); }
 export function unmount() { cancelled = true; host = null; }
+// Generators exposed for the stress tests in tests/generators.test.js (no DOM needed to generate).
+export const __test = { gen, FAMILIES, patternFor };

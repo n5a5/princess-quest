@@ -61,9 +61,13 @@ const GPC_ORDER = Object.keys(GPC_SETS);
 function gpcPool(stageName) { const i = Math.max(0, GPC_ORDER.indexOf(stageName)); return GPC_ORDER.slice(0, i + 1).flatMap(k => GPC_SETS[k]); }
 // Pictures that start with a sound: the sound's keyword plus phonics words whose first spoken unit is that sound.
 function startsWith(p) {
-  const kw = sounds[p] ? { w: sounds[p].word, p: sounds[p].pic } : null;
+  // The keyword picture counts only when the word really begins with the sound (kite is the keyword for
+  // long i but starts with /k/; cake for long a starts with /k/).
+  const spellings = p === 'k' ? ['k', 'c'] : [p];
+  const kw = sounds[p] && spellings.some(g => sounds[p].word.startsWith(g)) ? { w: sounds[p].word, p: sounds[p].pic } : null;
   const fromWords = phonics.stages.flatMap(s => s.words).filter(w => spokenUnits(w)[0] && spokenUnits(w)[0].p === p);
-  return [...(kw ? [kw] : []), ...fromWords];
+  const seen = new Set();
+  return [...(kw ? [kw] : []), ...fromWords].filter(w => !seen.has(w.p) && seen.add(w.p));
 }
 function endsWith(p) { return phonics.stages.flatMap(s => s.words).filter(w => { const u = spokenUnits(w); return u.length && u[u.length - 1].p === p; }); }
 function gpcItem(stageName, avoid) {
@@ -74,14 +78,17 @@ function gpcItem(stageName, avoid) {
   const p = phonemeFor(g);
   const kind = Math.random() < 0.5 ? 'hear' : 'see';
   if (kind === 'hear') {
-    const foils = shuffle(all.filter(x => x !== g && phonemeFor(x) !== p)).slice(0, 2);
+    // Foils carry different sounds from the target and from each other (c and k never share a row).
+    const used = new Set([p]);
+    const foils = shuffle(all.filter(x => x !== g)).filter(x => !used.has(phonemeFor(x)) && used.add(phonemeFor(x))).slice(0, 2);
     return { kind, g, p, options: shuffle([g, ...foils]) };
   }
   const atEnd = p === 'ng' || p === 'x';
   const targets = atEnd ? endsWith(p) : startsWith(p);
   const target = pick(targets);
   const others = all.map(phonemeFor).filter(x => x !== p);
-  const foils = shuffle(others.flatMap(x => (atEnd ? endsWith(x) : startsWith(x))).filter(w => w.p !== target.p)).slice(0, 2);
+  const pics = new Set([target.p]);
+  const foils = shuffle(others.flatMap(x => (atEnd ? endsWith(x) : startsWith(x)))).filter(w => !pics.has(w.p) && pics.add(w.p)).slice(0, 2);
   return { kind, g, p, target, foils, atEnd };
 }
 const letterSound = {
@@ -396,3 +403,4 @@ export async function mount(h, c) {
 }
 
 export function unmount() { cancelled = true; host = null; }
+export const __test = { gpcItem, swapPairs, minimalPairs, distractorGraphemes, init({ phonics: p, sounds: s, sentences }) { phonics = p; sounds = s; SENT = sentences; } };

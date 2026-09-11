@@ -325,3 +325,4 @@ export async function mount(h, c) {
   showMenu();
 }
 export function unmount() { cancelled = true; host = null; }
+export const __test = { paItem, rhymeItem, deletePairs, swapPairs, onsetOf, rimeOf, pool, init({ phonics: p, sounds: s, pa }) { phonics = p; sounds = s; PA = pa; } };
