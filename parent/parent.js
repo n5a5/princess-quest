@@ -90,7 +90,12 @@ function nextFocus() {
 function tonightLine() {
   const trouble = adaptive.troubleList(2).slice(0, 3);
   if (!trouble.length) return 'Nothing is stuck. Ask her to read you three wish words from the well.';
-  const items = trouble.map(t => t.id.replace(/^[a-z-]+:/, '').replace(/[:>]/g, ' → ')).join(', ');
+  const pretty = id => {
+    const [kind, ...rest] = id.split(':');
+    const r = rest.join(' ');
+    return ({ spell: 'building the word "' + r + '"', read: 'reading the word "' + r + '"', heartap: 'the wish word "' + r + '"', swap: 'changing ' + r.replace('>', ' into '), oralswap: 'hearing ' + r.replace('>', ' change to '), teen: 'teen number ' + r.replace('teens ', ''), bridge: 'the sum ' + r, frames: 'seeing ' + r.replace(/\w+ /, '') + ' gems quickly', count: 'counting on from ' + r.replace(/\w+ /, ''), story: 'the story questions', vocab: 'the story word', measure: 'measuring (' + r + ')', sort: 'sorting', shape: 'the ' + r.replace(/\w+ /, '') + ' shape' })[kind] || id;
+  };
+  const items = trouble.map(t => pretty(t.id)).join('; ');
   return `Two minutes tonight: revisit ${items}. Say the sound, let her find it, then let her teach it to you.`;
 }
 
