@@ -87,6 +87,26 @@ test('export/import round trip and reject garbage', () => {
   assert.equal(eco2.importJSON('[1,2]'), false);
 });
 
+test('migrate drops wrong-typed fields instead of crashing (BUG-02)', () => {
+  const s = migrate({ schemaVersion: 3, gems: 'abc', subskills: null, log: 'nope', child: { name: 7, pin: '12' }, streak: { days: 'x' }, settings: { muted: 'yes', rate: 0.8 }, badges: [1, 'ok'] });
+  assert.equal(s.gems, 0);
+  assert.deepEqual(s.subskills, {});
+  assert.deepEqual(s.log, []);
+  assert.equal(s.child.name, 'Amelia');
+  assert.equal(s.child.pin, '1234');
+  assert.deepEqual(s.streak.days, []);
+  assert.equal(s.settings.muted, false);
+  assert.equal(s.settings.rate, 0.8);
+  assert.deepEqual(s.badges, ['ok']);
+});
+
+test('importJSON refuses files that are not a Princess Quest save', () => {
+  const eco = createEconomy({ storage: memoryStorage() });
+  assert.equal(eco.importJSON('{"hello":"world"}'), false);
+  assert.equal(eco.importJSON('{"schemaVersion":3,"gems":4}'), true);
+  assert.equal(eco.save.gems, 4);
+});
+
 test('localDay formats local date', () => {
   assert.equal(localDay(new Date(2026, 0, 5)), '2026-01-05');
 });

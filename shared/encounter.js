@@ -43,7 +43,7 @@ export async function runEncounterRound({ host, ctx, place, cabinetId, items, re
   const name = ctx.economy.save.child.name;
   const queue = items.slice();
   const retried = new Set();
-  let firstTries = 0, total = 0, index = 0, cancelled = false;
+  let firstTries = 0, total = 0, index = 0, cancelled = false, lastGood = null;
   stage.cancel = () => { cancelled = true; };
 
   while (queue.length && !cancelled) {
@@ -60,7 +60,11 @@ export async function runEncounterRound({ host, ctx, place, cabinetId, items, re
     ctx.adaptive.record({ subskill: family.subskill, outcome, choices: result.choices || 3, review: isRetry || review.has(family.subskill), itemId, gpc: result.gpc || null });
     if (outcome === 'firstTry') stage.luna('happy'); else if (outcome === 'revealed') stage.luna('think'); else stage.luna('happy', 900);
     if (!isRetry) { total++; if (outcome === 'firstTry') firstTries++; index++; }
-    if (outcome === 'revealed' && !isRetry) { retried.add(itemId); queue.splice(Math.min(2, queue.length), 0, { family, item }); }
+    if (outcome === 'revealed' && !isRetry) {
+      retried.add(itemId);
+      if (queue.length < 2 && lastGood) queue.push(lastGood); // BUG-13: never re-present immediately
+      queue.splice(Math.min(2, queue.length), 0, { family, item });
+    } else if (outcome === 'firstTry' && !isRetry) lastGood = { family, item };
     await wait(350);
   }
   if (cancelled) return null;

@@ -59,6 +59,7 @@ export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revea
       b.addEventListener('click', async () => {
         if (settled) return;
         if (it.ok) {
+          buttons.forEach(x => x.setAttribute('disabled', '')); // BUG-03: no stray taps after a correct answer
           b.classList.add('right');
           confetti(24);
           if (praise) audio.say(praise);
@@ -131,7 +132,7 @@ export function tileBoard({ audio, tiles, slotCount, onChange }) {
     let ghost = null, startX = 0, startY = 0, dragging = false;
     b.addEventListener('pointerdown', e => {
       startX = e.clientX; startY = e.clientY; dragging = false;
-      b.setPointerCapture(e.pointerId);
+      try { b.setPointerCapture(e.pointerId); } catch {}
     });
     b.addEventListener('pointermove', e => {
       if (!b.hasPointerCapture(e.pointerId)) return;
@@ -214,7 +215,7 @@ export async function breathingBubble(audio, { cycles = 3, inMs = 4000, outMs = 
 // makeItem(item) → { prompt, pic, choices:[{id,pic,label,ok}], subskill, itemId, revealText?, oneCol? }
 export async function runRound({ root, audio, adaptive, economy, praiseLines, name, items, makeItem, cabinetId, subskillForStars }) {
   const queue = items.slice();
-  let firstTries = 0, total = 0, index = 0;
+  let firstTries = 0, total = 0, index = 0, lastGood = null;
   const retried = new Set();
   while (queue.length) {
     const item = queue.shift();
@@ -231,7 +232,8 @@ export async function runRound({ root, audio, adaptive, economy, praiseLines, na
     const isRetry = retried.has(spec.itemId);
     adaptive.record({ subskill: spec.subskill, ok: r.firstTry, choices: spec.choices.length, retry: isRetry, itemId: spec.itemId });
     if (!isRetry) { total++; if (r.firstTry) firstTries++; index++; }
-    if (r.revealed && !isRetry) { retried.add(spec.itemId); queue.splice(Math.min(2, queue.length), 0, item); }
+    if (r.revealed && !isRetry) { retried.add(spec.itemId); if (queue.length < 2 && lastGood) queue.push(lastGood); queue.splice(Math.min(2, queue.length), 0, item); }
+    else if (r.firstTry && !isRetry) lastGood = item;
   }
   return finishRound({ economy, adaptive, cabinetId, firstTries, total });
 }

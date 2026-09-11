@@ -7,6 +7,7 @@ import { el, wait, shuffle, pick, choiceGrid, promptBar, bigButton } from '../..
 import { runEncounterRound, celebrateRound } from '../../shared/encounter.js';
 import { lunaSVG, svgFrom } from '../../shared/characters.js';
 
+let roundBusy = false;
 let host = null, ctx = null, cancelled = false, SW = null;
 const INTERVALS = [0, 1, 2, 4, 7, 15]; // days until due, by box
 const NEW_PER_SESSION = 2;
@@ -19,7 +20,10 @@ function state(word) {
   if (!s[word]) s[word] = { box: 0, firstTryDays: [], introducedDay: null, lastSeen: null };
   return s[word];
 }
-const allWords = () => [...SW.lists.prePrimer, ...SW.lists.primer];
+// Intro order (BUG-10): fully decodable words first, then words with one heart, then the rest, within each list.
+const heartCount = w => (SW.words[w] || []).filter(u => u[2]).length;
+const orderList = list => [...list].sort((a, b) => heartCount(a) - heartCount(b) || SW.words[b].length - SW.words[a].length || list.indexOf(a) - list.indexOf(b));
+const allWords = () => [...orderList(SW.lists.prePrimer), ...orderList(SW.lists.primer)];
 const introduced = () => allWords().filter(w => peek(w).introducedDay);
 const isMastered = w => peek(w).box >= 5 && peek(w).firstTryDays.length >= 3;
 function daysSince(day) { if (!day) return 99; const [y, m, d] = day.split('-').map(Number); const [y2, m2, d2] = ctx.economy.today().split('-').map(Number); return Math.round((new Date(y2, m2 - 1, d2) - new Date(y, m - 1, d)) / 864e5); }
@@ -70,8 +74,13 @@ const heartIntro = {
   async play(stage, word, ctx, { praiseLine }) {
     const audio = ctx.audio;
     const boxes = soundBoxes(audio, word);
-    const hearts = SW.words[word].filter(u => u[2]).length;
-    const prompt = 'A new wish word: ' + word + '. ' + (hearts ? 'The purple heart part we remember by heart.' : 'Every sound plays fair.');
+    const units = SW.words[word];
+    const hearts = units.filter(u => u[2]).length;
+    const single = units.length === 1;
+    const prompt = single
+      ? 'A new wish word: ' + word + '. This little word we just know by heart.'
+      : hearts ? 'A new wish word: ' + word + '. Tap the boxes. The purple one we know by heart.'
+      : 'A new wish word: ' + word + '. Tap each box to hear its sound.';
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div', { class: 'word-big', text: word }));
     const done = bigButton('I know it!', () => {}, 'gold');
@@ -81,7 +90,7 @@ const heartIntro = {
     await audio.say(prompt);
     await mapWord(audio, word, boxes);
     done.removeAttribute('disabled'); done.style.opacity = '1';
-    await audio.say('Tap each box to hear it. Then tap "I know it".');
+    await audio.say(single ? 'Say it with me: ' + word + '. Then tap I know it.' : 'Tap the boxes to hear them. Then tap I know it.');
     await clicked;
     await audio.word(word);
     const st = state(word);
@@ -151,6 +160,8 @@ function buildRound() {
 }
 
 async function startRound() {
+  if (roundBusy) return; // BUG-04: one round at a time
+  roundBusy = true;
   cancelled = false;
   ctx.nav && ctx.nav.push(() => { cancelled = true; ctx.audio.stop(); showMenu(); });
   const result = await runEncounterRound({ host, ctx, place: 'well', cabinetId: 'well', items: buildRound() });
@@ -160,6 +171,7 @@ async function startRound() {
 }
 
 function showMenu() {
+  roundBusy = false;
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level }));
   const known = introduced().length, mastered = masteredWords().length;
   host.replaceChildren(el('div', { class: 'scene well' }, [

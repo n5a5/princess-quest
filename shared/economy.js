@@ -40,14 +40,42 @@ export function defaultSave() {
 
 const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 
+// Every field is checked against the type of its default; anything else falls back to the default
+// (BUG-02: a hand-edited or badly imported save must never crash the map).
+function sameKind(a, b) {
+  if (Array.isArray(a)) return Array.isArray(b);
+  if (isObj(a)) return isObj(b);
+  if (typeof a === 'number') return typeof b === 'number' && Number.isFinite(b);
+  if (typeof a === 'boolean') return typeof b === 'boolean';
+  if (typeof a === 'string') return typeof b === 'string';
+  return true;
+}
 export function migrate(raw) {
   const base = defaultSave();
   if (!isObj(raw)) return base;
   const out = { ...base };
   for (const k of Object.keys(base)) {
     if (!(k in raw)) continue;
-    out[k] = isObj(base[k]) && isObj(raw[k]) ? { ...base[k], ...raw[k] } : raw[k];
+    const v = raw[k];
+    if (k === 'quest') { out[k] = isObj(v) || v === null ? v : null; continue; }
+    if (!sameKind(base[k], v)) continue;
+    if (isObj(base[k])) {
+      const merged = { ...base[k] };
+      for (const [kk, vv] of Object.entries(v)) if (!(kk in base[k]) || sameKind(base[k][kk], vv)) merged[kk] = vv;
+      out[k] = merged;
+    } else out[k] = v;
   }
+  out.log = out.log.filter(r => isObj(r) && typeof r.day === 'string' && typeof r.subskill === 'string');
+  out.badges = out.badges.filter(b => typeof b === 'string');
+  out.streak.days = Array.isArray(out.streak.days) ? out.streak.days.filter(d => typeof d === 'string') : [];
+  for (const [id, e] of Object.entries(out.subskills)) if (!isObj(e)) delete out.subskills[id];
+  for (const [w, e] of Object.entries(out.sightWords)) if (!isObj(e)) delete out.sightWords[w];
+  if (!/^\d{4}$/.test(String(out.child.pin))) out.child.pin = '1234';
+  if (typeof out.child.name !== 'string' || !out.child.name.trim()) out.child.name = 'Amelia';
+  if (!Array.isArray(out.squishies.rescued)) out.squishies.rescued = [];
+  if (typeof out.companion.stars !== 'number') out.companion.stars = 0;
+  if (!Array.isArray(out.kingdom.placed)) out.kingdom.placed = [];
+  if (!Array.isArray(out.settings.modulesOff)) out.settings.modulesOff = [];
   out.schemaVersion = SCHEMA_VERSION;
   return out;
 }
@@ -133,7 +161,7 @@ export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date() 
     importJSON(text) {
       try {
         const parsed = JSON.parse(text);
-        if (!isObj(parsed)) return false;
+        if (!isObj(parsed) || !('schemaVersion' in parsed) || !('gems' in parsed)) return false; // not a Princess Quest save
         save = migrate(parsed); persist(); return true;
       } catch { return false; }
     },

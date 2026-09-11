@@ -9,6 +9,7 @@ import { runEncounterRound, celebrateRound } from '../../shared/encounter.js';
 import { unitsOf } from '../../shared/audio.js';
 import { lunaSVG, svgFrom } from '../../shared/characters.js';
 
+let roundBusy = false;
 let host = null, ctx = null, phonics = null, sounds = null, cancelled = false;
 
 // ---------- content helpers ----------
@@ -335,6 +336,8 @@ function buildRound(kind) {
 }
 
 async function startRound(kind) {
+  if (roundBusy) return; // BUG-04: one round at a time
+  roundBusy = true;
   cancelled = false;
   ctx.nav && ctx.nav.push(() => { cancelled = true; ctx.audio.stop(); showMenu(); });
   const result = await runEncounterRound({ host, ctx, place: 'meadow', cabinetId: 'meadow', items: buildRound(kind), review: new Set(ctx.adaptive.reviewSkills('meadow')) });
@@ -344,6 +347,7 @@ async function startRound(kind) {
 }
 
 function showMenu() {
+  roundBusy = false;
   const comp = ctx.economy.companion();
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: comp.level }));
   const modes = [

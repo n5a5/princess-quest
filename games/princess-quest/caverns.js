@@ -10,6 +10,7 @@ import { el, wait, shuffle, pick, choiceGrid, promptBar, bigButton } from '../..
 import { runEncounterRound, celebrateRound } from '../../shared/encounter.js';
 import { lunaSVG, svgFrom } from '../../shared/characters.js';
 
+let roundBusy = false;
 let host = null, ctx = null, cancelled = false;
 const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const GEM = '💎';
@@ -305,6 +306,8 @@ function buildRound(kind) {
 }
 
 async function startRound(kind) {
+  if (roundBusy) return; // BUG-04: one round at a time
+  roundBusy = true;
   cancelled = false;
   ctx.nav && ctx.nav.push(() => { cancelled = true; ctx.audio.stop(); showMenu(); });
   const result = await runEncounterRound({ host, ctx, place: 'caverns', cabinetId: 'caverns', items: buildRound(kind), review: new Set(ctx.adaptive.reviewSkills('caverns')) });
@@ -314,6 +317,7 @@ async function startRound(kind) {
 }
 
 function showMenu() {
+  roundBusy = false;
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level }));
   const modes = [
     { id: 'mix', icon: '💎', name: "Today's crystals", primary: true },

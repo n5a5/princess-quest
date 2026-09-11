@@ -55,6 +55,7 @@ function renderHome() {
   const req = REGISTRY.find(r => r.id === quest.requiredCabinet);
   const questDone = quest.requiredDone && quest.choiceDone;
   const questStars = (quest.requiredDone ? '⭐' : '☆') + (quest.choiceDone ? '⭐' : '☆');
+  const streak = economy.streak();
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: comp.level }));
   luna.addEventListener('click', () => { luna.className.baseVal = 'companion happy'; setTimeout(() => { luna.className.baseVal = 'companion idle'; }, 1400); audio.say(withName(pick(praise.greeting), name)); });
 
@@ -65,7 +66,8 @@ function renderHome() {
         el('div', { class: 'greeting' }, [
           el('div', { class: 'hello', text: 'Hello, ' + name + '!' }),
           el('div', { class: 'sub', text: quest.claimed ? 'Quest done! Play anywhere you like.' : 'Luna is waiting at ' + (req ? req.name : 'the meadow') + '.' }),
-          el('div', { class: 'meter', 'aria-label': 'Luna glow' }, [el('span', { class: 'star', text: '⭐' }), el('div', { class: 'track' }, [el('div', { class: 'fill', style: 'width:' + Math.round(comp.fraction * 100) + '%' })])])
+          el('div', { class: 'meter', 'aria-label': 'Luna glow' }, [el('span', { class: 'star', text: '⭐' }), el('div', { class: 'track' }, [el('div', { class: 'fill', style: 'width:' + Math.round(comp.fraction * 100) + '%' })])]),
+          el('div', { class: 'streak', 'aria-label': 'Days played this week' }, [el('span', { text: '🔥' }), ...streak.last7.map(on => el('span', { class: 'dot' + (on ? ' on' : '') }))])
         ])
       ]),
       el('div', { class: 'quest' }, [
@@ -113,7 +115,10 @@ function claimQuest() {
   audio.say('Quest complete! Ten gems for you, ' + economy.save.child.name + '!');
 }
 
+let opening = false;
 async function openCabinet(r) {
+  if (opening || current) return; // BUG-04: ignore a second tap while a place is opening
+  opening = true;
   audio.stop();
   try {
     const mod = await import(r.entry);
@@ -127,7 +132,7 @@ async function openCabinet(r) {
     console.error(e);
     toast('This place needs one visit online first.');
     closeCabinet();
-  }
+  } finally { opening = false; }
 }
 
 function closeCabinet() {

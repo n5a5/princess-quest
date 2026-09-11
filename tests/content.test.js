@@ -32,6 +32,11 @@ test('phonics.json: every unit uses a known phoneme id, graphemes spell the word
       assert.ok(w.u.some(u => u[1] !== null), w.w);
     }
   }
+  // BUG-05: a picture must identify exactly one word, or choices become unanswerable
+  const byPic = {};
+  for (const st of stages) for (const w of st.words) (byPic[w.p] = byPic[w.p] || []).push(w.w);
+  const dups = Object.entries(byPic).filter(([, v]) => v.length > 1);
+  assert.deepEqual(dups, [], 'duplicate pictures');
 });
 
 test('sight-words.json: 92 Dolch words, units spell each word, phoneme ids valid, hearts marked', () => {

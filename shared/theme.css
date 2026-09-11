@@ -26,7 +26,7 @@ svg { display: block; }
 
 /* ---------- Top bar ---------- */
 #topbar { position: fixed; top: 0; left: 0; right: 0; height: var(--bar); display: flex; align-items: center; gap: 8px; padding: 0 10px; background: linear-gradient(90deg, var(--night), var(--plum)); color: #fff; z-index: 50; box-shadow: 0 3px 14px rgba(42, 30, 69, 0.35); }
-#topbar .title { flex: 1; text-align: center; font-family: var(--display); font-weight: 700; font-size: 21px; color: var(--tint-gold); letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#topbar .title { flex: 1; text-align: center; font-family: var(--display); font-weight: 700; font-size: clamp(15px, 4.6vw, 21px); color: var(--tint-gold); letter-spacing: 0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bar-btn { min-width: 52px; min-height: 52px; border-radius: 16px; background: rgba(255,255,255,0.14); font-size: 26px; display: flex; align-items: center; justify-content: center; transition: transform 0.12s; }
 .bar-btn:active { transform: scale(0.94); background: rgba(255,255,255,0.24); }
 .gems { min-height: 52px; padding: 0 14px; border-radius: 16px; background: rgba(255,255,255,0.14); font-family: var(--display); font-weight: 700; font-size: 20px; display: flex; align-items: center; gap: 6px; }
@@ -114,7 +114,7 @@ main { padding: calc(var(--bar) + 12px) 12px 40px; max-width: 560px; margin: 0 a
 .stage-row .object { flex: 1; display: flex; justify-content: center; }
 .prompt { display: flex; align-items: center; gap: 12px; background: var(--cream); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow-soft); font-family: var(--read); font-size: 22px; font-weight: 700; color: var(--ink); }
 .prompt .text { flex: 1; line-height: 1.35; }
-.word { display: inline-block; padding: 2px 4px; border-radius: 8px; font: inherit; color: inherit; }
+.word { display: inline-block; padding: 2px 1px; margin: 0 -1px; border-radius: 8px; font: inherit; color: inherit; }
 .word:active, .word.now { background: var(--tint-gold); }
 .sound-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 48px; min-height: 48px; padding: 0 12px; margin: 0 2px; border-radius: 14px; background: #fff; border: 3px solid var(--lavender-2); color: var(--violet-deep); font-family: var(--read); font-weight: 700; font-size: 26px; vertical-align: middle; box-shadow: var(--shadow-soft); }
 .sound-chip:active { background: var(--lavender); }
@@ -257,3 +257,28 @@ main { padding: calc(var(--bar) + 12px) 12px 40px; max-width: 560px; margin: 0 a
 .shop-item.gift { flex: 1; min-width: 140px; background: linear-gradient(180deg, #FFF6D6, #FFE9A8); }
 .gem-cost { display: inline-flex; gap: 2px; flex-wrap: wrap; justify-content: center; max-width: 120px; }
 .gem-cost .gem-icon { width: 14px; height: 14px; }
+
+/* BUG-08: short landscape viewports (phones rotated): tighter stage, slots and tray side by side */
+@media (max-height: 480px) and (orientation: landscape) {
+  main { max-width: 900px; padding-top: calc(var(--bar) + 6px); }
+  .stage-row { min-height: 0; }
+  .stage-row .companion { width: 56px; height: 56px; }
+  .picture { font-size: 56px; min-height: 60px; }
+  .prompt { font-size: 18px; padding: 8px 12px; }
+  .board { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 12px 28px; }
+  .activity { gap: 8px; }
+  .choices { grid-template-columns: repeat(3, 1fr); }
+  .choice { min-height: 80px; font-size: 40px; }
+}
+/* BUG-09: wide screens get a real composition instead of a phone column */
+@media (min-width: 1100px) {
+  main { max-width: 960px; }
+  .places { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .path { display: none; }
+  .encounters { grid-template-columns: repeat(3, 1fr); }
+  .encounter-btn.primary { grid-column: 1 / -1; }
+  .scene { padding: 20px; }
+  .choices { gap: 16px; }
+  .choice { min-height: 120px; font-size: 64px; }
+  .tile, .slot, .rune { min-width: 84px; min-height: 92px; font-size: 48px; }
+}

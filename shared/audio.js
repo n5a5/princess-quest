@@ -208,6 +208,7 @@ export function createWebAudioPlayer() {
   const buffers = new Map(); // key → Promise<AudioBuffer>
   let playing = [];          // active source nodes
   let timers = [];
+  let waiters = [];          // resolvers of in-flight play()/chain() promises; settled false on stop
   const keyOf = src => (src instanceof Blob ? src : String(src));
   function context() { if (!ctx) ctx = new AC(); if (ctx.state === 'suspended') ctx.resume().catch(() => {}); return ctx; }
   function decode(src) {
@@ -225,6 +226,15 @@ export function createWebAudioPlayer() {
     playing = [];
     for (const t of timers) clearTimeout(t);
     timers = [];
+    const w = waiters; waiters = [];
+    for (const resolve of w) resolve(false); // BUG-01: never leave an awaiting caller hanging
+  }
+  function settleLater(ms) {
+    return new Promise(resolve => {
+      const done = v => { waiters = waiters.filter(r => r !== done); resolve(v); };
+      waiters.push(done);
+      timers.push(setTimeout(() => done(true), Math.max(0, ms)));
+    });
   }
   function schedule(buffer, at, fadeIn, fadeOut) {
     const c = context();
@@ -247,7 +257,7 @@ export function createWebAudioPlayer() {
       stopAll();
       const c = context();
       const end = schedule(buffer, c.currentTime + 0.01, 0, 0.01);
-      return new Promise(resolve => { timers.push(setTimeout(() => resolve(true), Math.max(0, (end - c.currentTime) * 1000))); });
+      return settleLater((end - c.currentTime) * 1000);
     },
     // Plays clips back to back. gapMs adds silence; crossfadeMs overlaps the tail of one clip with the head of the next.
     async chain(srcs, { gapMs = 0, crossfadeMs = 60, onStart = () => {} } = {}) {
@@ -264,7 +274,7 @@ export function createWebAudioPlayer() {
         const end = schedule(b, startAt, i > 0 ? xf : 0, i < bufs.length - 1 ? xf : 0.01);
         at = end - (i < bufs.length - 1 ? xf : 0) + gapMs / 1000;
       });
-      return new Promise(resolve => { timers.push(setTimeout(() => resolve(true), Math.max(0, (at - c.currentTime) * 1000))); });
+      return settleLater((at - c.currentTime) * 1000);
     },
     stop() { stopAll(); },
     preload(srcs) { srcs.forEach(s => decode(s).catch(() => {})); },
@@ -289,14 +299,14 @@ export function createHtmlPlayer() {
       try { url = await resolveSrc(src); } catch (e) { console.warn('audio missing', src, e); return false; }
       return new Promise(resolve => {
         const a = new Audio(url);
-        current = a;
-        const done = ok => { if (src instanceof Blob) URL.revokeObjectURL(url); if (current === a) current = null; resolve(ok); };
+        const done = ok => { if (src instanceof Blob) URL.revokeObjectURL(url); if (current && current.el === a) current = null; resolve(ok); };
+        current = { el: a, done };
         a.onended = () => done(true);
         a.onerror = () => done(false);
         a.play().catch(() => done(false));
       });
     },
-    stop() { if (current) { try { current.pause(); current.currentTime = 0; } catch {} current = null; } },
+    stop() { if (current) { const c = current; current = null; try { c.el.pause(); c.el.currentTime = 0; } catch {} c.done(false); } },
     preload(urls) { urls.forEach(u => resolveSrc(u).catch(() => {})); }
   };
 }
