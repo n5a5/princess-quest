@@ -137,7 +137,7 @@ const wordSpell = {
     const shown = 'Build the word you hear. Put the letter stones in order.';
     const prompt = 'Build the word ' + w.w + '. Put the letter stones in order.';
     stage.setObject(picture(w.p, () => { audio.stop(); audio.word(w.w); }));
-    stage.setPrompt(promptBar(audio, shown, { speak: prompt }));
+    stage.setPrompt(promptBar(audio, shown, { speak: prompt, replay: w.w }));
     let misses = 0, resolve;
     const done = new Promise(r => { resolve = r; });
     const board = tileBoard({

@@ -121,7 +121,7 @@ const hearTap = {
     const foils = foilsFor(word, 3);
     const items = shuffle([word, ...foils]).map(w => ({ id: w, pic: '', label: w, ok: w === word, say: w, textOnly: true }));
     const prompt = 'Four wish doors. Which door says ' + word + '? Tap it to open it.';
-    stage.setPrompt(promptBar(audio, 'Four wish doors. Which door says the word you hear? Tap it to open it.', { speak: prompt }));
+    stage.setPrompt(promptBar(audio, 'Four wish doors. Which door says the word you hear? Tap it to open it.', { speak: prompt, replay: word }));
     stage.setObject(el('div', { class: 'picture', text: '🚪' }));
     const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'This door says ' + word + '.' });
     grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only', 'door'); c.querySelector('.pic')?.remove(); });
@@ -184,7 +184,7 @@ const wishNote = {
     const audio = ctx.audio;
     const { word, sentence } = it;
     const prompt = 'Luna wrote a wish note. Find the word ' + word + '. Tap it.';
-    stage.setPrompt(promptBar(audio, 'Luna wrote a wish note. Find the word you hear. Tap it.', { speak: prompt }));
+    stage.setPrompt(promptBar(audio, 'Luna wrote a wish note. Find the word you hear. Tap it.', { speak: prompt, replay: word }));
     stage.setObject(el('div', { class: 'picture', text: '💌' }));
     const sent = sentenceRow(audio, sentence.text);
     const targets = sent.buttons.filter(x => x.clean.toLowerCase() === word.toLowerCase());

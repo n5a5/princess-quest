@@ -98,7 +98,7 @@ const countSounds = {
     const n = units.length;
     const prompt = 'Say ' + w.w + ' slowly. How many sounds do you hear? Light one gem for each sound.';
     stage.setObject(picture(w.p, () => { audio.stop(); audio.word(w.w); }));
-    stage.setPrompt(promptBar(audio, 'Say the word slowly. How many sounds do you hear? Light one gem for each sound.', { ears: true, speak: prompt }));
+    stage.setPrompt(promptBar(audio, 'Say the word slowly. How many sounds do you hear? Light one gem for each sound.', { ears: true, speak: prompt, replay: w.w }));
     await audio.say(prompt);
     let misses = 0;
     const counter = gemCounter(audio, 5, () => { audio.stop(); audio.word(w.w); });
@@ -203,7 +203,7 @@ const rhymeIt = {
     const prompt = 'Rhymes sound the same at the end: ' + it.target.w + ', ' + it.answer.w + '. Which one rhymes with ' + it.target.w + '?';
     const ask = 'Which one rhymes with ' + it.target.w + '?';
     stage.setObject(picture(it.target.p, () => { audio.stop(); audio.word(it.target.w); }));
-    stage.setPrompt(promptBar(audio, 'Which one rhymes with this one?', { ears: true, speak: ask }));
+    stage.setPrompt(promptBar(audio, 'Which one rhymes with this one?', { ears: true, speak: ask, replay: it.target.w }));
     const grid = choiceGrid({ audio, prompt: ask, items: picChoices(it.answer, it.foils), praise: praiseLine(), revealText: it.target.w + ' and ' + it.answer.w + ' rhyme.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
@@ -220,7 +220,7 @@ const beats = {
     const audio = ctx.audio;
     const prompt = 'Say ' + it.word + '. Clap the beats. How many beats? Light one gem for each beat.';
     stage.setObject(picture(it.pic, () => { audio.stop(); audio.word(it.word); }));
-    stage.setPrompt(promptBar(audio, 'Say the word. Clap the beats. How many beats? Light one gem for each beat.', { ears: true, speak: prompt }));
+    stage.setPrompt(promptBar(audio, 'Say the word. Clap the beats. How many beats? Light one gem for each beat.', { ears: true, speak: prompt, replay: it.word }));
     await audio.say(prompt);
     let misses = 0;
     const counter = gemCounter(audio, 4, () => { audio.stop(); audio.word(it.word); });

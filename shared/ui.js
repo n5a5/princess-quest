@@ -25,10 +25,15 @@ export function speakButton(audio, text) {
 }
 // `speak` is what the speaker button and the app say when it differs from what is printed: the printed line
 // never shows a word the child is supposed to build, find or count the sounds of.
-export function promptBar(audio, text, { ears = false, speak = null } = {}) {
+// `replay`: what the speaker button repeats when the child taps it again. For a "build / find / count the
+// word you hear" item that is just the word itself, not the whole instruction.
+export function promptBar(audio, text, { ears = false, speak = null, replay = null } = {}) {
   const t = el('div', { class: 'text' });
   t.appendChild(audio.spans(text, { ears }));
-  return el('div', { class: 'prompt' }, [t, speakButton(audio, speak || text)]);
+  const btn = replay
+    ? el('button', { class: 'speak-btn', type: 'button', 'aria-label': 'Hear it again', text: '🔊', onclick: () => { audio.stop(); typeof replay === 'function' ? replay() : audio.word(replay); } })
+    : speakButton(audio, speak || text);
+  return el('div', { class: 'prompt' }, [t, btn]);
 }
 export function picture(pic, onTap) {
   const p = el('div', { class: 'picture' + (onTap ? ' tappable' : '') });
