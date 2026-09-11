@@ -30,3 +30,10 @@ label.toggle { display: flex; align-items: center; gap: 8px; min-height: 40px; }
 .kit button.rec { background: #fee2e2; border-color: #fca5a5; }
 .kit button.rec.live { background: #ef4444; color: #fff; animation: blink 0.8s infinite; }
 @keyframes blink { 50% { opacity: 0.6; } }
+.kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.kpi { background: #f5f3ff; border-radius: 12px; padding: 10px; text-align: center; }
+.kpi .v { font-size: 26px; font-weight: 800; color: #4c1d95; }
+.kpi .l { font-size: 12px; color: #6b7280; }
+tr.reteach td { background: #fff1f2; }
+td.up { color: #15803d; font-weight: 700; }
+td.down { color: #b91c1c; font-weight: 700; }

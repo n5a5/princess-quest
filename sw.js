@@ -1,5 +1,5 @@
 // sw.js — cache-first with a versioned precache. Bump VERSION on every release.
-const VERSION = 'arcade-v3.6.0';
+const VERSION = 'arcade-v3.7.0';
 const ASSETS = [
   '',
   'assets/audio/phonemes/a.ogg',
@@ -249,6 +249,7 @@ const ASSETS = [
   'content/phonics.json',
   'content/praise.json',
   'content/scenarios.json',
+  'content/shop.json',
   'content/sight-words.json',
   'content/sounds.json',
   'content/standards.json',
@@ -256,6 +257,7 @@ const ASSETS = [
   'games/princess-quest/castle.js',
   'games/princess-quest/caverns.js',
   'games/princess-quest/falls.js',
+  'games/princess-quest/garden.js',
   'games/princess-quest/meadow.js',
   'games/princess-quest/well.js',
   'games/registry.js',

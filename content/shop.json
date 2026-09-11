@@ -1,0 +1,21 @@
+{
+  "note": "Squishy Garden decorations. A small set of desirable pieces; costs shown to the child as gem rows, never numerals. Two prosocial spends have thanks lines.",
+  "items": [
+    { "id": "fountain", "name": "Rainbow fountain", "pic": "⛲", "cost": 8 },
+    { "id": "tree", "name": "Crystal tree", "pic": "🌳", "cost": 6 },
+    { "id": "flowers", "name": "Flower patch", "pic": "🌷", "cost": 4 },
+    { "id": "bridge", "name": "Little bridge", "pic": "🌉", "cost": 10 },
+    { "id": "stable", "name": "Unicorn stable", "pic": "🏡", "cost": 12 },
+    { "id": "swing", "name": "Cloud swing", "pic": "☁️", "cost": 7 },
+    { "id": "lantern", "name": "Star lantern", "pic": "🏮", "cost": 5 },
+    { "id": "pond", "name": "Lily pond", "pic": "🪷", "cost": 6 },
+    { "id": "mushroom", "name": "Squishy mushroom house", "pic": "🍄", "cost": 9 },
+    { "id": "gate", "name": "Rainbow gate", "pic": "🌈", "cost": 11 },
+    { "id": "statue", "name": "Luna statue", "pic": "🗿", "cost": 14 },
+    { "id": "bench", "name": "Cozy bench", "pic": "🪑", "cost": 5 }
+  ],
+  "gifts": [
+    { "id": "flower-ryan", "name": "Send a flower to Ryan", "pic": "💐", "cost": 3, "thanks": "Ryan says thank you! That was so kind." },
+    { "id": "garden-gems", "name": "Give gems to the castle garden", "pic": "🌱", "cost": 3, "thanks": "The garden sparkles. Everyone in the kingdom says thank you." }
+  ]
+}
