@@ -58,5 +58,12 @@ $manifest = [ordered]@{
   letters = @()
   words = @()
 }
-$manifest | ConvertTo-Json -Depth 3 | Set-Content "$root\content\audio-manifest.json" -Encoding UTF8
+# Keep any existing word list; write UTF-8 without BOM (node's JSON.parse rejects a BOM).
+$manPath = "$root\content\audio-manifest.json"
+if (Test-Path $manPath) {
+  $old = (Get-Content $manPath -Raw -Encoding UTF8) -replace '^﻿', '' | ConvertFrom-Json
+  if ($old.words) { $manifest.words = $old.words }
+  if ($old.wordsSource) { $manifest.wordsSource = $old.wordsSource }
+}
+[System.IO.File]::WriteAllText($manPath, (($manifest | ConvertTo-Json -Depth 3) + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 "wrote $($ids.Count) clips and content/audio-manifest.json"

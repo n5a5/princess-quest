@@ -34,6 +34,38 @@ test('phonics.json: every unit uses a known phoneme id, graphemes spell the word
   }
 });
 
+test('sight-words.json: 92 Dolch words, units spell each word, phoneme ids valid, hearts marked', () => {
+  const ids = new Set(readJSON('content/sounds.json').sounds.map(s => s.id));
+  const sw = readJSON('content/sight-words.json');
+  assert.equal(sw.lists.prePrimer.length, 40);
+  assert.equal(sw.lists.primer.length, 52);
+  for (const w of [...sw.lists.prePrimer, ...sw.lists.primer]) {
+    const u = sw.words[w];
+    assert.ok(u, w + ' missing units');
+    assert.equal(u.map(x => x[0]).join(''), w, w + ' graphemes must spell the word');
+    for (const [g, p, heart] of u) { assert.ok(g); if (p !== null) assert.ok(ids.has(p), `${w}: unknown phoneme ${p}`); if (p === null) assert.ok(heart === true || g === 'e', `${w}: silent part ${g} needs a heart`); }
+  }
+});
+
+test('stories, poems, calm and scenarios content is complete', () => {
+  const st = readJSON('content/stories.json');
+  assert.ok(st.stories.length >= 6);
+  for (const s of st.stories) {
+    assert.ok(['literary', 'informational'].includes(s.kind), s.id);
+    assert.ok(s.screens.length >= 3, s.id);
+    for (const sc of s.screens) { assert.ok((sc.text.match(/[.!?]"?(\s|$)/g) || []).length <= 4, s.id + ' screen too long'); assert.equal(sc.question.choices.filter(c => c.ok).length, 1, s.id); assert.equal(sc.question.choices.length, 3); }
+    assert.equal(s.vocab.choices.filter(c => c.ok).length, 1, s.id + ' vocab');
+  }
+  assert.ok(st.poems.length >= 4);
+  st.poems.forEach(p => { assert.equal(p.lines.length, 4, p.id); assert.equal(p.rhymeQuestion.choices.filter(c => c.ok).length, 1, p.id); });
+  const calm = readJSON('content/calm.json');
+  assert.ok(calm.breathing.length >= 4 && calm.feelings.length >= 9 && calm.stories.length >= 4 && calm.bodyScan.length >= 6);
+  calm.stories.forEach(s => { const ch = s.screens.filter(x => x.choice); assert.ok(ch.length >= 1, s.id); ch.forEach(x => assert.equal(x.choice.options.filter(o => o.quality === 'best').length, 1, s.id)); });
+  const sc = readJSON('content/scenarios.json');
+  assert.ok(sc.scenarios.length >= 15);
+  sc.scenarios.forEach(s => { assert.equal(s.choices.length, 3, s.id); assert.equal(s.choices.filter(c => c.quality === 'best').length, 1, s.id); s.choices.forEach(c => assert.ok(c.feedback && c.pic, s.id)); });
+});
+
 test('praise.json pools are non-empty and use {name}', () => {
   const p = readJSON('content/praise.json');
   for (const k of ['praise', 'retry', 'greeting', 'reveal']) {

@@ -1,0 +1,67 @@
+{
+  "note": "Read-to-me stories for Story Castle (ELA.K.R.1.1 literary, ELA.K.R.2.2 informational, ELA.K.V.1.2 vocabulary). Each screen: text (≤3 short lines), pic, and one picture-answer question. One vocabulary word per story is recalled the next day. Every word is tappable; TTS reads the line.",
+  "stories": [
+    {
+      "id": "lost-gem", "title": "The Lost Gem", "kind": "literary", "pic": "💎",
+      "vocab": { "word": "glow", "meaning": "to shine with a soft light", "pic": "✨", "question": "Which one glows?", "choices": [{ "pic": "🕯️", "ok": true }, { "pic": "🪨", "ok": false }, { "pic": "🧦", "ok": false }] },
+      "screens": [
+        { "text": "Luna the unicorn had a gem. It was pink. It could glow.", "pic": "🦄", "question": { "prompt": "What color was the gem?", "choices": [{ "pic": "🩷", "label": "pink", "ok": true }, { "pic": "💙", "label": "blue", "ok": false }, { "pic": "💚", "label": "green", "ok": false }] } },
+        { "text": "One day the gem was gone! Luna looked in the grass. She looked by the pond.", "pic": "🏞️", "question": { "prompt": "Where did Luna look first?", "choices": [{ "pic": "🌱", "label": "grass", "ok": true }, { "pic": "🏰", "label": "castle", "ok": false }, { "pic": "🛏️", "label": "bed", "ok": false }] } },
+        { "text": "A little Squishy popped up. \"I have it!\" said Rosie. \"It fell in my bubble.\"", "pic": "🧸", "question": { "prompt": "Who found the gem?", "choices": [{ "pic": "🧸", "label": "Rosie", "ok": true }, { "pic": "🦄", "label": "Luna", "ok": false }, { "pic": "🐸", "label": "a frog", "ok": false }] } },
+        { "text": "Luna hugged Rosie. The gem began to glow. Now they were best friends.", "pic": "🤗", "question": { "prompt": "How did Luna feel at the end?", "choices": [{ "pic": "😊", "label": "happy", "ok": true }, { "pic": "😢", "label": "sad", "ok": false }, { "pic": "😴", "label": "sleepy", "ok": false }] } }
+      ]
+    },
+    {
+      "id": "rainbow-bridge", "title": "The Rainbow Bridge", "kind": "literary", "pic": "🌈",
+      "vocab": { "word": "brave", "meaning": "doing something even when it feels scary", "pic": "🦁", "question": "Who is being brave?", "choices": [{ "pic": "🧗", "ok": true }, { "pic": "😴", "ok": false }, { "pic": "🍽️", "ok": false }] },
+      "screens": [
+        { "text": "The princess wanted to cross the river. The bridge was made of rainbow.", "pic": "🌉", "question": { "prompt": "What was the bridge made of?", "choices": [{ "pic": "🌈", "label": "rainbow", "ok": true }, { "pic": "🪵", "label": "wood", "ok": false }, { "pic": "🧊", "label": "ice", "ok": false }] } },
+        { "text": "The bridge had a gap. \"I am scared,\" said the princess. Luna said, \"I will go with you.\"", "pic": "😟", "question": { "prompt": "How did the princess feel?", "choices": [{ "pic": "😟", "label": "scared", "ok": true }, { "pic": "😂", "label": "silly", "ok": false }, { "pic": "😡", "label": "mad", "ok": false }] } },
+        { "text": "They took three deep breaths. Then they jumped over the gap together!", "pic": "🤸", "question": { "prompt": "What did they do before the jump?", "choices": [{ "pic": "🫧", "label": "deep breaths", "ok": true }, { "pic": "🍕", "label": "ate pizza", "ok": false }, { "pic": "🛌", "label": "took a nap", "ok": false }] } },
+        { "text": "\"You were brave,\" said Luna. The princess smiled. Being brave felt good.", "pic": "🦁", "question": { "prompt": "What did Luna call the princess?", "choices": [{ "pic": "🦁", "label": "brave", "ok": true }, { "pic": "😴", "label": "sleepy", "ok": false }, { "pic": "🐌", "label": "slow", "ok": false }] } }
+      ]
+    },
+    {
+      "id": "squishy-picnic", "title": "The Squishy Picnic", "kind": "literary", "pic": "🧺",
+      "vocab": { "word": "share", "meaning": "to give some of what you have to someone else", "pic": "🤝", "question": "Which picture shows sharing?", "choices": [{ "pic": "🍪", "ok": true }, { "pic": "🔒", "ok": false }, { "pic": "🏃", "ok": false }] },
+      "screens": [
+        { "text": "Minty and Sunny had a picnic. Minty had six grapes. Sunny had none.", "pic": "🍇", "question": { "prompt": "Who had no grapes?", "choices": [{ "pic": "🟡", "label": "Sunny", "ok": true }, { "pic": "🟢", "label": "Minty", "ok": false }, { "pic": "🦄", "label": "Luna", "ok": false }] } },
+        { "text": "Sunny looked sad. Minty thought about it. Then Minty gave Sunny three grapes.", "pic": "🤝", "question": { "prompt": "What did Minty do?", "choices": [{ "pic": "🍇", "label": "shared", "ok": true }, { "pic": "🏃", "label": "ran away", "ok": false }, { "pic": "😴", "label": "slept", "ok": false }] } },
+        { "text": "Now they both had three. \"Thank you!\" said Sunny. They ate in the sun.", "pic": "☀️", "question": { "prompt": "How many grapes did each Squishy have?", "choices": [{ "pic": "3️⃣", "label": "three", "ok": true }, { "pic": "6️⃣", "label": "six", "ok": false }, { "pic": "1️⃣", "label": "one", "ok": false }] } }
+      ]
+    },
+    {
+      "id": "all-about-unicorns", "title": "All About Unicorns", "kind": "informational", "pic": "🦄",
+      "vocab": { "word": "mane", "meaning": "the long hair on a horse's or unicorn's neck", "pic": "🦄", "question": "Where is the mane?", "choices": [{ "pic": "🦁", "ok": true }, { "pic": "🐟", "ok": false }, { "pic": "🐢", "ok": false }] },
+      "screens": [
+        { "text": "A unicorn has one horn. The horn is on its head. It is long and pointy.", "pic": "🦄", "question": { "prompt": "How many horns does a unicorn have?", "choices": [{ "pic": "1️⃣", "label": "one", "ok": true }, { "pic": "2️⃣", "label": "two", "ok": false }, { "pic": "5️⃣", "label": "five", "ok": false }] } },
+        { "text": "A unicorn has a mane. The mane is the hair on its neck. Luna's mane is many colors.", "pic": "🌈", "question": { "prompt": "What is a mane?", "choices": [{ "pic": "💇", "label": "hair on the neck", "ok": true }, { "pic": "🦶", "label": "a foot", "ok": false }, { "pic": "👃", "label": "a nose", "ok": false }] } },
+        { "text": "Unicorns eat grass and apples. They like to run in meadows. They are gentle.", "pic": "🍎", "question": { "prompt": "What do unicorns eat?", "choices": [{ "pic": "🍎", "label": "apples", "ok": true }, { "pic": "🍕", "label": "pizza", "ok": false }, { "pic": "🪨", "label": "rocks", "ok": false }] } }
+      ]
+    },
+    {
+      "id": "how-rainbows-happen", "title": "How Rainbows Happen", "kind": "informational", "pic": "🌈",
+      "vocab": { "word": "drop", "meaning": "a tiny ball of water", "pic": "💧", "question": "Which one is a drop?", "choices": [{ "pic": "💧", "ok": true }, { "pic": "🪨", "ok": false }, { "pic": "🍎", "ok": false }] },
+      "screens": [
+        { "text": "Rain falls in little drops. The sun comes out. The sun shines on the drops.", "pic": "🌦️", "question": { "prompt": "What shines on the rain drops?", "choices": [{ "pic": "☀️", "label": "the sun", "ok": true }, { "pic": "🌙", "label": "the moon", "ok": false }, { "pic": "🔦", "label": "a flashlight", "ok": false }] } },
+        { "text": "The light bends in each drop. It splits into colors. Red, orange, yellow, green, blue, purple!", "pic": "🌈", "question": { "prompt": "What does the light split into?", "choices": [{ "pic": "🌈", "label": "colors", "ok": true }, { "pic": "🧊", "label": "ice", "ok": false }, { "pic": "🔔", "label": "sounds", "ok": false }] } },
+        { "text": "That is a rainbow. You need rain and sun at the same time. Look up after a storm!", "pic": "🌦️", "question": { "prompt": "What two things make a rainbow?", "choices": [{ "pic": "🌦️", "label": "rain and sun", "ok": true }, { "pic": "❄️", "label": "snow", "ok": false }, { "pic": "🌙", "label": "night", "ok": false }] } }
+      ]
+    },
+    {
+      "id": "busy-bees", "title": "Busy Bees", "kind": "informational", "pic": "🐝",
+      "vocab": { "word": "nectar", "meaning": "the sweet juice inside a flower", "pic": "🌸", "question": "Where does nectar come from?", "choices": [{ "pic": "🌸", "ok": true }, { "pic": "🪨", "ok": false }, { "pic": "🧦", "ok": false }] },
+      "screens": [
+        { "text": "Bees live together in a hive. A hive is their home. Many bees live in one hive.", "pic": "🐝", "question": { "prompt": "What is a hive?", "choices": [{ "pic": "🏠", "label": "a bee home", "ok": true }, { "pic": "🍯", "label": "a snack", "ok": false }, { "pic": "🌼", "label": "a flower", "ok": false }] } },
+        { "text": "Bees fly to flowers. They drink nectar. Nectar is sweet flower juice.", "pic": "🌸", "question": { "prompt": "What do bees drink from flowers?", "choices": [{ "pic": "🌸", "label": "nectar", "ok": true }, { "pic": "🥛", "label": "milk", "ok": false }, { "pic": "🧃", "label": "juice box", "ok": false }] } },
+        { "text": "Back home, bees make honey from the nectar. Honey is sweet and gold. Yum!", "pic": "🍯", "question": { "prompt": "What do bees make?", "choices": [{ "pic": "🍯", "label": "honey", "ok": true }, { "pic": "🍞", "label": "bread", "ok": false }, { "pic": "🧀", "label": "cheese", "ok": false }] } }
+      ]
+    }
+  ],
+  "poems": [
+    { "id": "cat-hat", "title": "The Cat in a Hat", "lines": ["A cat sat on a mat.", "The cat had a big red hat.", "A rat ran up to chat.", "The cat said, \"Look at that!\""], "rhymeQuestion": { "prompt": "Which word rhymes with cat?", "choices": [{ "pic": "🎩", "label": "hat", "ok": true }, { "pic": "🐶", "label": "dog", "ok": false }, { "pic": "☀️", "label": "sun", "ok": false }] } },
+    { "id": "bug-rug", "title": "Bug on a Rug", "lines": ["A bug sat on a rug.", "It sipped from a tiny mug.", "It gave the rug a hug.", "Then it dug, dug, dug!"], "rhymeQuestion": { "prompt": "Which word rhymes with bug?", "choices": [{ "pic": "🤗", "label": "hug", "ok": true }, { "pic": "🐱", "label": "cat", "ok": false }, { "pic": "🛏️", "label": "bed", "ok": false }] } },
+    { "id": "moon-tune", "title": "Moon Tune", "lines": ["The moon is high, the sky is blue.", "Luna sings a little tune.", "The stars come out, one, two!", "Good night, moon. Good night, you."], "rhymeQuestion": { "prompt": "Which word rhymes with moon?", "choices": [{ "pic": "🎵", "label": "tune", "ok": true }, { "pic": "⭐", "label": "star", "ok": false }, { "pic": "🌈", "label": "rainbow", "ok": false }] } },
+    { "id": "pig-jig", "title": "Pig Jig", "lines": ["A pig did a jig.", "Its hat was very big.", "It danced upon a twig.", "What a silly pig!"], "rhymeQuestion": { "prompt": "Which word rhymes with pig?", "choices": [{ "pic": "🕺", "label": "jig", "ok": true }, { "pic": "🐟", "label": "fish", "ok": false }, { "pic": "🎩", "label": "hat", "ok": false }] } }
+  ]
+}

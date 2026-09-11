@@ -1,0 +1,66 @@
+{
+  "note": "Calm Tower content. Breathing is animation-timed (no visible numbers). Feelings route to a helper. Calm stories model naming feelings, taking space, asking for help; choices are shuffled and all get warm feedback. Body scan uses kid metaphors.",
+  "breathing": [
+    { "id": "bubble", "name": "Bubble breath", "icon": "🫧", "inMs": 4000, "outMs": 4000, "cycles": 3, "line": "Breathe in slowly and fill the bubble. Breathe out and let it float away." },
+    { "id": "flower", "name": "Flower and candle", "icon": "🌷", "inMs": 3000, "outMs": 5000, "cycles": 3, "line": "Smell the flower. Now blow out the candle, slow and long." },
+    { "id": "unicorn", "name": "Unicorn breath", "icon": "🦄", "inMs": 4000, "outMs": 4000, "cycles": 4, "line": "Breathe in like Luna before a big jump. Breathe out and land softly." },
+    { "id": "starfish", "name": "Starfish breath", "icon": "⭐", "inMs": 3500, "outMs": 3500, "cycles": 5, "line": "Trace a finger up one side of your hand as you breathe in, down as you breathe out." }
+  ],
+  "feelings": [
+    { "id": "happy", "name": "Happy", "pic": "😊", "tip": "Happy is wonderful. Let's keep it going with a story.", "route": "stories" },
+    { "id": "sad", "name": "Sad", "pic": "😢", "tip": "It is okay to be sad. A calm story can help.", "route": "stories" },
+    { "id": "angry", "name": "Angry", "pic": "😠", "tip": "Angry feels hot and big. Breathing makes it smaller.", "route": "breathing" },
+    { "id": "scared", "name": "Scared", "pic": "😨", "tip": "Scared is a signal. Let's squeeze and relax to feel safe.", "route": "bodyscan" },
+    { "id": "proud", "name": "Proud", "pic": "🥹", "tip": "Proud! You did something hard. Luna is proud too.", "route": "stories" },
+    { "id": "silly", "name": "Silly", "pic": "🤪", "tip": "Silly is fun! Let's wiggle it out with a body scan.", "route": "bodyscan" },
+    { "id": "calm", "name": "Calm", "pic": "😌", "tip": "Calm and cozy. A bubble breath keeps it that way.", "route": "breathing" },
+    { "id": "tired", "name": "Tired", "pic": "🥱", "tip": "Tired bodies need slow breaths and rest.", "route": "breathing" },
+    { "id": "worried", "name": "Worried", "pic": "😟", "tip": "Worries feel lighter when we say them out loud. Let's breathe first.", "route": "breathing" }
+  ],
+  "stories": [
+    {
+      "id": "first-day", "title": "Luna's First Day", "pic": "🏫",
+      "screens": [
+        { "text": "Luna had a new class. Her tummy felt fluttery. \"I feel nervous,\" she said.", "pic": "😟" },
+        { "text": "Naming the feeling helped a little. Luna took three bubble breaths.", "pic": "🫧",
+          "choice": { "prompt": "What could Luna do next?", "options": [{ "text": "Ask the teacher for help", "pic": "🙋", "quality": "best", "feedback": "Asking for help is brave and smart." }, { "text": "Hide under the table", "pic": "🙈", "quality": "ok", "feedback": "Hiding is one way to feel safe. Asking for help works even better." }, { "text": "Take one more breath", "pic": "🌬️", "quality": "ok", "feedback": "More breaths always help. Then she can ask for help too." }] } },
+        { "text": "Luna asked, \"Can you show me where to sit?\" The teacher smiled and helped. The flutters flew away.", "pic": "😊" }
+      ]
+    },
+    {
+      "id": "tall-tower", "title": "The Tall Tower", "pic": "🧱",
+      "screens": [
+        { "text": "Rosie built a tall tower. Crash! It fell down. Rosie felt hot and mad.", "pic": "😠" },
+        { "text": "\"I feel angry,\" Rosie said. That was the right name for it.", "pic": "🗣️",
+          "choice": { "prompt": "What helps when you feel angry?", "options": [{ "text": "Take space and breathe", "pic": "🫧", "quality": "best", "feedback": "Taking space and breathing cools the hot feeling." }, { "text": "Throw the blocks", "pic": "🧱", "quality": "notgreat", "feedback": "Throwing can hurt. Space and breathing work better." }, { "text": "Tell a grown-up", "pic": "👩", "quality": "ok", "feedback": "Telling a grown-up is good. Breathing first helps too." }] } },
+        { "text": "Rosie sat on the soft rug and breathed. Then she built the tower again, even taller.", "pic": "🏗️" }
+      ]
+    },
+    {
+      "id": "hurt-words", "title": "The Hurt Words", "pic": "💬",
+      "screens": [
+        { "text": "Sunny painted a sun. Minty said, \"That looks weird.\" Sunny's face got hot.", "pic": "🎨" },
+        { "text": "Sunny felt hurt. Hurt is a real feeling. Sunny wanted to say so.", "pic": "💔",
+          "choice": { "prompt": "What could Sunny say?", "options": [{ "text": "\"That hurt my feelings.\"", "pic": "🗣️", "quality": "best", "feedback": "Saying how you feel is strong and kind." }, { "text": "Say nothing and walk away", "pic": "🚶", "quality": "ok", "feedback": "Walking away is okay. Saying the feeling helps Minty understand." }, { "text": "\"Your painting is weird too!\"", "pic": "😤", "quality": "notgreat", "feedback": "Hurt words back make two hurt friends." }] } },
+        { "text": "Minty said, \"I'm sorry. I like your sun.\" They painted a rainbow together.", "pic": "🌈" }
+      ]
+    },
+    {
+      "id": "big-worry", "title": "The Big Worry at Bedtime", "pic": "🌙",
+      "screens": [
+        { "text": "It was bedtime. Luna's mind was full of worries. They buzzed like bees.", "pic": "🐝" },
+        { "text": "\"I feel worried,\" Luna whispered. Saying it made the buzz a little quieter.", "pic": "🤫",
+          "choice": { "prompt": "What could help Luna sleep?", "options": [{ "text": "Squeeze and relax each part of her body", "pic": "🧘", "quality": "best", "feedback": "A body scan tells the body it is safe to rest." }, { "text": "Tell her mom the worry", "pic": "👩", "quality": "ok", "feedback": "Telling a grown-up is a great idea too." }, { "text": "Get up and play", "pic": "🎮", "quality": "notgreat", "feedback": "Playing wakes the body up. Rest needs calm." }] } },
+        { "text": "Luna squeezed her toes, then let them go soft. Then her legs. Then her tummy. Soon she was asleep.", "pic": "😴" }
+      ]
+    }
+  ],
+  "bodyScan": [
+    { "part": "toes", "pic": "🦶", "squeeze": "Squeeze your toes tight, like squishing mud.", "release": "Now let go. Let your toes feel soft." },
+    { "part": "legs", "pic": "🦵", "squeeze": "Press your legs into the floor, strong like tree trunks.", "release": "Now let go. Let your legs feel heavy and calm." },
+    { "part": "tummy", "pic": "🐢", "squeeze": "Pull your tummy in, like a turtle in its shell.", "release": "Now let go. Let your tummy be soft and round." },
+    { "part": "hands", "pic": "🍋", "squeeze": "Squeeze your hands, like squeezing a lemon.", "release": "Now let go. Let your fingers feel loose." },
+    { "part": "shoulders", "pic": "🙆", "squeeze": "Lift your shoulders up to your ears.", "release": "Now let them drop. Ahh." },
+    { "part": "face", "pic": "😝", "squeeze": "Make a silly scrunched-up face.", "release": "Now let go. Let your face feel smooth." }
+  ]
+}
