@@ -1,0 +1,42 @@
+{
+  "praise": [
+    "Amazing, {name}!",
+    "You did it!",
+    "Wonderful!",
+    "You are so clever!",
+    "Hooray for {name}!",
+    "Beautiful work!",
+    "That is right!",
+    "Super job, {name}!",
+    "You shine like a star!",
+    "Brilliant!",
+    "Yes! Great thinking!",
+    "The whole castle is cheering!"
+  ],
+  "retry": [
+    "Almost! Look at the glowing one.",
+    "Good try, {name}. Listen again.",
+    "Hmm, not that one. Try the glowing one.",
+    "Nearly! One more time.",
+    "Let's try together, {name}.",
+    "Keep going, you are doing great."
+  ],
+  "reveal": [
+    "Here it is. Let's remember this one.",
+    "This one! We will see it again soon.",
+    "It's this one. Say it with me.",
+    "Look, {name}, this is the one.",
+    "Good trying. Here is the answer.",
+    "This one. You will get it next time."
+  ],
+  "greeting": [
+    "Hello, Princess {name}!",
+    "Welcome back, {name}!",
+    "Yay, {name} is here!",
+    "Hello {name}! Let's play!",
+    "The castle missed you, {name}!",
+    "Hi {name}! Ready for fun?",
+    "Princess {name}, your kingdom awaits!",
+    "Hooray! It's {name}!"
+  ]
+}

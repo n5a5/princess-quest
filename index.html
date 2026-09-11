@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Amelia's Arcade</title>
+<meta name="theme-color" content="#7c3aed">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="shared/theme.css">
+</head>
+<body>
+<div id="splash">
+  <div class="crown">👑</div>
+  <h1>Amelia's Arcade</h1>
+  <button class="big-btn" id="start-btn" type="button">Tap to start</button>
+</div>
+
+<header id="topbar" hidden>
+  <button class="bar-btn" id="back-btn" type="button" aria-label="Back" hidden>←</button>
+  <div class="title" id="title">👑 Amelia's Arcade</div>
+  <button class="bar-btn" id="mute-btn" type="button" aria-label="Sound on or off">🔊</button>
+  <div class="gems" aria-label="Gems">💎 <span id="gem-count">0</span></div>
+  <button class="bar-btn" id="gear-btn" type="button" aria-label="Parent corner">⚙️</button>
+</header>
+
+<main>
+  <section id="home" hidden></section>
+  <section id="cabinet" hidden></section>
+</main>
+
+<script type="module" src="shell.js"></script>
+</body>
+</html>
