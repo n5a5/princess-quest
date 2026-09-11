@@ -92,7 +92,7 @@ const gemFrames = {
         if (frame.count() === size) {
           done.setAttribute('disabled', '');
           await audio.say(it.n + ' and ' + added + ' more make ' + sizeWord + '. The pouch is full!');
-          audio.say(praiseLine());
+          await audio.say(praiseLine());
           resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4, gpc: 'make' + size + '-' + it.n });
         } else {
           misses++; stage.luna('think', 900);
@@ -320,7 +320,7 @@ const gemTrail = {
           if (c === it.n) {
             done.setAttribute('disabled', '');
             await audio.say(gems(it.n) + '. The door opens!');
-            audio.say(praiseLine());
+            await audio.say(praiseLine());
             resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4, gpc: 'count' + it.n });
           } else {
             misses++; stage.luna('think', 900);

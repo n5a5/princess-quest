@@ -72,16 +72,14 @@ function soundBoxes(audio, word) {
 }
 async function mapWord(audio, word, boxes) {
   const units = SW.words[word];
-  await audio.word(word);
-  await wait(300);
-  for (let i = 0; i < units.length; i++) {
-    const [g, p, heart] = units[i];
-    boxes.highlight(i);
-    if (p) await audio.phoneme(p); else if (heart) await audio.say('heart part'); else await wait(200);
-    await wait(250);
-  }
+  const steps = [{ word }, { gap: 300 }];
+  units.forEach(([g, p, heart], i) => {
+    if (p) steps.push({ phoneme: p, index: i }); else if (heart) steps.push({ say: 'heart part', index: i }); else steps.push({ gap: 200, index: i });
+    steps.push({ gap: 250 });
+  });
+  steps.push({ word });
+  await audio.sequence(steps, { onStep: s => { if (s.index !== undefined) boxes.highlight(s.index); } });
   boxes.clear();
-  await audio.word(word);
 }
 
 const heartIntro = {
@@ -111,7 +109,7 @@ const heartIntro = {
     const st = state(word);
     st.introducedDay = st.introducedDay || ctx.economy.today(); st.lastSeen = ctx.economy.today(); st.box = Math.max(1, st.box);
     ctx.economy.persist();
-    audio.say(praiseLine());
+    await audio.say(praiseLine());
     return { outcome: 'firstTry', choices: 1, review: true };
   }
 };
@@ -123,7 +121,7 @@ const hearTap = {
     const foils = foilsFor(word, 3);
     const items = shuffle([word, ...foils]).map(w => ({ id: w, pic: '', label: w, ok: w === word, say: w, textOnly: true }));
     const prompt = 'Four wish doors. Which door says ' + word + '? Tap it to open it.';
-    stage.setPrompt(promptBar(audio, prompt));
+    stage.setPrompt(promptBar(audio, 'Four wish doors. Which door says the word you hear? Tap it to open it.', { speak: prompt }));
     stage.setObject(el('div', { class: 'picture', text: '🚪' }));
     const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'This door says ' + word + '.' });
     grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only', 'door'); c.querySelector('.pic')?.remove(); });
@@ -148,14 +146,14 @@ const seeSay = {
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div'));
     const big = el('div', { class: 'word-big', text: word, style: 'font-size:64px' });
-    const check = el('button', { class: 'speak-btn', type: 'button', 'aria-label': 'Check', text: '🔊', onclick: () => audio.word(word) });
+    const check = el('button', { class: 'speak-btn', type: 'button', 'aria-label': 'Check', text: '🔊', onclick: () => { audio.stop(); audio.word(word); } });
     const yes = bigButton('👍 I got it', () => {}, 'gold');
     const hmm = bigButton('🤔 Show me', () => {}, 'soft');
     stage.setBody(big, el('div', { class: 'row' }, [check]), el('div', { class: 'row' }, [yes, hmm]));
     await audio.say(prompt);
     const picked = await new Promise(resolve => { yes.addEventListener('click', () => resolve('yes'), { once: true }); hmm.addEventListener('click', () => resolve('hmm'), { once: true }); });
     if (picked === 'hmm') { const boxes = soundBoxes(audio, word); stage.setBody(big, boxes.row); await mapWord(audio, word, boxes); }
-    else { await audio.word(word); audio.say(praiseLine()); }
+    else { await audio.word(word); await audio.say(praiseLine()); }
     state(word).lastSeen = ctx.economy.today(); ctx.economy.persist();
     return { outcome: 'firstTry', choices: 1, review: true }; // self-report never counts toward mastery
   }
@@ -186,7 +184,7 @@ const wishNote = {
     const audio = ctx.audio;
     const { word, sentence } = it;
     const prompt = 'Luna wrote a wish note. Find the word ' + word + '. Tap it.';
-    stage.setPrompt(promptBar(audio, prompt));
+    stage.setPrompt(promptBar(audio, 'Luna wrote a wish note. Find the word you hear. Tap it.', { speak: prompt }));
     stage.setObject(el('div', { class: 'picture', text: '💌' }));
     const sent = sentenceRow(audio, sentence.text);
     const targets = sent.buttons.filter(x => x.clean.toLowerCase() === word.toLowerCase());
@@ -198,7 +196,7 @@ const wishNote = {
           sent.buttons.forEach(x => x.b.classList.remove('glow'));
           b.classList.add('right', 'shimmer');
           if (audio.sfx) audio.sfx.sparkle();
-          audio.say(praiseLine());
+          await audio.say(praiseLine());
           await wait(500);
           resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed' });
           return;

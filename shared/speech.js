@@ -6,6 +6,7 @@ const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}\u{20E3}]
 export function isMobile() { return /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent); }
 
 export function createSpeech({ settings, onChange = () => {} }) {
+  let lastCancel = 0;
   const synth = globalThis.speechSynthesis;
   let voice = null;
   let seq = 0;
@@ -53,10 +54,13 @@ export function createSpeech({ settings, onChange = () => {} }) {
     available: () => !!synth && englishVoices().length > 0,
     voices: () => englishVoices().map(v => ({ name: v.name, lang: v.lang, local: v.localService })),
     setVoice(name) { settings.voiceName = name || ''; pickVoice(); onChange(); },
-    stop() { seq++; if (synth) synth.cancel(); },
+    stop() { seq++; lastCancel = Date.now(); if (synth) synth.cancel(); },
     async speakText(text, { rate = settings.rate || 0.9 } = {}) {
       if (settings.muted) return;
       const my = ++seq;
+      const since = Date.now() - lastCancel;
+      if (since < 160) await new Promise(r => setTimeout(r, 160 - since));
+      if (my !== seq) return;
       for (const c of chunks(text)) {
         if (my !== seq) return;
         await utter(c, rate);

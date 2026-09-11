@@ -97,8 +97,9 @@ const countSounds = {
     const units = spokenUnits(w);
     const n = units.length;
     const prompt = 'Say ' + w.w + ' slowly. How many sounds do you hear? Light one gem for each sound.';
-    stage.setObject(picture(w.p, () => audio.word(w.w)));
-    stage.setPrompt(promptBar(audio, prompt, { ears: true }));
+    stage.setObject(picture(w.p, () => { audio.stop(); audio.word(w.w); }));
+    stage.setPrompt(promptBar(audio, 'Say the word slowly. How many sounds do you hear? Light one gem for each sound.', { ears: true, speak: prompt }));
+    await audio.say(prompt);
     let misses = 0;
     const counter = gemCounter(audio, 5, () => { audio.stop(); audio.word(w.w); });
     const check = bigButton('Done', () => {}, 'gold');
@@ -107,7 +108,7 @@ const countSounds = {
         if (counter.count() === n) {
           check.setAttribute('disabled', '');
           await audio.sequence(units.flatMap((u, i) => i ? [{ gap: 400 }, { phoneme: u.p }] : [{ phoneme: u.p }]));
-          audio.say(praiseLine());
+          await audio.say(praiseLine());
           resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4 });
         } else {
           misses++;
@@ -143,8 +144,8 @@ const oralSwap = {
     const { from, to, index } = pair;
     const other = shuffle(allWords().filter(x => x.w !== to.w && x.w !== from.w && x.p !== to.p && x.p !== from.p && x.u.length === from.u.length)).slice(0, 1);
     const prompt = 'Say ' + from.w + '. Now change /' + from.u[index][1] + '/ to /' + to.u[index][1] + '/. What word is it now?';
-    stage.setObject(picture(from.p, () => audio.word(from.w)));
-    stage.setPrompt(promptBar(audio, prompt, { ears: true }));
+    stage.setObject(picture(from.p, () => { audio.stop(); audio.word(from.w); }));
+    stage.setPrompt(promptBar(audio, 'Say this word. Now change /' + from.u[index][1] + '/ to /' + to.u[index][1] + '/. What word is it now?', { ears: true, speak: prompt }));
     const grid = choiceGrid({ audio, prompt, items: picChoices(to, [from, ...other]), praise: praiseLine(), revealText: 'Now it is ' + to.w + '.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
@@ -174,8 +175,8 @@ const takeAway = {
     const { from, to, phoneme, where } = pair;
     const other = shuffle(allWords().filter(x => x.w !== to.w && x.w !== from.w && x.p !== to.p && x.p !== from.p && x.u.length === to.u.length)).slice(0, 1);
     const prompt = 'Say ' + from.w + '. Now take away the ' + where + ' sound, /' + phoneme + '/. What word is left?';
-    stage.setObject(picture(from.p, () => audio.word(from.w)));
-    stage.setPrompt(promptBar(audio, prompt, { ears: true }));
+    stage.setObject(picture(from.p, () => { audio.stop(); audio.word(from.w); }));
+    stage.setPrompt(promptBar(audio, 'Say this word. Now take away the ' + where + ' sound, /' + phoneme + '/. What word is left?', { ears: true, speak: prompt }));
     const grid = choiceGrid({ audio, prompt, items: picChoices(to, [from, ...other]), praise: praiseLine(), revealText: from.w + ' without /' + phoneme + '/ is ' + to.w + '.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
@@ -201,8 +202,8 @@ const rhymeIt = {
     const audio = ctx.audio;
     const prompt = 'Rhymes sound the same at the end: ' + it.target.w + ', ' + it.answer.w + '. Which one rhymes with ' + it.target.w + '?';
     const ask = 'Which one rhymes with ' + it.target.w + '?';
-    stage.setObject(picture(it.target.p, () => audio.word(it.target.w)));
-    stage.setPrompt(promptBar(audio, ask, { ears: true }));
+    stage.setObject(picture(it.target.p, () => { audio.stop(); audio.word(it.target.w); }));
+    stage.setPrompt(promptBar(audio, 'Which one rhymes with this one?', { ears: true, speak: ask }));
     const grid = choiceGrid({ audio, prompt: ask, items: picChoices(it.answer, it.foils), praise: praiseLine(), revealText: it.target.w + ' and ' + it.answer.w + ' rhyme.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
@@ -218,8 +219,9 @@ const beats = {
   async play(stage, it, ctx, { praiseLine }) {
     const audio = ctx.audio;
     const prompt = 'Say ' + it.word + '. Clap the beats. How many beats? Light one gem for each beat.';
-    stage.setObject(picture(it.pic, () => audio.word(it.word)));
-    stage.setPrompt(promptBar(audio, prompt, { ears: true }));
+    stage.setObject(picture(it.pic, () => { audio.stop(); audio.word(it.word); }));
+    stage.setPrompt(promptBar(audio, 'Say the word. Clap the beats. How many beats? Light one gem for each beat.', { ears: true, speak: prompt }));
+    await audio.say(prompt);
     let misses = 0;
     const counter = gemCounter(audio, 4, () => { audio.stop(); audio.word(it.word); });
     const check = bigButton('Done', () => {}, 'gold');
@@ -228,7 +230,7 @@ const beats = {
         if (counter.count() === it.n) {
           check.setAttribute('disabled', '');
           await audio.say(it.word + '. ' + it.n + (it.n === 1 ? ' beat.' : ' beats.'));
-          audio.say(praiseLine());
+          await audio.say(praiseLine());
           resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4 });
         } else {
           misses++;

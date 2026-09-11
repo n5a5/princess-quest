@@ -91,7 +91,7 @@ const letterSound = {
     if (it.kind === 'hear') {
       const prompt = 'Listen: /' + it.p + '/. Which letter stone makes that sound?';
       stage.setObject(el('div', { class: 'picture', text: '👂' }));
-      stage.setPrompt(promptBar(audio, prompt));
+      stage.setPrompt(promptBar(audio, prompt, { ears: true }));
       const items = it.options.map(g => ({ id: g, pic: '', label: g, ok: g === it.g, say: '/' + phonemeFor(g) + '/', textOnly: true }));
       const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'This stone says /' + it.p + '/.' });
       grid.el.classList.add('three');
@@ -134,9 +134,10 @@ const wordSpell = {
       ...units.map((u, i) => ({ id: 'u' + i, grapheme: u[0], phoneme: u[1] || null })),
       ...distractorGraphemes(w, sIdx, units.length <= 3 ? 2 : 1).map((g, i) => ({ id: 'd' + i, grapheme: g, phoneme: phonemeFor(g) }))
     ]);
+    const shown = 'Build the word you hear. Put the letter stones in order.';
     const prompt = 'Build the word ' + w.w + '. Put the letter stones in order.';
-    stage.setObject(picture(w.p, () => audio.word(w.w)));
-    stage.setPrompt(promptBar(audio, prompt));
+    stage.setObject(picture(w.p, () => { audio.stop(); audio.word(w.w); }));
+    stage.setPrompt(promptBar(audio, shown, { speak: prompt }));
     let misses = 0, resolve;
     const done = new Promise(r => { resolve = r; });
     const board = tileBoard({
@@ -149,7 +150,7 @@ const wordSpell = {
           board.lock(); board.clearHints();
           await audio.decode({ word: w.w, units }, { onStep: blendSteps(i => board.highlight(i), () => board.el.querySelector('.slots')) });
           board.clearHighlight();
-          audio.say(praiseLine());
+          await audio.say(praiseLine());
           resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: tiles.length, gpc: units.map(u => u[0]).join('') });
           return;
         }
@@ -225,9 +226,11 @@ const soundSwap = {
     const sIdx = ctx.adaptive.stageIndex('phonics-encode');
     const options = shuffle([newU[0], ...distractorGraphemes(to, sIdx, 4).filter(g => g !== oldU[0] && g !== newU[0]).slice(0, 2)]);
     const prompt = 'This says ' + from.w + '. Change /' + oldU[1] + '/ to /' + newU[1] + '/ to make ' + to.w + '.';
+    const shown = 'Change one letter stone to make the new word you hear.';
     const runes = runeRow(audio, from);
-    stage.setObject(picture(from.p, () => audio.word(from.w)));
-    stage.setPrompt(promptBar(audio, prompt));
+    stage.setObject(picture(from.p, () => { audio.stop(); audio.word(from.w); }));
+    stage.setPrompt(promptBar(audio, shown, { speak: prompt }));
+    await audio.say(prompt);
     let misses = 0;
     const result = await new Promise(resolve => {
       const tiles = el('div', { class: 'row' }, options.map(g => {
@@ -239,11 +242,11 @@ const soundSwap = {
             tiles.querySelectorAll('.tile').forEach(x => x.setAttribute('disabled', ''));
             runes.runes[index].textContent = g;
             runes.runes[index].classList.add('now');
-            stage.setObject(picture(to.p, () => audio.word(to.w)));
+            stage.setObject(picture(to.p, () => { audio.stop(); audio.word(to.w); }));
             await wait(200);
             await audio.swap({ word: to.w, units: to.u }, index, { onStep: blendSteps(runes.highlight, runes.row) });
             runes.clear();
-            audio.say(praiseLine());
+            await audio.say(praiseLine());
             resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: options.length, gpc: newU[0] });
           } else {
             misses++;

@@ -23,10 +23,12 @@ export function bigButton(label, onTap, cls = '') {
 export function speakButton(audio, text) {
   return el('button', { class: 'speak-btn', type: 'button', 'aria-label': 'Hear it again', text: '🔊', onclick: () => audio.say(text) });
 }
-export function promptBar(audio, text, { ears = false } = {}) {
+// `speak` is what the speaker button and the app say when it differs from what is printed: the printed line
+// never shows a word the child is supposed to build, find or count the sounds of.
+export function promptBar(audio, text, { ears = false, speak = null } = {}) {
   const t = el('div', { class: 'text' });
   t.appendChild(audio.spans(text, { ears }));
-  return el('div', { class: 'prompt' }, [t, speakButton(audio, text)]);
+  return el('div', { class: 'prompt' }, [t, speakButton(audio, speak || text)]);
 }
 export function picture(pic, onTap) {
   const p = el('div', { class: 'picture' + (onTap ? ' tappable' : '') });
@@ -63,8 +65,7 @@ export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revea
           b.classList.add('right');
           confetti(24);
           if (audio.sfx) audio.sfx.sparkle();
-          if (praise) audio.say(praise);
-          await wait(700);
+          if (praise) await audio.say(praise); else await wait(700);
           finish({ firstTry: misses === 0, misses, revealed: false });
           return;
         }
