@@ -1,7 +1,9 @@
 // games/princess-quest/falls.js — Rainbow Falls: measurement, data and shapes.
 // Order follows the learning trajectory evidence (Sarama et al. 2021): name the attribute → direct
 // comparison → order three → non-standard units. Data: sort into bins that become a bar chart.
-// Geometry (tier 2, light): identify shapes in any orientation, 3D solids, compose from parts.
+// Geometry (tier 3, light): identify shapes in any orientation, 3D solids, compose from parts.
+// Patterns (tier 2): the Rainbow Path — AB / ABB / ABC repeating gems, what comes next, find the odd one.
+// Measurement is honest: a balance scale tips toward the heavier side, jars show their fill, towers show height.
 import { el, wait, shuffle, pick, choiceGrid, promptBar, bigButton } from '../../shared/ui.js';
 import { runEncounterRound, celebrateRound } from '../../shared/encounter.js';
 import { lunaSVG, svgFrom, squishySVG, SQUISHY_KINDS } from '../../shared/characters.js';
@@ -21,6 +23,27 @@ const OBJECTS = [
 ];
 const HEAVY = [['a rock', '🪨', 3], ['a feather', '🪶', 1], ['a pumpkin', '🎃', 3], ['a leaf', '🍃', 1], ['a book', '📚', 2], ['a balloon', '🎈', 1], ['a gem', '💎', 2], ['a cloud', '☁️', 1]];
 const HOLDS = [['a bucket', '🪣', 3], ['a cup', '☕', 1], ['a bathtub', '🛁', 3], ['a spoon', '🥄', 1], ['a jug', '🫗', 2], ['a bottle', '🍼', 1]];
+// Balance scale: the heavier pan sits lower. left/right are emoji; tilt = -1 (left heavier), 1 (right heavier).
+function scaleSVG(left, right, tilt) {
+  const dy = tilt * 16;
+  return `<svg viewBox="0 0 240 150" width="240" height="150" xmlns="http://www.w3.org/2000/svg" aria-label="balance scale">
+    <rect x="112" y="40" width="16" height="90" rx="6" fill="#9A7FD6"/><rect x="70" y="126" width="100" height="12" rx="6" fill="#7C5CC4"/>
+    <g transform="rotate(${tilt * 9} 120 44)"><rect x="20" y="40" width="200" height="8" rx="4" fill="#C9971F"/></g>
+    <g transform="translate(0 ${dy})"><line x1="40" y1="46" x2="40" y2="84" stroke="#C9971F" stroke-width="3"/><path d="M12 84 h56 l-8 22 h-40 z" fill="#E9B949"/><text x="40" y="82" font-size="34" text-anchor="middle">${left}</text></g>
+    <g transform="translate(0 ${-dy})"><line x1="200" y1="46" x2="200" y2="84" stroke="#C9971F" stroke-width="3"/><path d="M172 84 h56 l-8 22 h-40 z" fill="#E9B949"/><text x="200" y="82" font-size="34" text-anchor="middle">${right}</text></g>
+  </svg>`;
+}
+// Jar with a fill level 0..1.
+function jarSVG(fill, color, label) {
+  const h = 90, top = 20 + (1 - fill) * h;
+  return `<svg viewBox="0 0 80 130" width="80" height="130" xmlns="http://www.w3.org/2000/svg" aria-label="${label}"><rect x="14" y="20" width="52" height="${h}" rx="10" fill="rgba(255,255,255,0.7)" stroke="#9A7FD6" stroke-width="3"/><rect x="17" y="${top}" width="46" height="${20 + h - top}" rx="8" fill="${color}"/><rect x="24" y="8" width="32" height="14" rx="5" fill="#9A7FD6"/></svg>`;
+}
+// Tower of stacked blocks with a Squishy face on top: height in blocks.
+function towerSVG(blocks, color, label) {
+  const bh = 22, h = blocks * bh + 30;
+  const rects = Array.from({ length: blocks }, (_, i) => `<rect x="14" y="${h - (i + 1) * bh - 4}" width="52" height="${bh - 3}" rx="6" fill="${color}" stroke="rgba(0,0,0,0.12)"/>`).join('');
+  return `<svg viewBox="0 0 80 ${h}" width="80" height="${h}" xmlns="http://www.w3.org/2000/svg" aria-label="${label}">${rects}<ellipse cx="40" cy="${h - blocks * bh - 14}" rx="22" ry="14" fill="#FFF8EE" stroke="#D8CCEB" stroke-width="2"/><circle cx="33" cy="${h - blocks * bh - 16}" r="2.5" fill="#33254F"/><circle cx="47" cy="${h - blocks * bh - 16}" r="2.5" fill="#33254F"/><path d="M34 ${h - blocks * bh - 9} q6 5 12 0" stroke="#33254F" stroke-width="2" fill="none"/></svg>`;
+}
 
 const measure = {
   id: 'measure', subskill: 'measure', itemId: it => 'measure:' + it.kind + ':' + it.key,
@@ -43,15 +66,20 @@ const measure = {
     }
     if (it.kind === 'compare') {
       const [a, b] = it.pair;
-      const prompt = it.attr === 'long' ? 'Luna needs the longer one to reach across the falls. Which one is longer?' : it.attr === 'heavy' ? 'Which one is heavier? Think about which would tip the scale.' : 'Luna is thirsty. Which one holds more water?';
+      const prompt = it.attr === 'long' ? 'Luna needs the longer one to reach across the falls. Which one is longer?'
+        : it.attr === 'heavy' ? 'Luna put them on the scale. The heavy side goes down. Which one is heavier?'
+        : it.attr === 'tall' ? 'The Squishies built towers. Which tower is taller?'
+        : it.attr === 'fill' ? 'Luna poured juice. Which jar has more?'
+        : 'Luna is thirsty. Which one holds more water?';
       stage.setPrompt(promptBar(audio, prompt));
-      stage.setObject(el('div'));
+      stage.setObject(it.attr === 'heavy' ? el('div', { html: scaleSVG(a.pic, b.pic, it.answerIsFirst ? -1 : 1) }) : el('div'));
       const items = [a, b].map(x => ({ id: x.name, pic: x.pic, label: x.name, ok: x === (it.answerIsFirst ? a : b), say: x.name, svg: x.svg }));
-      const grid = choiceGrid({ audio, prompt, items: items.map(i => ({ ...i, pic: i.svg ? { svg: i.svg } : i.pic })), praise: praiseLine(), revealText: 'The ' + (it.answerIsFirst ? a.name : b.name) + ' ' + (it.attr === 'long' ? 'is longer' : it.attr === 'heavy' ? 'is heavier' : 'holds more') + '.' });
-      grid.el.classList.add('one-col');
+      const word = { long: 'is longer', heavy: 'is heavier', tall: 'is taller', fill: 'has more', holds: 'holds more' }[it.attr];
+      const grid = choiceGrid({ audio, prompt, items: items.map(i => ({ ...i, pic: i.svg ? { svg: i.svg } : i.pic })), praise: praiseLine(), revealText: 'The ' + (it.answerIsFirst ? a.name : b.name) + ' ' + word + '.' });
+      grid.el.classList.add(it.attr === 'long' ? 'one-col' : 'three');
       // Third option keeps it a real 3-choice item: "the same"
       const same = el('button', { class: 'choice text-only', type: 'button', 'aria-label': 'the same', text: 'same' });
-      same.addEventListener('click', () => { same.classList.add('dim'); same.setAttribute('disabled', ''); audio.say('Look again. One is ' + (it.attr === 'long' ? 'longer' : it.attr === 'heavy' ? 'heavier' : 'bigger') + '.'); stage.luna('think', 900); });
+      same.addEventListener('click', () => { same.classList.add('dim'); same.setAttribute('disabled', ''); audio.say('Look again. One ' + word + '.'); stage.luna('think', 900); });
       grid.el.appendChild(same);
       stage.setBody(grid.el);
       await audio.say(prompt);
@@ -59,7 +87,7 @@ const measure = {
       return { outcome: outcomeOf(r), choices: 3, gpc: 'compare-' + it.attr };
     }
     if (it.kind === 'order') {
-      const prompt = 'Luna wants her ' + it.plural + ' lined up from shortest to longest. Tap the shortest one first.';
+      const prompt = it.attr === 'tall' ? 'Line up the towers from shortest to tallest. Tap the shortest one first.' : 'Luna wants her ' + it.plural + ' lined up from shortest to longest. Tap the shortest one first.';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
       let misses = 0, next = 0;
@@ -70,7 +98,7 @@ const measure = {
           const b = el('button', { class: 'choice', type: 'button', 'aria-label': t.name, html: t.svg, style: 'min-height:64px;padding:8px' });
           b.addEventListener('click', async () => {
             audio.stop();
-            if (t === sorted[next]) { b.setAttribute('disabled', ''); b.classList.add('right'); target.appendChild(el('span', { text: ['1st', '2nd', '3rd'][next], class: 'word-big' })); next++; if (next === sorted.length) { await audio.say('Shortest to longest! ' + praiseLine()); resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 3, gpc: 'order' }); } }
+            if (t === sorted[next]) { b.setAttribute('disabled', ''); b.classList.add('right'); target.appendChild(el('span', { text: ['1st', '2nd', '3rd'][next], class: 'word-big' })); next++; if (next === sorted.length) { await audio.say((it.attr === 'tall' ? 'Shortest to tallest! ' : 'Shortest to longest! ') + praiseLine()); resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 3, gpc: 'order' }); } }
             else { misses++; b.classList.add('wobble'); setTimeout(() => b.classList.remove('wobble'), 500); stage.luna('think', 900); const right = [...tray.querySelectorAll('.choice:not([disabled])')].find(x => x.getAttribute('aria-label') === sorted[next].name); if (misses === 1) { right.classList.add('glow'); await audio.say('Which one is the shortest of these?'); } else right.click(); }
           });
           return b;
@@ -131,10 +159,21 @@ const dataSort = {
               // bar chart from the bins + a 3-choice question
               const max = Math.max(...bins.map(b => b.count));
               const chart = el('div', { class: 'row', style: 'align-items:flex-end;gap:18px' }, bins.map(b => el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:4px' }, [el('div', { style: `width:44px;height:${20 + b.count * 22}px;border-radius:10px 10px 4px 4px;background:${b.color || '#C7B4F0'};border:2px solid #9A7FD6` }), el('div', { class: 'label', text: b.name, style: 'font-weight:700' })])));
-              const answerBin = it.ask === 'most' ? bins.find(b => b.count === max) : bins.find(b => b.count === Math.min(...bins.map(x => x.count)));
-              const items = bins.map(b => ({ id: b.name, pic: b.pic || '', label: b.name + ' ' + '💎'.repeat(0), ok: b === answerBin, say: b.name }));
-              const grid = choiceGrid({ audio, prompt: it.question, items, praise: praiseLine(), revealText: answerBin.name + ' has the ' + it.ask + '.' });
+              const min = Math.min(...bins.map(x => x.count));
+              let items, revealText;
+              if (it.ask === 'most' || it.ask === 'fewest') {
+                const answerBin = it.ask === 'most' ? bins.find(b => b.count === max) : bins.find(b => b.count === min);
+                items = bins.map(b => ({ id: b.name, pic: b.pic || '', label: b.name, ok: b === answerBin, say: b.name }));
+                revealText = answerBin.name + ' has the ' + it.ask + '. ' + answerBin.count + '.';
+              } else {
+                const answer = it.ask === 'howmany' ? bins[it.which].count : bins.find(b => b.count === max).count - bins.find(b => b.count === min).count;
+                const set = new Set([answer]); while (set.size < 3) set.add(Math.max(0, answer + pick([-2, -1, 1, 2])));
+                items = shuffle([...set]).map(v => ({ id: String(v), pic: '', label: String(v), ok: v === answer, say: String(v), textOnly: true }));
+                revealText = it.ask === 'howmany' ? 'There are ' + answer + ' in the ' + bins[it.which].name + ' basket.' : 'There are ' + answer + ' more.';
+              }
+              const grid = choiceGrid({ audio, prompt: it.question, items, praise: praiseLine(), revealText });
               grid.el.classList.add('three');
+              grid.el.querySelectorAll('.choice').forEach((c, i) => { if (items[i].textOnly) { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); } });
               stage.setBody(chart, grid.el);
               const r = await grid.done;
               resolve({ outcome: misses === 0 && !r.misses ? 'firstTry' : (misses <= 1 && !r.revealed) ? 'scaffolded' : 'revealed', choices: 3, gpc: 'sort-' + it.attr });
@@ -149,6 +188,69 @@ const dataSort = {
         binRow.appendChild(cell);
       });
       stage.setBody(tray, binRow);
+    });
+    return result;
+  }
+};
+
+// ---------- patterns (Rainbow Path) ----------
+const PATTERN_SETS = [['🩷', '💙', '💛'], ['🌷', '🌼', '🌸'], ['💎', '⭐', '🍀'], ['🟣', '🟢', '🟠']];
+function patternFor(stageName) {
+  const set = shuffle(pick(PATTERN_SETS));
+  const unit = stageName === 'ab' ? [set[0], set[1]] : stageName === 'abb' ? [set[0], set[1], set[1]] : [set[0], set[1], set[2]];
+  const reps = stageName === 'ab' ? 4 : 3;
+  const seq = Array.from({ length: unit.length * reps }, (_, i) => unit[i % unit.length]);
+  return { set, unit, seq };
+}
+const patterns = {
+  id: 'patterns', subskill: 'patterns', itemId: it => 'pattern:' + it.kind + ':' + it.unit.join(''),
+  async play(stage, it, ctx, { praiseLine }) {
+    const audio = ctx.audio;
+    if (it.kind === 'next') {
+      const prompt = 'Luna is laying a rainbow path. Say the pattern out loud. What comes next?';
+      stage.setPrompt(promptBar(audio, prompt));
+      stage.setObject(el('div'));
+      const shown = it.seq.slice(0, -1);
+      const row = el('div', { class: 'pattern-row' }, [...shown.map(p => el('div', { class: 'pat', text: p })), el('div', { class: 'pat hole', text: '?' })]);
+      const answer = it.seq[it.seq.length - 1];
+      const options = shuffle([...new Set([answer, ...it.set])]).slice(0, 3);
+      if (!options.includes(answer)) options[0] = answer;
+      const items = shuffle(options).map(p => ({ id: p, pic: p, ok: p === answer, say: p === answer ? 'this one' : 'not this one' }));
+      const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'The pattern goes ' + it.unit.join(', ') + ', again and again. This comes next.' });
+      grid.el.classList.add('three');
+      stage.setBody(row, grid.el);
+      await audio.say(prompt);
+      const r = await grid.done;
+      row.lastElementChild.textContent = answer; row.lastElementChild.classList.remove('hole');
+      return { outcome: outcomeOf(r), choices: 3, gpc: it.unit.length === 2 ? 'ab' : 'abc' };
+    }
+    // fix: one gem in the path is wrong; tap it
+    const prompt = 'Oh no, one gem is in the wrong place! Say the pattern. Tap the gem that does not belong.';
+    stage.setPrompt(promptBar(audio, prompt));
+    stage.setObject(el('div'));
+    let misses = 0;
+    const result = await new Promise(resolve => {
+      const row = el('div', { class: 'pattern-row' });
+      const buttons = it.seq.map((p, i) => {
+        const b = el('button', { class: 'pat', type: 'button', text: i === it.wrongAt ? it.wrongPic : p, 'aria-label': 'gem ' + (i + 1) });
+        b.addEventListener('click', async () => {
+          if (b.hasAttribute('disabled')) return;
+          audio.stop();
+          if (i === it.wrongAt) {
+            buttons.forEach(x => x.setAttribute('disabled', ''));
+            b.textContent = p; b.classList.add('glow');
+            await audio.say('That one! Now the path goes ' + it.unit.join(', ') + ', again and again. ' + praiseLine());
+            resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: it.seq.length, gpc: 'fix' });
+          } else {
+            misses++; b.classList.add('wobble'); setTimeout(() => b.classList.remove('wobble'), 500); stage.luna('think', 900);
+            if (misses === 1) { buttons[it.wrongAt].classList.add('glow'); await audio.say('Say it slowly: ' + it.unit.join(', ') + '. Which gem breaks the pattern?'); }
+            else buttons[it.wrongAt].click();
+          }
+        });
+        row.appendChild(b);
+        return b;
+      });
+      stage.setBody(row);
     });
     return result;
   }
@@ -219,7 +321,15 @@ function gen(family, stageName) {
       return { kind: 'attribute', key: q.thing[0], ...q };
     }
     if (stageName === 'compare') {
-      const attr = pick(['long', 'long', 'heavy', 'holds']);
+      const attr = pick(['long', 'tall', 'heavy', 'heavy', 'fill', 'holds']);
+      if (attr === 'tall') {
+        const [o1, o2] = shuffle(OBJECTS).slice(0, 2); const h1 = rand(2, 6); let h2 = rand(2, 6); if (h2 === h1) h2 = h1 + (h1 < 6 ? 1 : -1);
+        return { kind: 'compare', attr, key: 'tower' + h1 + h2, pair: [{ name: 'first tower', svg: towerSVG(h1, o1.color, 'first tower') }, { name: 'second tower', svg: towerSVG(h2, o2.color, 'tower ' + h2) }], answerIsFirst: h1 > h2 };
+      }
+      if (attr === 'fill') {
+        const f1 = pick([0.25, 0.45, 0.65, 0.9]); let f2 = pick([0.25, 0.45, 0.65, 0.9]); if (f2 === f1) f2 = f1 < 0.9 ? f1 + 0.25 : 0.25;
+        return { kind: 'compare', attr, key: 'jar' + f1 + f2, pair: [{ name: 'pink jar', svg: jarSVG(f1, '#F5A3BD', 'pink jar') }, { name: 'mint jar', svg: jarSVG(f2, '#8FDCCB', 'mint jar') }], answerIsFirst: f1 > f2 };
+      }
       if (attr === 'long') {
         const [o1, o2] = shuffle(OBJECTS).slice(0, 2); const l1 = rand(2, 6); let l2 = rand(2, 6); if (l2 === l1) l2 = l1 + (l1 < 6 ? 1 : -1);
         return { kind: 'compare', attr, key: o1.name + o2.name, pair: [{ name: o1.name, svg: wandSVG(l1, o1.color, o1.name) }, { name: o2.name, svg: wandSVG(l2, o2.color, o2.name) }], answerIsFirst: l1 > l2 };
@@ -230,20 +340,32 @@ function gen(family, stageName) {
     }
     if (stageName === 'order') {
       const objs = shuffle(OBJECTS).slice(0, 3); const lens = shuffle([2, 4, 6]);
+      if (Math.random() < 0.4) return { kind: 'order', attr: 'tall', key: 'towers' + lens.join(''), plural: 'towers', things: objs.map((o, i) => ({ name: o.name + ' tower', len: lens[i], svg: towerSVG(lens[i], o.color, o.name + ' tower') })) };
       return { kind: 'order', key: objs.map(o => o.name).join(''), plural: 'wands', things: objs.map((o, i) => ({ name: o.name, len: lens[i], svg: wandSVG(lens[i], o.color, o.name) })) };
     }
     return { kind: 'units', key: String(rand(1, 99)), thing: pick(['wand', 'ribbon', 'vine']), n: rand(2, 8) };
   }
   if (family === dataSort) {
     const st = stageName; const set = st === 'two' ? SORT_SETS[0] : pick(SORT_SETS);
-    const ask = st === 'chart' ? pick(['most', 'fewest']) : 'most';
+    const ask = st === 'chart' ? pick(['most', 'fewest', 'howmany', 'more']) : st === 'three' ? pick(['most', 'fewest', 'howmany']) : 'most';
     const binCount = st === 'two' ? 2 : 3;
     const bins = set.bins.slice(0, binCount).map(([name, v]) => ({ name, color: typeof v === 'string' ? v : null, pic: Array.isArray(v) ? v[0] : '' }));
     const items = [];
     const counts = shuffle(binCount === 2 ? [rand(2, 4), rand(2, 4)] : [2, 3, 4]);
     bins.forEach((b, i) => { const v = set.bins[i][1]; for (let k = 0; k < counts[i]; k++) items.push(typeof v === 'string' ? { name: b.name + ' Squishy', bin: b.name, pic: '', svg: squishySVG({ ...SQUISHY_KINDS[0], color: v, dark: '#33254F' }, { size: 44 }) } : { name: v[k % v.length], bin: b.name, pic: v[k % v.length] }); });
     if (counts[0] === counts[1] && binCount === 2) counts[1]++;
-    return { attr: set.attr, bins, items: shuffle(items), ask, question: 'Which basket has the ' + ask + '?' };
+    const which = rand(0, bins.length - 1);
+    const question = ask === 'howmany' ? 'How many are in the ' + bins[which].name + ' basket?' : ask === 'more' ? 'How many more are in the biggest basket than the smallest?' : 'Which basket has the ' + ask + '?';
+    return { attr: set.attr, bins, items: shuffle(items), ask, which, question };
+  }
+  if (family === patterns) {
+    if (stageName === 'fix') {
+      const p = patternFor(pick(['ab', 'abb', 'abc']));
+      const wrongAt = rand(1, p.seq.length - 2);
+      const wrongPic = p.set.find(x => x !== p.seq[wrongAt]);
+      return { kind: 'fix', ...p, wrongAt, wrongPic };
+    }
+    return { kind: 'next', ...patternFor(stageName) };
   }
   if (family === shapes) {
     if (stageName === '2d') { const names = SHAPES2D.map(s => s.name); const name = pick(names); return { kind: '2d', name, foils: shuffle(names.filter(n => n !== name)).slice(0, 2) }; }
@@ -257,15 +379,17 @@ function gen(family, stageName) {
     return { kind: 'compose', name: 'square', options };
   }
 }
-const FAMILIES = { measure, sort: dataSort, shapes };
+const FAMILIES = { measure, sort: dataSort, patterns, shapes };
 
 function buildRound(kind) {
   const items = [];
   const take = f => items.push({ family: f, item: gen(f, ctx.adaptive.stage(f.subskill)) });
   if (FAMILIES[kind]) { for (let i = 0; i < 6; i++) take(FAMILIES[kind]); return items; }
-  const target = ctx.adaptive.todayQuest().requiredSubskill;
+  // Today's rainbow: the planner's target twice, measuring and sorting always, one pattern, shapes only as a treat.
+  const target = ctx.adaptive.targetFor('falls');
   const tf = Object.values(FAMILIES).find(f => f.subskill === target) || measure;
-  take(tf); take(measure); take(dataSort); take(tf); take(shapes); take(tf === measure ? dataSort : measure);
+  const others = [measure, dataSort, patterns].filter(f => f !== tf);
+  take(tf); take(others[0]); take(others[1]); take(tf); take(others[0]); take(Math.random() < 0.5 ? shapes : others[1]);
   return items;
 }
 
@@ -284,9 +408,10 @@ function showMenu() {
   roundBusy = false;
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level }));
   const modes = [
-    { id: 'mix', icon: '🌈', name: "Today's rainbow", primary: true },
+    { id: 'mix', icon: '💧', name: "Today's rainbow", primary: true },
     { id: 'measure', icon: '📏', name: 'Measure the Falls' },
     { id: 'sort', icon: '🧺', name: 'Sort the Squishies' },
+    { id: 'patterns', icon: '🌈', name: 'Rainbow Path' },
     { id: 'shapes', icon: '🔷', name: 'Shape Stones' }
   ];
   host.replaceChildren(el('div', { class: 'scene falls' }, [

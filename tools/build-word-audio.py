@@ -19,7 +19,22 @@ if sw.exists():
     d = json.loads(sw.read_text(encoding='utf-8'))
     for lst in d.get('lists', {}).values():
         words += lst
-words = sorted(set(words))
+# Keyword pictures for letter sounds (content/sounds.json), syllable words (content/pa.json) and every word
+# in the decodable sentences (content/sentences.json) also get clips so tapping any word plays a real voice.
+snd = ROOT / 'content' / 'sounds.json'
+if snd.exists():
+    words += [s['word'] for s in json.loads(snd.read_text(encoding='utf-8'))['sounds'] if s.get('word')]
+pa = ROOT / 'content' / 'pa.json'
+if pa.exists():
+    words += [s[0] for s in json.loads(pa.read_text(encoding='utf-8'))['syllables']]
+sen = ROOT / 'content' / 'sentences.json'
+if sen.exists():
+    for s in json.loads(sen.read_text(encoding='utf-8'))['sentences']:
+        words += [w.lower() for w in re.sub(r"[^A-Za-z\s']", '', s['text']).split()]
+words = sorted(set(w for w in words if re.fullmatch(r"[a-z][a-z'-]*", w)))
+if '--missing' in sys.argv:
+    words = [w for w in words if not (OUT / f'{w}.ogg').exists()]
+    sys.argv = [a for a in sys.argv if a != '--missing']
 only = set(sys.argv[1:])
 if only:
     words = [w for w in words if w in only]

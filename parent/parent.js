@@ -1,8 +1,12 @@
 // parent/parent.js — Parent Corner: is Princess Quest working? Mastery per skill, first-try trend,
 // improving / flat / regressing flags, minutes and items per day, next focus, trouble spots, Sound Check,
 // settings, export/import. Child-facing screens never show any of this.
+// Two kinds of numbers live here and are kept apart on purpose:
+//   FORMAL ASSESSMENT RESULTS  — the school's i-Ready and Star reports (typed in below, never computed)
+//   APP PRACTICE DATA          — what she did in Princess Quest (Bayesian mastery, first-try rates)
+// App mastery is not a Star or i-Ready score and never predicts one.
 import { createEconomy } from '../shared/economy.js';
-import { createAdaptive, SUBSKILLS, diffDays } from '../shared/adaptive.js';
+import { createAdaptive, SUBSKILLS, GROUPS, diffDays } from '../shared/adaptive.js';
 import { REGISTRY } from '../games/registry.js';
 import { el } from '../shared/ui.js';
 import { createAudioStore } from '../shared/audiostore.js';
@@ -20,13 +24,27 @@ const audio = createAudio({ speech, store, player, manifest: null, sounds: {}, s
 const app = document.getElementById('app');
 let SOUNDS = [], SW = null;
 
+// Fall 2026 formal results, typed from the school reports (i-Ready Inform 1, Aug 18/20; Star, Aug 25 / Sep 1).
+// Strand → the app skills that practise it. 'read' is the plain-language interpretation used to set tiers.
+const FORMAL = {
+  reading: { overall: 'i-Ready 396 (Mid K), 94th percentile · Star Early Literacy 777, Level 2, 91st percentile' },
+  math: { overall: 'i-Ready 372 (Early K), 93rd percentile · Star Math 799, Level 3, 92nd percentile' }
+};
 const BASELINE = [
-  ['Phonics / word analysis', 'Emerging K', '70', 1, ['phonics-encode', 'phonics-decode']], ['High-frequency words', 'Emerging K', '—', 1, ['sight-words']],
-  ['Phonological awareness', 'Early/Mid K', '69', 1, ['pa-sounds', 'pa-blend-segment', 'pa-manipulate']], ['Measurement & data', 'Emerging K', '66', 1, ['measure', 'data-sort']],
-  ['Number sense / operations', 'Early K', '57 / 59', 1, ['subitize-tenframe', 'teen-compare', 'add-sub']], ['Counting & cardinality', 'Early K', '78', 2, ['count-sequence']],
-  ['Algebraic thinking', 'Mid K', '50–54', 2, ['decompose-stories']], ['Geometry', 'Mid K', '67', 2, ['shapes']], ['Vocabulary', 'Mid/Late K', '61', 2, ['comprehension']],
-  ['Print concepts / fluency', '—', '86 / 83', 3, []], ['Comprehension', 'Mid/Late K', '82 / 82', 3, ['comprehension']]
+  ['Phonics / word analysis', 'Emerging K', '70', 'weak, both agree', ['phonics-gpc', 'phonics-encode', 'phonics-decode', 'decodable-reading']],
+  ['High-frequency words', 'Emerging K', '—', 'weak', ['sight-words']],
+  ['Phonological awareness', 'Early/Mid K', '69', 'weak', ['pa-sounds', 'pa-blend-segment', 'pa-manipulate', 'pa-rhyme']],
+  ['Number sense', 'Early K', '59', 'weak', ['subitize-tenframe', 'number-relations', 'teen-compare']],
+  ['Number operations', 'Early K', '57', 'weak', ['add-sub', 'decompose-stories']],
+  ['Measurement & data', 'Emerging K', '66', 'weak, both agree', ['measure', 'data-sort']],
+  ['Algebraic thinking / patterns', 'Mid K', '50', 'weak on Star only', ['patterns', 'decompose-stories']],
+  ['Counting & cardinality', '—', '78', 'fine', ['count-sequence', 'number-relations']],
+  ['Geometry', 'Mid K', '67', 'fine', ['shapes']],
+  ['Vocabulary', 'Mid/Late K', '61', 'mixed, light touch', ['comprehension']],
+  ['Comprehension (lit / info)', 'Mid/Late K', '82 / 82 (prose & poetry 56)', 'strong, keep warm', ['comprehension']],
+  ['Print concepts / fluency', '—', '86 / 83', 'strong', []]
 ];
+const LEVEL_WORD = { emerging: 'Emerging', learning: 'Learning', known: 'Known', mastered: 'Mastered' };
 
 function pinGate() {
   let entry = '';
@@ -78,13 +96,21 @@ function plain(def) {
 
 function nextFocus() {
   const ready = REGISTRY.filter(r => r.ready && !economy.save.settings.modulesOff.includes(r.id)).map(r => r.id);
-  const pick = adaptive.pickQuestCabinet(ready);
-  const def = SUBSKILLS.find(s => s.id === pick.subskill);
-  const place = REGISTRY.find(r => r.id === pick.cabinet);
-  if (!def) return 'Play any place.';
-  const p = adaptive.mastery(def.id);
-  const ds = adaptive.daysSince(def.id);
-  return `${place ? place.name : pick.cabinet} — ${def.name} (mastery ${pct(p)}${ds === null ? ', not practised yet' : ds > 1 ? ', ' + ds + ' days since practice' : ''}).`;
+  const stops = adaptive.planStops(ready);
+  if (!stops.length) return 'Play any place.';
+  return stops.map(st => {
+    const def = SUBSKILLS.find(s => s.id === st.subskill);
+    const place = REGISTRY.find(r => r.id === st.cabinet);
+    if (!def) return place ? place.name : st.cabinet;
+    const ds = adaptive.daysSince(def.id);
+    return `${place ? place.name : st.cabinet} — ${def.name} (${LEVEL_WORD[adaptive.level(def.id)]}, mastery ${pct(adaptive.mastery(def.id))}${ds === null ? ', not practised yet' : ds > 1 ? ', ' + ds + ' days since practice' : ''})`;
+  }).join('; then ') + '.';
+}
+function weakStrong() {
+  const practised = SUBSKILLS.filter(d => adaptive.accuracy(d.id) !== null);
+  if (practised.length < 3) return { weak: [], strong: [] };
+  const byP = [...practised].sort((a, b) => adaptive.mastery(a.id) - adaptive.mastery(b.id));
+  return { weak: byP.slice(0, 3), strong: byP.slice(-3).reverse().filter(d => adaptive.mastery(d.id) >= 0.6) };
 }
 
 function tonightLine() {
@@ -93,10 +119,10 @@ function tonightLine() {
   const pretty = id => {
     const [kind, ...rest] = id.split(':');
     const r = rest.join(' ');
-    return ({ spell: 'building the word "' + r + '"', read: 'reading the word "' + r + '"', heartap: 'the wish word "' + r + '"', swap: 'changing ' + r.replace('>', ' into '), oralswap: 'hearing ' + r.replace('>', ' change to '), teen: 'teen number ' + r.replace('teens ', ''), bridge: 'the sum ' + r, frames: 'seeing ' + r.replace(/\w+ /, '') + ' gems quickly', count: 'counting on from ' + r.replace(/\w+ /, ''), story: 'the story questions', vocab: 'the story word', measure: 'measuring (' + r + ')', sort: 'sorting', shape: 'the ' + r.replace(/\w+ /, '') + ' shape' })[kind] || id;
+    return ({ spell: 'building the word "' + r + '"', read: 'reading the word "' + r + '"', heartap: 'the wish word "' + r + '"', note: 'finding "' + r.split(' ')[0] + '" in a sentence', scroll: 'reading a sentence', 'gpc-hear': 'hearing the sound of "' + r + '"', 'gpc-see': 'the sound of the letter "' + r + '"', swap: 'changing ' + r.replace('>', ' into '), oralswap: 'hearing ' + r.replace('>', ' change to '), takeaway: 'taking a sound off ' + r.split('>')[0], rhyme: 'a rhyme for ' + r.split('>')[0], beats: 'clapping the beats in ' + r, onsetrime: 'putting together ' + r, 'pa-first': 'the first sound in ' + r, 'pa-final': 'the last sound in ' + r, 'pa-medial': 'the middle sound in ' + r, blend: 'blending ' + r, count: 'counting sounds in ' + r, teen: 'teen number ' + r.replace('teens ', ''), bridge: 'the sum ' + r, frames: 'seeing ' + r.replace(/\w+ /, '') + ' gems quickly', trail: r.startsWith('onemore') ? 'one more or one less' : r.startsWith('countout') ? 'counting out ' + r.replace('countout ', '') + ' gems' : 'putting numbers in order', story: 'the story questions', vocab: 'the story word', measure: 'measuring (' + r + ')', sort: 'sorting', pattern: 'the ' + r.split(' ')[0] + ' pattern', shape: 'the ' + r.replace(/\w+ /, '') + ' shape' })[kind] || id;
   };
   const items = trouble.map(t => pretty(t.id)).join('; ');
-  return `Two minutes tonight: revisit ${items}. Say the sound, let her find it, then let her teach it to you.`;
+  return `Two minutes tonight: revisit ${items}. Say it, let her find it, then let her teach it to you.`;
 }
 
 function render() {
@@ -111,20 +137,24 @@ function render() {
         kpi('Days played (14d)', daysPlayed(14)), kpi('Items (7d)', itemsInDays(7)), kpi('Minutes (7d, est.)', minutesEstimate(7)),
         kpi('Wish words known', sw.length), kpi('Wish words mastered', mastered), kpi('Squishies freed', s.squishies.rescued.length), kpi('Luna stars', s.companion.stars), kpi('Gems', s.gems)
       ]),
-      el('p', {}, [el('strong', { text: 'Next focus: ' }), nextFocus()]),
+      el('p', {}, [el('strong', { text: 'Tomorrow\'s trail (planner): ' }), nextFocus()]),
+      (() => { const { weak, strong } = weakStrong(); return weak.length ? el('p', {}, [el('strong', { text: 'Weakest in the app right now: ' }), weak.map(d => d.name).join(', '), el('span', { text: '. ' }), el('strong', { text: 'Strongest: ' }), strong.length ? strong.map(d => d.name).join(', ') : 'nothing above 60% yet', el('span', { text: '.' })]) : el('p', { class: 'muted', text: 'Weak and strong areas appear after a few days of play.' }); })(),
       el('p', {}, [el('strong', { text: 'Do this with her tonight: ' }), tonightLine()]),
       el('p', { class: 'muted', text: 'The evidence says adult participation is the biggest lever for app-based phonics (McTigue et al. 2020). Two minutes counts.' })
     ]),
     el('section', {}, [
       el('h2', { text: 'Skills' }),
       el('table', {}, [
-        el('thead', {}, [el('tr', {}, ['Skill', 'Tier', 'Stage', 'Mastery', 'First-try (20)', 'Trend', '14 days', 'Today', 'Last'].map(h => el('th', { text: h })))]),
+        el('thead', {}, [el('tr', {}, ['Skill', 'Place', 'Priority', 'Level', 'Stage', 'Mastery', 'First-try (20)', 'Trend', '14 days', 'Today', 'Last'].map(h => el('th', { text: h })))]),
         el('tbody', {}, SUBSKILLS.map(d => {
           const ds = adaptive.daysSince(d.id);
           const t = adaptive.trend(d.id);
+          const place = REGISTRY.find(r => r.id === d.cabinet);
           return el('tr', { class: (d.tier === 1 ? 'tier1 ' : '') + (adaptive.needsReteach(d.id) ? 'reteach' : '') }, [
             el('td', {}, [d.name + ' ', el('span', { class: 'muted', text: d.strand })]),
-            el('td', { text: String(d.tier) }),
+            el('td', { text: place ? place.name.replace(/^(Unicorn|Whisper|Wishing|Crystal|Rainbow|Story) /, '') : d.cabinet }),
+            el('td', { text: d.tier === 1 ? 'focus' : d.tier === 2 ? 'secondary' : 'strength' }),
+            el('td', { text: adaptive.accuracy(d.id) === null ? '—' : LEVEL_WORD[adaptive.level(d.id)] }),
             el('td', { text: adaptive.stage(d.id) }),
             el('td', { text: pct(adaptive.mastery(d.id)) }),
             el('td', { text: pct(adaptive.accuracy(d.id)) }),
@@ -135,7 +165,7 @@ function render() {
           ]);
         }))
       ]),
-      el('p', { class: 'muted', text: 'Mastery is a Bayesian estimate that a skill is known (first-try answers count fully, answers after a hint count half, revealed answers count against). A stage advances at 85% mastery with six first-try items on two different days. Rows in rose need re-teaching; the planner already sends more review there.' }),
+      el('p', { class: 'muted', text: 'APP PRACTICE DATA. Mastery is a Bayesian estimate that a skill is known (first-try answers count fully, answers after a hint count half, revealed answers count against). Level: Emerging under 40%, Learning 40–85%, Known above 85%, Mastered = Known at the last stage. A stage advances at 85% mastery with six first-try items on two different days; nothing ever demotes. Rows in rose need re-teaching; the planner already sends more review there. Priority comes from the school assessments below: focus skills get three times the planner weight of strengths.' }),
       el('div', { style: 'margin-top:10px' }, SUBSKILLS.map(d => el('p', { class: 'line', text: plain(d) })))
     ]),
     el('section', {}, [
@@ -147,13 +177,14 @@ function render() {
       el('p', { text: (s.feelingsLog || []).slice(-10).map(f => f.day.slice(5) + ' ' + f.feeling).join(', ') || 'None yet.' })
     ]),
     el('section', {}, [
-      el('h2', { text: 'Fall 2026 baseline and what the app is doing about each strand' }),
-      el('p', { class: 'muted', text: 'Star domain scores are model-based estimates tied to the overall scaled score; i-Ready K domain placements rest on few items. Treat this as a hypothesis the Skills table checks.' }),
+      el('h2', { text: 'FORMAL ASSESSMENT RESULTS (school, Fall 2026) and the app skills that practise each strand' }),
+      el('p', {}, [el('strong', { text: 'Reading: ' }), FORMAL.reading.overall, el('br'), el('strong', { text: 'Math: ' }), FORMAL.math.overall]),
+      el('p', { class: 'muted', text: 'These numbers come from the school reports and never change inside the app. Star strand scores are model-based estimates tied to one overall score; i-Ready K domain placements rest on few items. The app treats them as a hypothesis its own practice data checks. App mastery (last column) is practice data, not a Star or i-Ready score, and does not predict one.' }),
       el('table', {}, [
-        el('thead', {}, [el('tr', {}, ['Strand', 'i-Ready', 'Star', 'Tier', 'App mastery now'].map(h => el('th', { text: h })))]),
-        el('tbody', {}, BASELINE.map(r => { const ids = r[4]; const ps = ids.map(id => adaptive.mastery(id)); const m = ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : null; return el('tr', {}, [...r.slice(0, 4).map(c => el('td', { text: String(c) })), el('td', { text: ids.length ? pct(m) : 'not targeted' })]); }))
+        el('thead', {}, [el('tr', {}, ['Strand', 'i-Ready', 'Star (0–100)', 'Read as', 'App skills', 'App mastery now'].map(h => el('th', { text: h })))]),
+        el('tbody', {}, BASELINE.map(r => { const ids = r[4]; const ps = ids.map(id => adaptive.mastery(id)); const m = ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : null; return el('tr', {}, [...r.slice(0, 4).map(c => el('td', { text: String(c) })), el('td', { class: 'muted', text: ids.map(id => (SUBSKILLS.find(s => s.id === id) || {}).name || id).join(', ') || '—' }), el('td', { text: ids.length ? pct(m) : 'not targeted' })]); }))
       ]),
-      el('p', { class: 'muted', text: 'Targets: i-Ready reading 396 → 439 typical / 450 stretch; math 372 → 396 / 410. Expect app practice alone to move standardized scores modestly (d ≈ 0.2–0.3 in the literature); daily practice on tier-1 strands with you in the loop is the lever.' })
+      el('p', { class: 'muted', text: 'School growth targets: i-Ready reading 396 → 439 typical / 450 stretch; math 372 → 396 / 410; Star reading from Level 2 to Level 3 (benchmark near 800). App practice alone moves standardized scores modestly (d ≈ 0.2–0.3 in the literature); a daily ten minutes on the focus strands with you in the loop is the lever. The daily quest is a two-stop trail, one reading stop and one math stop, chosen from the weakest focus skills.' })
     ]),
     soundCheckSection(),
     el('section', {}, [

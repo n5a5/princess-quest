@@ -23,9 +23,9 @@ export function bigButton(label, onTap, cls = '') {
 export function speakButton(audio, text) {
   return el('button', { class: 'speak-btn', type: 'button', 'aria-label': 'Hear it again', text: '🔊', onclick: () => audio.say(text) });
 }
-export function promptBar(audio, text) {
+export function promptBar(audio, text, { ears = false } = {}) {
   const t = el('div', { class: 'text' });
-  t.appendChild(audio.spans(text));
+  t.appendChild(audio.spans(text, { ears }));
   return el('div', { class: 'prompt' }, [t, speakButton(audio, text)]);
 }
 export function picture(pic, onTap) {
@@ -62,6 +62,7 @@ export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revea
           buttons.forEach(x => x.setAttribute('disabled', '')); // BUG-03: no stray taps after a correct answer
           b.classList.add('right');
           confetti(24);
+          if (audio.sfx) audio.sfx.sparkle();
           if (praise) audio.say(praise);
           await wait(700);
           finish({ firstTry: misses === 0, misses, revealed: false });

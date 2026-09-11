@@ -79,3 +79,42 @@ test('praise.json pools are non-empty and use {name}', () => {
   }
   assert.ok(p.greeting.some(l => l.includes('{name}')));
 });
+
+test('sentences.json: every word is decodable at its stage or a listed heart word; one correct picture', () => {
+  const { stages } = readJSON('content/phonics.json');
+  const sw = readJSON('content/sight-words.json');
+  const hearts = new Set([...sw.lists.prePrimer, ...sw.lists.primer]);
+  const { sentences } = readJSON('content/sentences.json');
+  assert.ok(sentences.length >= 30);
+  const ids = new Set();
+  for (const s of sentences) {
+    assert.ok(!ids.has(s.id), 'duplicate id ' + s.id); ids.add(s.id);
+    const idx = stages.findIndex(st => st.id === s.stage);
+    assert.ok(idx >= 0, s.id + ' unknown stage');
+    const decodable = new Set(stages.slice(0, idx + 1).flatMap(st => st.words.map(w => w.w)));
+    const words = s.text.replace(/[^A-Za-z\s']/g, '').split(/\s+/).filter(Boolean);
+    assert.ok(words.length >= 3 && words.length <= 8, s.id + ' length');
+    for (const w of words) {
+      const lw = w.toLowerCase();
+      const ok = decodable.has(lw) || hearts.has(lw) || hearts.has(w);
+      assert.ok(ok, `${s.id}: "${w}" is neither decodable at stage ${s.stage} nor a heart word`);
+    }
+    for (const h of s.hearts) assert.ok(hearts.has(h), s.id + ' heart ' + h);
+    assert.equal(s.choices.length, 3, s.id);
+    assert.equal(s.choices.filter(c => c.ok).length, 1, s.id);
+    assert.equal(new Set(s.choices.map(c => c.pic)).size, 3, s.id + ' pictures must differ');
+  }
+  assert.ok(sentences.filter(s => s.stage === 'a').length >= 8, 'enough stage-a sentences for a beginner');
+});
+
+test('pa.json: syllable words have 1-3 beats and unique pictures', () => {
+  const { syllables } = readJSON('content/pa.json');
+  assert.ok(syllables.length >= 30);
+  const pics = new Set();
+  for (const [w, n, pic] of syllables) {
+    assert.ok(/^[a-z]+$/.test(w), w);
+    assert.ok(n >= 1 && n <= 3, w);
+    assert.ok(pic && !pics.has(pic), w + ' picture'); pics.add(pic);
+  }
+  for (const n of [1, 2, 3]) assert.ok(syllables.filter(s => s[1] === n).length >= 8, n + '-beat words');
+});

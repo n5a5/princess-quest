@@ -5,7 +5,8 @@
 //   crystalBridge add/subtract within 5 then 10 with gems always visible; quick n+1 / n−1 facts (Dyson & Jordan 2015)
 //   teenTower    teen numbers as a full ten-frame plus ones; compare two groups; number line to 20
 //   caveCount    what comes next by ones and by tens; counting backward within 20
-//   numberStories bonds and decompositions ("5 is 2 and ▢"), picture word problems, is-this-true
+//   numberStories bonds and decompositions ("5 is 2 and ▢"), picture word problems, is-this-true, match the spell
+//   gemTrail     number relations: one more / one less, count out n gems, order three numbers (NSO.1.2, NSO.2.3)
 import { el, wait, shuffle, pick, choiceGrid, promptBar, bigButton } from '../../shared/ui.js';
 import { runEncounterRound, celebrateRound } from '../../shared/encounter.js';
 import { lunaSVG, svgFrom } from '../../shared/characters.js';
@@ -26,11 +27,11 @@ function gemCluster(n, { scattered = false } = {}) {
   }
   return box;
 }
-function tenFrame(filled, { tappable = false, onChange = null, fixedCount = 0 } = {}) {
+function tenFrame(filled, { tappable = false, onChange = null, fixedCount = 0, size = 10 } = {}) {
   const cells = [];
-  const frame = el('div', { class: 'ten-frame', role: 'group', 'aria-label': 'ten frame' });
-  const state = Array.from({ length: 10 }, (_, i) => i < filled);
-  for (let i = 0; i < 10; i++) {
+  const frame = el('div', { class: 'ten-frame' + (size === 5 ? ' five' : ''), role: 'group', 'aria-label': size === 5 ? 'five frame' : 'ten frame' });
+  const state = Array.from({ length: size }, (_, i) => i < filled);
+  for (let i = 0; i < size; i++) {
     const c = el('button', { class: 'cell' + (state[i] ? (i < fixedCount ? ' fixed' : ' on') : ''), type: 'button', text: state[i] ? GEM : '', 'aria-label': 'cell ' + (i + 1), ...(tappable && i >= fixedCount ? {} : { disabled: '' }) });
     if (tappable) c.addEventListener('click', () => { if (i < fixedCount) return; state[i] = !state[i]; c.classList.toggle('on', state[i]); c.textContent = state[i] ? GEM : ''; onChange && onChange(state.filter(Boolean).length); });
     cells.push(c); frame.appendChild(c);
@@ -77,24 +78,26 @@ const gemFrames = {
       stage.setBody(vis, grid.el);
       return { outcome: outcomeOf(r), choices: 3, gpc: 'n' + it.n };
     }
-    // make10: frame shows n gems; tap the empty cells until the frame is full, then Done.
-    const prompt = 'Luna\'s pouch holds ten gems. She has ' + it.n + '. Tap the empty pockets to fill it up.';
+    // make5 / make10: frame shows n gems; tap the empty cells until the frame is full, then Done.
+    const size = it.kind === 'make5' ? 5 : 10;
+    const sizeWord = size === 5 ? 'five' : 'ten';
+    const prompt = (size === 5 ? 'Luna\'s little pouch holds five gems. ' : 'Luna\'s pouch holds ten gems. ') + 'She has ' + it.n + '. Tap the empty pockets to fill it up.';
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div'));
     let misses = 0;
     const result = await new Promise(resolve => {
-      const frame = tenFrame(it.n, { tappable: true, fixedCount: it.n, onChange: () => {} });
+      const frame = tenFrame(it.n, { tappable: true, fixedCount: it.n, onChange: () => {}, size });
       const done = bigButton('Done', async () => {
         const added = frame.count() - it.n;
-        if (frame.count() === 10) {
+        if (frame.count() === size) {
           done.setAttribute('disabled', '');
-          await audio.say(it.n + ' and ' + added + ' more make ten. The pouch is full!');
+          await audio.say(it.n + ' and ' + added + ' more make ' + sizeWord + '. The pouch is full!');
           audio.say(praiseLine());
-          resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4, gpc: 'make10-' + it.n });
+          resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4, gpc: 'make' + size + '-' + it.n });
         } else {
           misses++; stage.luna('think', 900);
           if (misses === 1) { frame.cells.forEach((c, i) => { if (i >= it.n) c.classList.add('glow'); }); await audio.say('Fill every empty pocket. Count as you tap.'); }
-          else { frame.cells.forEach((c, i) => { if (i >= it.n && !c.classList.contains('on')) c.click(); }); await audio.say(it.n + ' and ' + (10 - it.n) + ' more make ten.'); done.click(); }
+          else { frame.cells.forEach((c, i) => { if (i >= it.n && !c.classList.contains('on')) c.click(); }); await audio.say(it.n + ' and ' + (size - it.n) + ' more make ' + sizeWord + '.'); done.click(); }
         }
       }, 'gold');
       stage.setBody(frame.el, el('div', { class: 'row' }, [done]));
@@ -252,6 +255,21 @@ const numberStories = {
       const r = await grid.done;
       return { outcome: outcomeOf(r), choices: 3, gpc: 'problem' };
     }
+    if (it.kind === 'match') {
+      // Which number spell tells this picture? (AR.1.3: represent a real-world problem with an equation)
+      const prompt = 'Look at the gems. Which number spell tells what you see?';
+      stage.setPrompt(promptBar(audio, prompt));
+      stage.setObject(el('div'));
+      const say = t => t.replace('+', 'plus').replace('−', 'take away').replace('=', 'equals');
+      const grid = choiceGrid({ audio, prompt, items: it.eqs.map(e => ({ id: e.text, pic: '', label: e.text, ok: e.ok, say: say(e.text), textOnly: true })), praise: praiseLine(), revealText: say(it.eqs.find(e => e.ok).text) + '. That is the spell.' });
+      grid.el.classList.add('three');
+      grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); c.style.fontSize = '30px'; });
+      const second = gemCluster(it.b); if (it.op === '-') { second.style.filter = 'grayscale(1)'; second.style.opacity = '.5'; }
+      stage.setBody(el('div', { class: 'row' }, [gemCluster(it.a), el('span', { class: 'word-big', text: it.op === '+' ? '+' : '−' }), second]), grid.el);
+      await audio.say(prompt);
+      const r = await grid.done;
+      return { outcome: outcomeOf(r), choices: 3, gpc: 'match' };
+    }
     // truefalse: three choices (true / false / "not sure" is not offered; use equation cards: which one is true?)
     const eqs = it.eqs; // [{ text, ok }]
     const prompt = 'Luna wrote three number spells. Only one is true. Count the gems, then tap the true spell.';
@@ -267,13 +285,83 @@ const numberStories = {
   }
 };
 
+const gemTrail = {
+  id: 'trail', subskill: 'number-relations', itemId: it => 'trail:' + it.kind + ':' + (it.n ?? it.nums.join('-')),
+  async play(stage, it, ctx, { praiseLine }) {
+    const audio = ctx.audio;
+    if (it.kind === 'onemore') {
+      const answer = it.more ? it.n + 1 : it.n - 1;
+      const prompt = 'Luna has ' + gems(it.n) + '. ' + (it.more ? 'She finds one more.' : 'She gives one to Rosie.') + ' How many now?';
+      stage.setPrompt(promptBar(audio, prompt));
+      stage.setObject(el('div'));
+      const row = gemCluster(it.n);
+      stage.setBody(row);
+      await audio.say(prompt);
+      // show the change before she answers
+      if (it.more) { const g = el('span', { text: GEM, style: 'opacity:0;transition:opacity .4s' }); row.appendChild(g); await wait(150); g.style.opacity = '1'; }
+      else { const last = row.lastElementChild; last.style.transition = 'opacity .4s'; last.style.opacity = '0.25'; }
+      const grid = choiceGrid({ audio, prompt: 'How many now?', items: numeralChoices(answer, { min: 0, max: 11 }), praise: praiseLine(), revealText: it.n + ' and one ' + (it.more ? 'more' : 'less') + ' is ' + answer + '.' });
+      grid.el.classList.add('three'); grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
+      stage.setBody(row, grid.el);
+      const r = await grid.done;
+      return { outcome: outcomeOf(r), choices: 3, gpc: it.more ? 'more' : 'less' };
+    }
+    if (it.kind === 'countout') {
+      const prompt = 'The crystal door needs ' + gems(it.n) + '. Tap gems into the pouch. Count as you go. Then tap Done.';
+      stage.setPrompt(promptBar(audio, prompt));
+      stage.setObject(el('div', { class: 'word-big', text: String(it.n) }));
+      let misses = 0;
+      const result = await new Promise(resolve => {
+        const f1 = tenFrame(0, { tappable: true, onChange: () => {} });
+        const f2 = it.n > 10 ? tenFrame(0, { tappable: true, onChange: () => {} }) : null;
+        const count = () => f1.count() + (f2 ? f2.count() : 0);
+        const done = bigButton('Done', async () => {
+          const c = count();
+          if (c === it.n) {
+            done.setAttribute('disabled', '');
+            await audio.say(gems(it.n) + '. The door opens!');
+            audio.say(praiseLine());
+            resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4, gpc: 'count' + it.n });
+          } else {
+            misses++; stage.luna('think', 900);
+            if (misses === 1) await audio.say('That is ' + gems(c) + '. We need ' + it.n + '. ' + (c < it.n ? 'Add some more.' : 'Take some away.'));
+            else { [...f1.cells, ...(f2 ? f2.cells : [])].forEach((cell, i) => { const want = i < it.n; if (cell.classList.contains('on') !== want) cell.click(); }); await audio.say('Here are ' + gems(it.n) + '.'); done.click(); }
+          }
+        }, 'gold');
+        stage.setBody(f1.el, f2 ? f2.el : el('div'), el('div', { class: 'row' }, [done]));
+      });
+      return result;
+    }
+    // order: tap the smallest number first
+    const sorted = [...it.nums].sort((a, b) => a - b);
+    const prompt = 'Put the numbers in order. Tap the smallest first, then the next.';
+    stage.setPrompt(promptBar(audio, prompt));
+    stage.setObject(el('div'));
+    let misses = 0, next = 0;
+    const result = await new Promise(resolve => {
+      const line = el('div', { class: 'row', style: 'min-height:50px' });
+      const tray = el('div', { class: 'row' }, it.nums.map(n => {
+        const b = el('button', { class: 'tile', type: 'button', text: String(n), 'aria-label': String(n) });
+        b.addEventListener('click', async () => {
+          audio.stop(); audio.say(String(n));
+          if (n === sorted[next]) { b.setAttribute('disabled', ''); b.classList.add('now'); line.appendChild(el('span', { class: 'word-big', text: String(n) })); next++; if (next === 3) { await audio.say(sorted.join(', ') + '. ' + praiseLine()); resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 3, gpc: 'order' }); } }
+          else { misses++; b.classList.add('wobble'); setTimeout(() => b.classList.remove('wobble'), 500); stage.luna('think', 900); const right = [...tray.querySelectorAll('.tile:not([disabled])')].find(x => x.textContent === String(sorted[next])); if (misses === 1) { right.classList.add('glow'); await audio.say('Which one is the smallest of these?'); } else right.click(); }
+        });
+        return b;
+      }));
+      stage.setBody(tray, line);
+    });
+    return result;
+  }
+};
+
 // ---------- item generators (stage-aware) ----------
 function gen(family, stageName) {
   switch (family.id) {
     case 'frames': {
       if (stageName === 'small') return { kind: 'small', n: rand(1, 4) };
-      if (stageName === 'structured') return { kind: 'structured', n: rand(5, 10) };
-      return { kind: 'make10', n: rand(1, 9) };
+      if (stageName === 'structured') return Math.random() < 0.35 ? { kind: 'make5', n: rand(1, 4) } : { kind: 'structured', n: rand(5, 10) };
+      return Math.random() < 0.25 ? { kind: 'make5', n: rand(1, 4) } : { kind: 'make10', n: rand(1, 9) };
     }
     case 'bridge': {
       if (stageName === 'within5') { const add = Math.random() < 0.6; const a = rand(1, 4); const b = add ? rand(1, 5 - a) : rand(1, a); return { a, b, op: add ? '+' : '-' }; }
@@ -290,27 +378,43 @@ function gen(family, stageName) {
       if (stageName === 'tens') return { kind: 'tens', start: pick([10, 20, 30, 40, 50, 60]) };
       return { kind: 'backward', start: rand(6, 20) };
     }
+    case 'trail': {
+      if (stageName === 'onemore') { const more = Math.random() < 0.55; const n = more ? rand(1, 9) : rand(2, 10); return { kind: 'onemore', n, more }; }
+      if (stageName === 'countout') return { kind: 'countout', n: rand(2, 10) };
+      if (stageName === 'order') { const set = new Set(); while (set.size < 3) set.add(rand(0, 12)); return { kind: 'order', nums: shuffle([...set]) }; }
+      return { kind: 'countout', n: rand(11, 20) };
+    }
     case 'stories': {
       if (stageName === 'bonds') { const a = rand(1, 9); return { kind: 'bonds', a, b: 10 - a }; }
       if (stageName === 'decompose') { const whole = rand(3, 9); const a = rand(1, whole - 1); return { kind: 'decompose', a, b: whole - a }; }
       if (stageName === 'problems') { const add = Math.random() < 0.6; const a = rand(1, 6); const b = add ? rand(1, 10 - a) : rand(1, a); return { kind: 'problems', a, b, op: add ? '+' : '-', thing: pick(STORY_THINGS) }; }
+      if (stageName === 'match' || Math.random() < 0.3) {
+        const add = Math.random() < 0.6; const a = rand(1, 6); const b = add ? rand(1, 10 - a) : rand(1, a);
+        const eq = (x, y, o) => x + ' ' + o + ' ' + y + ' = ' + (o === '+' ? x + y : x - y);
+        const right = eq(a, b, add ? '+' : '−');
+        const foil1 = add ? eq(a, b, '−') : eq(a, b, '+');
+        let foil2 = eq(a + 1, b, add ? '+' : '−');
+        if (foil2 === right || foil2 === foil1) foil2 = eq(a + 2, b, add ? '+' : '−');
+        return { kind: 'match', a, b, op: add ? '+' : '-', eqs: shuffle([{ text: right, ok: true }, { text: foil1, ok: false }, { text: foil2, ok: false }]) };
+      }
       const a = rand(1, 5), b = rand(1, 5); const s = a + b;
       const wrong1 = s + pick([1, 2]), wrong2 = Math.max(0, s - pick([1, 2]));
       return { kind: 'truefalse', a, b, eqs: shuffle([{ text: a + ' + ' + b + ' = ' + s, ok: true }, { text: a + ' + ' + b + ' = ' + wrong1, ok: false }, { text: a + ' + ' + b + ' = ' + (wrong2 === s ? s + 3 : wrong2), ok: false }]) };
     }
   }
 }
-const FAMILIES = { frames: gemFrames, bridge: crystalBridge, teen: teenTower, count: caveCount, stories: numberStories };
+const FAMILIES = { frames: gemFrames, trail: gemTrail, bridge: crystalBridge, teen: teenTower, count: caveCount, stories: numberStories };
 
 function buildRound(kind) {
   const stageOf = f => ctx.adaptive.stage(f.subskill);
   const items = [];
   const take = f => items.push({ family: f, item: gen(f, stageOf(f)) });
   if (FAMILIES[kind]) { for (let i = 0; i < 6; i++) take(FAMILIES[kind]); return items; }
-  // Today's crystals: planner's target ×3, plus one each of the others (frames, bridge, teen, count/stories).
-  const target = ctx.adaptive.todayQuest().requiredSubskill;
+  // Today's crystals: the planner's target twice, then one each of the other number-sense/operations families.
+  const target = ctx.adaptive.targetFor('caverns');
   const tf = Object.values(FAMILIES).find(f => f.subskill === target) || crystalBridge;
-  take(tf); take(gemFrames); take(tf); take(crystalBridge); take(teenTower); take(tf === numberStories ? caveCount : numberStories);
+  const others = [gemFrames, gemTrail, crystalBridge, numberStories, teenTower].filter(f => f !== tf);
+  take(tf); take(others[0]); take(others[1]); take(tf); take(others[2]); take(others[3]);
   return items.slice(0, 6);
 }
 
@@ -331,6 +435,7 @@ function showMenu() {
   const modes = [
     { id: 'mix', icon: '💎', name: "Today's crystals", primary: true },
     { id: 'frames', icon: '👀', name: 'Quick Peek' },
+    { id: 'trail', icon: '🐾', name: 'Gem Trail' },
     { id: 'bridge', icon: '👝', name: 'Gem Pouch' },
     { id: 'teen', icon: '💎', name: 'Big Gem Piles' },
     { id: 'count', icon: '🪜', name: 'Cave Steps' },

@@ -97,6 +97,7 @@ export function celebrateRound(ctx, { stars, rescued, companion, gems }, onDone)
   const o = sheet(kids);
   confetti(60);
   flyGems(gems);
+  if (ctx.audio.sfx) ctx.audio.sfx.yay();
   const line = (stars === 3 ? 'Three stars! ' : stars === 2 ? 'Two stars! ' : 'One star, and you kept going! ')
     + (rescued ? 'You freed ' + SQUISHY_KINDS.find(k => k.id === rescued).name + ' the Squishy! ' : '')
     + (companion.leveledUp ? 'Luna is glowing brighter!' : '');

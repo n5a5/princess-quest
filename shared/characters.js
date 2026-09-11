@@ -79,7 +79,10 @@ export const SQUISHY_KINDS = [
   { id: 'lemon', color: '#FFF0A6', dark: '#E0C24A', name: 'Lemon' },
   { id: 'teal', color: '#9EE0E6', dark: '#4FB7C2', name: 'Teal' },
   { id: 'blush', color: '#FFD1DC', dark: '#EE9AB0', name: 'Blush' },
-  { id: 'moss', color: '#CFE8B8', dark: '#94C070', name: 'Moss' }
+  { id: 'moss', color: '#CFE8B8', dark: '#94C070', name: 'Moss' },
+  { id: 'fern', color: '#A9DFC6', dark: '#5FB894', name: 'Fern' },
+  { id: 'dawn', color: '#FFD9B8', dark: '#F0A870', name: 'Dawn' },
+  { id: 'pebble', color: '#C9D6E8', dark: '#8FA6C4', name: 'Pebble' }
 ];
 
 export function squishySVG(kind, { size = 64, bubble = false, sleepy = false } = {}) {
@@ -123,6 +126,7 @@ export function placeArtSVG(id) {
     caverns: `<svg viewBox="0 0 64 64" xmlns="${NS}" aria-hidden="true"><path d="M6 56 L14 22 L24 40 L32 10 L40 40 L50 20 L58 56 Z" fill="#9A7FD6"/><path d="M22 56 L28 34 L36 56 Z" fill="#C7B4F0"/><path d="M24 30 l4 -6 l4 6 l-4 8 z" fill="#7CC7F0" stroke="#3E8FC9" stroke-width="1.5"/><path d="M42 36 l3 -5 l3 5 l-3 6 z" fill="#F5A3BD" stroke="#D97A97" stroke-width="1.5"/></svg>`,
     falls: `<svg viewBox="0 0 64 64" xmlns="${NS}" aria-hidden="true"><path d="M6 40 Q32 6 58 40" stroke="#E2688F" stroke-width="5" fill="none"/><path d="M10 40 Q32 12 54 40" stroke="#E9B949" stroke-width="5" fill="none"/><path d="M14 40 Q32 18 50 40" stroke="#4DB6A4" stroke-width="5" fill="none"/><path d="M18 40 Q32 24 46 40" stroke="#7CC7F0" stroke-width="5" fill="none"/><rect x="26" y="34" width="12" height="20" rx="4" fill="#9FD3F2"/><ellipse cx="32" cy="56" rx="18" ry="5" fill="#7CC7F0"/></svg>`,
     garden: `<svg viewBox="0 0 64 64" xmlns="${NS}" aria-hidden="true"><ellipse cx="32" cy="50" rx="28" ry="9" fill="#B8E39A"/><path d="M14 44 Q14 24 32 22 Q50 24 50 44 Q48 56 32 56 Q16 56 14 44 Z" fill="#F5A3BD" stroke="#D97A97" stroke-width="2"/><circle cx="26" cy="38" r="3" fill="#33254F"/><circle cx="38" cy="38" r="3" fill="#33254F"/><path d="M27 46 Q32 50 37 46" stroke="#33254F" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="12" cy="30" r="5" fill="#F9D77B"/><circle cx="52" cy="28" r="5" fill="#8FDCCB"/><path d="M8 20 l2 -5 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 z" fill="#E9B949"/></svg>`,
+    woods: `<svg viewBox="0 0 64 64" xmlns="${NS}" aria-hidden="true"><ellipse cx="32" cy="54" rx="28" ry="7" fill="#7FC2A5"/><path d="M14 52 L22 26 L30 52 Z" fill="#4DB6A4"/><path d="M26 52 L36 14 L46 52 Z" fill="#3A9C89"/><path d="M40 52 L48 30 L56 52 Z" fill="#5FB894"/><rect x="34" y="46" width="4" height="8" fill="#8A5530"/><path d="M8 20 q4 -6 8 0 q-4 6 -8 0 z" fill="#FFF8EE" opacity="0.9"/><path d="M6 24 q3 -3 6 0" stroke="#33254F" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M4 22 q2 -2 4 0 M8 19 q2 -2 4 0" stroke="#7C5CC4" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.8"/><circle cx="50" cy="16" r="3" fill="#F9D77B"/><circle cx="56" cy="24" r="2" fill="#F9D77B"/><circle cx="12" cy="40" r="2" fill="#F5A3BD"/></svg>`,
     castle: `<svg viewBox="0 0 64 64" xmlns="${NS}" aria-hidden="true"><rect x="12" y="28" width="40" height="28" rx="3" fill="#F3D9A4"/><rect x="8" y="20" width="12" height="36" rx="2" fill="#E9C27E"/><rect x="44" y="20" width="12" height="36" rx="2" fill="#E9C27E"/><path d="M8 20 L14 8 L20 20 Z" fill="#E2688F"/><path d="M44 20 L50 8 L56 20 Z" fill="#E2688F"/><path d="M26 32 Q32 22 38 32 L38 56 L26 56 Z" fill="#7C5CC4"/><rect x="28" y="12" width="8" height="12" fill="#F3D9A4"/><path d="M28 12 L32 4 L36 12 Z" fill="#E9B949"/></svg>`
   };
   return arts[id] || arts.meadow;

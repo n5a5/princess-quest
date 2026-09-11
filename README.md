@@ -1,6 +1,6 @@
 # Princess Quest
 
-A magical kindergarten adventure for one child, Amelia, built as a static offline PWA. Luna the unicorn guides her through a kingdom of five places; each place hides rigorous practice for the strands her fall assessments flagged (phonics, phonological awareness, high-frequency words, number sense and operations, measurement and data). Live at https://n5a5.github.io/princess-quest/.
+A magical kindergarten adventure for one child, Amelia, built as a static offline PWA. Luna the unicorn guides her through a kingdom of six places (plus the Squishy Garden); each place hides rigorous practice for the strands her fall 2026 i-Ready and Star assessments flagged (phonics, phonological awareness, high-frequency words, number sense and operations, measurement and data, patterns), while her strengths stay warm through stories and play. Priorities and the reasoning: `docs/superpowers/specs/2026-09-11-assessment-driven-priorities.md`. Live at https://n5a5.github.io/princess-quest/.
 
 Design documents: `docs/superpowers/specs/2026-09-11-princess-quest-ideal-architecture.md` (research synthesis, evidence grades, decisions) and `docs/superpowers/specs/2026-09-10-princess-quest-v3-design.md` (original v3 spec).
 
@@ -16,10 +16,11 @@ Open http://localhost:8765/. Tests: `node --test tests/*.test.js` (42 tests, no 
 
 | Place | Strands | What she does |
 |---|---|---|
-| 🦄 Unicorn Meadow | ELA.K.F.1.2, F.1.3 | Word Spell (build words from rune tiles, tap or drag), Read the Rune (decode, find the picture, wand blends), Sound Swap (cat → bat), Sound Seeds (first/final/middle sound, oral blending, count the sounds with gems, oral swap) |
-| 🌷 Wishing Well | ELA.K.F.1.4 | Heart words: Dolch pre-primer and primer introduced in sound boxes with a 💜 on the irregular part; hear-it-tap-it with confusable foils; see-it-say-it self-check; Leitner boxes 1–5 |
-| 💎 Crystal Caverns | MA.K.NSO.1–3, AR.1 | Gem Frames (subitize, make 10), Crystal Bridge (add/subtract with gems on screen), Teen Tower (ten and ones, compare, number line), Cave Count (by ones, tens, backward), Number Stories (bonds, decompose, picture problems, true equations) |
-| 🌈 Rainbow Falls | MA.K.M.1, DP.1, GR.1 | Name the attribute, compare, order three by length, gems as units, sort into bins that become a bar chart, shapes in any orientation, 3D solids, compose |
+| 🦄 Unicorn Meadow | ELA.K.F.1.3 | Phonics, letters always on screen: Letter Sounds (hear a sound → tap the stone; see a stone → tap the picture), Word Spell (build words from letter stones, tap or drag), Letter Stones (decode, find the picture, wand blends with a shimmer), Sound Swap (cat → bat), Spell Scroll (decodable sentences from content/sentences.json, tap the words, pick the picture) |
+| 👂 Whisper Woods | ELA.K.F.1.2 | Phonological awareness, ears only (no letters, pictures without labels, sound tokens are ear buttons): Sound Seeds (first/final/middle sound), Sound Bubbles (oral blending, count the sounds), Rhyme Time (rhymes, clap the beats, onset + rime), Whisper Swap (change a sound, take a sound away) |
+| 🌷 Wishing Well | ELA.K.F.1.4 | Wish words: Dolch pre-primer and primer, decodable-first order that follows the phonics stages, introduced in sound boxes with a 💜 on the irregular part; wish doors (hear it, tap it) with confusable foils; Wish Notes (find a known word inside a sentence); see-it-say-it self-check; Leitner boxes 1–5 |
+| 💎 Crystal Caverns | MA.K.NSO.1–3, AR.1 | Quick Peek (subitize, make 5, make 10), Gem Trail (one more / one less, count out n gems, order numbers), Gem Pouch (add / take away with Luna's ten-pocket pouch), Big Gem Piles (ten and ones, compare, number line), Cave Steps (by ones, tens, backward), Number Spells (bonds, decompose, picture problems, true spells, match the spell to the picture) |
+| 🌈 Rainbow Falls | MA.K.M.1, DP.1, AR.1, GR.1 | Measure the Falls (name the attribute; compare length, height with Squishy towers, weight on a balance scale that tips, capacity with jars that show their fill; order three; gems as units), Sort the Squishies (sort into baskets that become a chart: most, fewest, how many, how many more), Rainbow Path (AB / ABB / ABC patterns, what comes next, find the odd one), Shape Stones (2D, 3D, compose) |
 | 🏰 Story Castle | ELA.K.R.1–2, V.1 | Read-to-me stories with picture questions and next-day vocabulary recall, rhyming poems, Calm Tower (feelings, breathing, calm stories, body scan), Uh-Oh Courtyard (what would you do?) |
 | 🏡 Squishy Garden | reward | Rescued Squishies live here; gems buy decorations; two gifts say thank you |
 
@@ -30,15 +31,15 @@ Every learning item runs through one loop (`shared/encounter.js`): prompt auto-p
 ```
 index.html, shell.js          splash, kingdom map, place loading, session shaper, PIN
 shared/theme.css              art direction (Fredoka / Andika / Nunito bundled, warm lavender palette)
-shared/characters.js          Luna (4 expressions), 15 Squishies, chest, gem, place art — inline SVG
+shared/characters.js          Luna (4 expressions), 18 Squishies, chest, gem, place art — inline SVG
 shared/encounter.js           the encounter runner, round celebration, gem flight
 shared/audio.js               phoneme / letter / word / sentence channels, connected-phonation blend (Web Audio)
 shared/audiostore.js          parent recordings in IndexedDB with export/import
 shared/speech.js              text-to-speech primitive only (never used for bare phonemes)
-shared/adaptive.js            BKT mastery per skill and per GPC, outcome types, stage promotion, planner
+shared/adaptive.js            20 subskills with assessment tiers, BKT mastery per skill and per GPC, outcome types, stage promotion, two-stop quest planner
 shared/economy.js             versioned save, gems, stars, day streak, companion meter, Squishies
 shared/ui.js                  buttons, scaffolded choice grid, tile board (tap or drag), sheets, confetti
-games/registry.js             the six places; games/princess-quest/<place>.js
+games/registry.js             the seven places; games/princess-quest/<place>.js
 content/*.json                all words, stories, sounds, standards; nothing is hard-coded in games
 assets/audio/phonemes/*.ogg   34 bundled phoneme clips (tools/build-phoneme-audio.ps1)
 assets/audio/words/*.ogg      204 bundled word clips, Kokoro af_heart, Apache-2.0 (tools/build-word-audio.py)

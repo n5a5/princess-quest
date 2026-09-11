@@ -173,7 +173,7 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
     swap(newItem, changedIndex, opts) { return api.sequence(swapSteps(newItem, changedIndex), opts); },
 
     // Tappable spans for a prompt: words speak themselves, /id/ tokens become letter chips that play the sound.
-    spans(text) {
+    spans(text, { ears = false } = {}) {
       const frag = document.createDocumentFragment();
       String(text).split(/(\s+)/).forEach(part => {
         if (!part.trim()) { frag.appendChild(document.createTextNode(part)); return; }
@@ -181,8 +181,8 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
         const b = document.createElement('button');
         b.type = 'button';
         if (sm) {
-          b.className = 'sound-chip';
-          b.textContent = api.soundLabel(sm[1]);
+          b.className = 'sound-chip' + (ears ? ' ear' : '');
+          b.textContent = ears ? '👂' : api.soundLabel(sm[1]);
           b.setAttribute('aria-label', 'sound ' + sm[1]);
           b.addEventListener('click', e => { e.stopPropagation(); api.stop(); api.phoneme(sm[1]); });
           frag.appendChild(b);

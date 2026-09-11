@@ -1,0 +1,8 @@
+{
+  "note": "Phonological awareness content for Whisper Woods (ears only, no letters shown). syllables: [word, syllable count, picture]; the app speaks the word and the child taps one gem per beat. Rhyme, onset-rime, blending and deletion items are generated from content/phonics.json at runtime so every spoken word has a picture and a bundled clip.",
+  "syllables": [
+    ["sun", 1, "☀️"], ["cat", 1, "🐱"], ["dog", 1, "🐶"], ["fish", 1, "🐟"], ["star", 1, "⭐"], ["moon", 1, "🌙"], ["frog", 1, "🐸"], ["bee", 1, "🐝"], ["gem", 1, "💎"], ["cake", 1, "🎂"],
+    ["apple", 2, "🍎"], ["rainbow", 2, "🌈"], ["cupcake", 2, "🧁"], ["pumpkin", 2, "🎃"], ["tiger", 2, "🐯"], ["monkey", 2, "🐵"], ["penguin", 2, "🐧"], ["turtle", 2, "🐢"], ["flower", 2, "🌸"], ["rocket", 2, "🚀"], ["pizza", 2, "🍕"], ["cookie", 2, "🍪"], ["robot", 2, "🤖"], ["castle", 2, "🏰"], ["dragon", 2, "🐉"], ["princess", 2, "👸"],
+    ["butterfly", 3, "🦋"], ["unicorn", 3, "🦄"], ["banana", 3, "🍌"], ["elephant", 3, "🐘"], ["ladybug", 3, "🐞"], ["strawberry", 3, "🍓"], ["kangaroo", 3, "🦘"], ["dinosaur", 3, "🦕"], ["umbrella", 3, "☂️"], ["octopus", 3, "🐙"], ["tomato", 3, "🍅"], ["crocodile", 3, "🐊"], ["hamburger", 3, "🍔"]
+  ]
+}

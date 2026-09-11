@@ -3,12 +3,15 @@
 // speak their sounds, the irregular part wears a heart and is "remembered by heart" — then practised with
 // hear-it-tap-it (4 word choices with confusable foils) and see-it-say-it (self-check, never scored).
 // Scheduling: Leitner boxes 1–5 with 1/2/4/7/15-day intervals; mastered = box 5 after first-try hits on 3 days.
+// Wish Notes: once a word's heart is known it turns up inside a short decodable sentence (content/sentences.json)
+// and she finds it there, so recognition transfers to connected text.
 import { el, wait, shuffle, pick, choiceGrid, promptBar, bigButton } from '../../shared/ui.js';
 import { runEncounterRound, celebrateRound } from '../../shared/encounter.js';
 import { lunaSVG, svgFrom } from '../../shared/characters.js';
 
 let roundBusy = false;
-let host = null, ctx = null, cancelled = false, SW = null;
+let host = null, ctx = null, cancelled = false, SW = null, SENT = null;
+const outcomeOf = r => r.revealed ? 'revealed' : r.misses ? 'scaffolded' : 'firstTry';
 const INTERVALS = [0, 1, 2, 4, 7, 15]; // days until due, by box
 const NEW_PER_SESSION = 2;
 
@@ -20,9 +23,21 @@ function state(word) {
   if (!s[word]) s[word] = { box: 0, firstTryDays: [], introducedDay: null, lastSeen: null };
   return s[word];
 }
-// Intro order (BUG-10): fully decodable words first, then words with one heart, then the rest, within each list.
+// Intro order: fully decodable words first, then words with one heart, then the rest; within a group, the
+// words whose letters she has already met in the Meadow (lowest phonics stage) come first, so heart words
+// track the phonics progression instead of running ahead of it.
 const heartCount = w => (SW.words[w] || []).filter(u => u[2]).length;
-const orderList = list => [...list].sort((a, b) => heartCount(a) - heartCount(b) || SW.words[b].length - SW.words[a].length || list.indexOf(a) - list.indexOf(b));
+let PH = null;
+function stageNeeded(word) {
+  if (!PH) return 0;
+  const graphemes = (SW.words[word] || []).filter(u => !u[2] && u[1]).map(u => u[0]);
+  for (let i = 0; i < PH.stages.length; i++) {
+    const pool = new Set(PH.stages.slice(0, i + 1).flatMap(st => st.graphemes));
+    if (graphemes.every(g => pool.has(g))) return i;
+  }
+  return PH.stages.length;
+}
+const orderList = list => [...list].sort((a, b) => heartCount(a) - heartCount(b) || stageNeeded(a) - stageNeeded(b) || list.indexOf(a) - list.indexOf(b));
 const allWords = () => [...orderList(SW.lists.prePrimer), ...orderList(SW.lists.primer)];
 const introduced = () => allWords().filter(w => peek(w).introducedDay);
 const isMastered = w => peek(w).box >= 5 && peek(w).firstTryDays.length >= 3;
@@ -107,11 +122,11 @@ const hearTap = {
     const audio = ctx.audio;
     const foils = foilsFor(word, 3);
     const items = shuffle([word, ...foils]).map(w => ({ id: w, pic: '', label: w, ok: w === word, say: w, textOnly: true }));
-    const prompt = 'Find the word: ' + word + '.';
+    const prompt = 'Four wish doors. Which door says ' + word + '? Tap it to open it.';
     stage.setPrompt(promptBar(audio, prompt));
-    stage.setObject(el('div'));
-    const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'This one says ' + word + '.' });
-    grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
+    stage.setObject(el('div', { class: 'picture', text: '🚪' }));
+    const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'This door says ' + word + '.' });
+    grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only', 'door'); c.querySelector('.pic')?.remove(); });
     stage.setBody(grid.el);
     await audio.say(prompt);
     const r = await grid.done;
@@ -146,6 +161,62 @@ const seeSay = {
   }
 };
 
+// Wish Notes: find a known wish word inside a sentence, then hear the whole note.
+function sentenceRow(audio, text) {
+  const row = el('div', { class: 'sentence' });
+  const buttons = text.split(/\s+/).map(w => {
+    const clean = w.replace(/[^A-Za-z']/g, '');
+    const b = el('button', { class: 'sword', type: 'button', text: w, 'aria-label': clean });
+    b.addEventListener('click', () => { audio.stop(); audio.word(clean.toLowerCase()); });
+    row.appendChild(b);
+    return { b, clean };
+  });
+  return { row, buttons };
+}
+function noteFor(word, avoid = []) {
+  if (!SENT) return null;
+  const known = w => !!peek(w).introducedDay;
+  const has = s => s.text.replace(/[^A-Za-z\s']/g, '').split(/\s+/).map(x => x.toLowerCase()).includes(word.toLowerCase());
+  const ok = SENT.sentences.filter(s => has(s) && !avoid.includes(s.id) && s.hearts.every(h => h === word || known(h)));
+  return ok.length ? pick(ok) : null;
+}
+const wishNote = {
+  id: 'note', subskill: 'sight-words', itemId: it => 'note:' + it.word + ':' + it.sentence.id,
+  async play(stage, it, ctx, { praiseLine }) {
+    const audio = ctx.audio;
+    const { word, sentence } = it;
+    const prompt = 'Luna wrote a wish note. Find the word ' + word + '. Tap it.';
+    stage.setPrompt(promptBar(audio, prompt));
+    stage.setObject(el('div', { class: 'picture', text: '💌' }));
+    const sent = sentenceRow(audio, sentence.text);
+    const targets = sent.buttons.filter(x => x.clean.toLowerCase() === word.toLowerCase());
+    let misses = 0;
+    const result = await new Promise(resolve => {
+      sent.buttons.forEach(({ b, clean }) => b.addEventListener('click', async () => {
+        if (b.classList.contains('right')) return;
+        if (clean.toLowerCase() === word.toLowerCase()) {
+          sent.buttons.forEach(x => x.b.classList.remove('glow'));
+          b.classList.add('right', 'shimmer');
+          if (audio.sfx) audio.sfx.sparkle();
+          audio.say(praiseLine());
+          await wait(500);
+          resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed' });
+          return;
+        }
+        misses++;
+        b.classList.add('dim');
+        stage.luna('think', 900);
+        if (misses === 1) { targets.forEach(x => x.b.classList.add('glow')); await audio.say('Look for ' + word + '. It is glowing.'); }
+        else { const t = targets[0]; t.b.classList.add('right'); await audio.say('Here it is: ' + word + '.'); resolve({ outcome: 'revealed' }); }
+      }));
+      stage.setBody(sent.row);
+    });
+    await audio.say('The note says: ' + sentence.text);
+    const st = state(word); st.lastSeen = ctx.economy.today(); ctx.economy.persist();
+    return { outcome: result.outcome, choices: sent.buttons.length, gpc: word, review: result.outcome !== 'firstTry' && misses === 0 };
+  }
+};
+
 function buildRound() {
   const items = [];
   const fresh = introduced().length < 5 ? nextNewWords(5 - introduced().length) : nextNewWords(NEW_PER_SESSION);
@@ -154,9 +225,15 @@ function buildRound() {
   const practise = due.length >= 4 ? due.slice(0, 4) : [...due, ...shuffle(introduced().filter(w => !due.includes(w) && !fresh.includes(w))).slice(0, 4 - due.length)];
   practise.forEach(w => items.push({ family: hearTap, item: w }));
   fresh.forEach(w => items.push({ family: hearTap, item: w }));
+  // Two wish notes: known words found inside real sentences (connected text), when the hearts are known.
+  const usedNotes = [];
+  for (const w of shuffle(introduced()).slice(0, 8)) {
+    if (items.filter(i => i.family === wishNote).length >= 2) break;
+    const s = noteFor(w, usedNotes); if (s) { usedNotes.push(s.id); items.push({ family: wishNote, item: { word: w, sentence: s } }); }
+  }
   const say = pick(introduced().length ? introduced() : fresh);
   if (say) items.push({ family: seeSay, item: say });
-  return items.slice(0, 7);
+  return items.slice(0, 8);
 }
 
 async function startRound() {
@@ -175,7 +252,7 @@ function showMenu() {
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level }));
   const known = introduced().length, mastered = masteredWords().length;
   host.replaceChildren(el('div', { class: 'scene well' }, [
-    el('div', { class: 'scene-head' }, [luna, el('div', {}, [el('div', { class: 'title', text: 'Wishing Well' }), el('div', { class: 'line', text: known ? 'Your wish words are waiting.' : 'Every wish word you learn lights the well.' })])]),
+    el('div', { class: 'scene-head' }, [luna, el('div', {}, [el('div', { class: 'title', text: 'Wishing Well' }), el('div', { class: 'line', text: known ? 'Your wish words are waiting behind the doors.' : 'Every wish word you learn lights the well.' })])]),
     el('div', { class: 'row', style: 'font-size:22px' }, [el('span', { text: '🌷'.repeat(Math.min(12, mastered)) + '🌱'.repeat(Math.min(12, Math.max(0, known - mastered))) })]),
     el('div', { class: 'encounters' }, [
       el('button', { class: 'encounter-btn primary', type: 'button', onclick: () => startRound() }, [el('div', { class: 'icon', text: '🌷' }), el('div', { text: 'Make a wish' })])
@@ -186,6 +263,8 @@ function showMenu() {
 
 export async function mount(h, c) {
   host = h; ctx = c; SW = await ctx.content.load('sight-words');
+  try { SENT = await ctx.content.load('sentences'); } catch (e) { console.warn(e); SENT = null; }
+  try { PH = await ctx.content.load('phonics'); } catch (e) { console.warn(e); PH = null; }
   // Drop empty placeholder entries an older build wrote, so the save stays small.
   const sw = ctx.economy.save.sightWords;
   for (const [w, v] of Object.entries(sw)) if (!v.introducedDay && !v.box) delete sw[w];

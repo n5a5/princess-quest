@@ -7,6 +7,7 @@ import { createSessionClock } from './shared/session.js';
 import { createSpeech } from './shared/speech.js';
 import { createAudioStore } from './shared/audiostore.js';
 import { createAudio, createWebAudioPlayer } from './shared/audio.js';
+import { createSfx } from './shared/sfx.js';
 import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick } from './shared/ui.js';
 import { lunaSVG, gemSVG, chestSVG, placeArtSVG, svgFrom, starFieldEl } from './shared/characters.js';
 import { flyGems } from './shared/encounter.js';
@@ -18,6 +19,7 @@ const speech = createSpeech({ settings: economy.save.settings, onChange: () => e
 const store = createAudioStore();
 const player = createWebAudioPlayer();
 const audio = createAudio({ speech, store, player, manifest: null, sounds: {}, settings: economy.save.settings });
+audio.sfx = createSfx({ settings: economy.save.settings });
 const clock = createSessionClock();
 
 const $ = id => document.getElementById(id);
@@ -29,7 +31,8 @@ const nav = {
   stack: [], ignore: 0,
   push(handler) { nav.stack.push(handler); history.pushState({ depth: nav.stack.length }, ''); },
   pop() { if (!nav.stack.length) return; nav.ignore++; history.back(); },
-  toMap() { if (nav.stack.length) history.go(-nav.stack.length); else closeCabinet(); }
+  // A tap on Back while a pop is still in flight (e.g. right after "Yay!") waits for that popstate first.
+  toMap() { if (nav.ignore > 0) { setTimeout(() => nav.toMap(), 120); return; } if (nav.stack.length) history.go(-nav.stack.length); else closeCabinet(); }
 };
 window.addEventListener('popstate', e => {
   const depth = (e.state && e.state.depth) || 0;
@@ -52,9 +55,11 @@ function renderHome() {
   const name = economy.save.child.name;
   const quest = adaptive.todayQuest(readyIds());
   const comp = economy.companion();
-  const req = REGISTRY.find(r => r.id === quest.requiredCabinet);
-  const questDone = quest.requiredDone && quest.choiceDone;
-  const questStars = (quest.requiredDone ? '⭐' : '☆') + (quest.choiceDone ? '⭐' : '☆');
+  const next = adaptive.nextStop();
+  const req = next && REGISTRY.find(r => r.id === next.cabinet);
+  const later = quest.stops.filter(st => !st.done && st !== next).map(st => REGISTRY.find(r => r.id === st.cabinet)).filter(Boolean);
+  const questDone = adaptive.questDone();
+  const questStars = quest.stops.map(st => st.done ? '⭐' : '☆').join('');
   const streak = economy.streak();
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: comp.level }));
   luna.addEventListener('click', () => { luna.className.baseVal = 'companion happy'; setTimeout(() => { luna.className.baseVal = 'companion idle'; }, 1400); audio.say(withName(pick(praise.greeting), name)); });
@@ -65,14 +70,14 @@ function renderHome() {
         luna,
         el('div', { class: 'greeting' }, [
           el('div', { class: 'hello', text: 'Hello, ' + name + '!' }),
-          el('div', { class: 'sub', text: quest.claimed ? 'Quest done! Play anywhere you like.' : 'Luna is waiting at ' + (req ? req.name : 'the meadow') + '.' }),
+          el('div', { class: 'sub', text: quest.claimed ? 'Quest done! Play anywhere you like.' : questDone ? 'The chest is ready to open!' : 'Luna is waiting at ' + (req ? req.name : 'the meadow') + '.' }),
           el('div', { class: 'meter', 'aria-label': 'Luna glow' }, [el('span', { class: 'star', text: '⭐' }), el('div', { class: 'track' }, [el('div', { class: 'fill', style: 'width:' + Math.round(comp.fraction * 100) + '%' })])]),
           el('div', { class: 'streak', 'aria-label': 'Days played this week' }, [el('span', { text: '🔥' }), ...streak.last7.map(on => el('span', { class: 'dot' + (on ? ' on' : '') }))])
         ])
       ]),
       el('div', { class: 'quest' }, [
         el('div', { class: 'icon', text: quest.claimed ? '✅' : '🗺️' }),
-        el('div', { class: 'text', text: quest.claimed ? 'Today\'s quest is done!' : 'Play with Luna at ' + (req ? req.name : 'a place') + '. Then pick any place you like!' }),
+        el('div', { class: 'text', text: quest.claimed ? 'Today\'s quest is done! Play anywhere you like.' : questDone ? 'Both stops done. Open the chest!' : 'Trail: ' + (req ? req.name : 'a place') + (later.length ? ', then ' + later.map(r => r.name).join(', ') : '') + '. Then play anywhere!' }),
         quest.claimed ? el('div', { class: 'stars', text: '⭐⭐' })
           : questDone ? el('button', { class: 'claim', type: 'button', text: 'Open chest!', onclick: claimQuest })
           : el('div', { class: 'stars', text: questStars })
@@ -81,8 +86,9 @@ function renderHome() {
         el('div', { class: 'path' }),
         ...available().map(r => {
           const rescued = economy.rescuedAt(r.place, SQUISHIES[r.place] || []);
-          const isToday = !quest.claimed && r.id === quest.requiredCabinet;
-          const btn = el('button', { class: 'place ' + r.place + (isToday ? ' today' : '') + (r.ready ? '' : ' soon'), type: 'button', 'aria-label': r.name, onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
+          const isToday = !quest.claimed && !!next && r.id === next.cabinet;
+          const onTrail = !quest.claimed && quest.stops.some(st => st.cabinet === r.id && !st.done);
+          const btn = el('button', { class: 'place ' + r.place + (isToday ? ' today' : onTrail ? ' next' : '') + (r.ready ? '' : ' soon'), type: 'button', 'aria-label': r.name, onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
             el('div', { class: 'art', html: placeArtSVG(r.place) }),
             el('div', {}, [el('div', { class: 'name', text: r.name }), el('div', { class: 'hint', text: r.ready ? r.hint : 'Coming soon' })]),
             el('div', { class: 'side' }, [
@@ -112,6 +118,7 @@ function claimQuest() {
   ]);
   confetti(80);
   flyGems(10);
+  if (audio.sfx) audio.sfx.yay();
   audio.say('Quest complete! Ten gems for you, ' + economy.save.child.name + '!');
 }
 
@@ -205,6 +212,7 @@ async function boot() {
   $('start-btn').addEventListener('click', async () => {
     speech.activate();
     if (player.unlock) player.unlock();
+    audio.sfx.unlock();
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     $('splash').remove();
     $('topbar').hidden = false;
