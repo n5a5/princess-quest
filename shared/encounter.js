@@ -83,7 +83,7 @@ export function celebrateRound(ctx, { stars, rescued, companion, gems }, onDone)
   const luna = svgFrom(lunaSVG({ state: 'yay', glow: companion.level }));
   const kids = [
     luna,
-    el('h2', { text: rescued ? 'You freed a Squishy!' : 'Round done!' }),
+    el('h2', { text: rescued ? 'You freed a Squishy!' : 'You did it!' }),
     el('div', { class: 'rank', text: '⭐'.repeat(stars) + '☆'.repeat(3 - stars) })
   ];
   let squishyEl = null;

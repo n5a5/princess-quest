@@ -27,7 +27,7 @@ const measure = {
   async play(stage, it, ctx, { praiseLine }) {
     const audio = ctx.audio;
     if (it.kind === 'attribute') {
-      const prompt = 'What can we measure about ' + it.thing[0] + '? ' + it.question;
+      const prompt = it.question + ' What can we measure? How long, how heavy, or how much it holds?';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div', { class: 'picture', text: it.thing[1] }));
       const items = shuffle([
@@ -43,23 +43,23 @@ const measure = {
     }
     if (it.kind === 'compare') {
       const [a, b] = it.pair;
-      const prompt = it.attr === 'long' ? 'Which one is longer?' : it.attr === 'heavy' ? 'Which one is heavier?' : 'Which one holds more?';
+      const prompt = it.attr === 'long' ? 'Luna needs the longer one to reach across the falls. Which one is longer?' : it.attr === 'heavy' ? 'Which one is heavier? Think about which would tip the scale.' : 'Luna is thirsty. Which one holds more water?';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
       const items = [a, b].map(x => ({ id: x.name, pic: x.pic, label: x.name, ok: x === (it.answerIsFirst ? a : b), say: x.name, svg: x.svg }));
       const grid = choiceGrid({ audio, prompt, items: items.map(i => ({ ...i, pic: i.svg ? { svg: i.svg } : i.pic })), praise: praiseLine(), revealText: 'The ' + (it.answerIsFirst ? a.name : b.name) + ' ' + (it.attr === 'long' ? 'is longer' : it.attr === 'heavy' ? 'is heavier' : 'holds more') + '.' });
       grid.el.classList.add('one-col');
       // Third option keeps it a real 3-choice item: "the same"
-      const same = el('button', { class: 'choice text-only', type: 'button', 'aria-label': 'the same', text: '=' });
+      const same = el('button', { class: 'choice text-only', type: 'button', 'aria-label': 'the same', text: 'same' });
       same.addEventListener('click', () => { same.classList.add('dim'); same.setAttribute('disabled', ''); audio.say('Look again. One is ' + (it.attr === 'long' ? 'longer' : it.attr === 'heavy' ? 'heavier' : 'bigger') + '.'); stage.luna('think', 900); });
       grid.el.appendChild(same);
       stage.setBody(grid.el);
-      if (it.attr === 'heavy') { await audio.say(prompt + ' Think about which one would tip the scale.'); } else await audio.say(prompt);
+      await audio.say(prompt);
       const r = await grid.done;
       return { outcome: outcomeOf(r), choices: 3, gpc: 'compare-' + it.attr };
     }
     if (it.kind === 'order') {
-      const prompt = 'Put the ' + it.plural + ' in order: shortest first. Tap them shortest to longest.';
+      const prompt = 'Luna wants her ' + it.plural + ' lined up from shortest to longest. Tap the shortest one first.';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
       let misses = 0, next = 0;
@@ -80,7 +80,7 @@ const measure = {
       return result;
     }
     // units: how many gems long is the wand?
-    const prompt = 'How many gems long is the ' + it.thing + '? Count the gems.';
+    const prompt = 'Luna lines up gems along her ' + it.thing + ' to measure it. How many gems long is it?';
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div'));
     const gemsRow = el('div', { class: 'row', style: 'gap:0;font-size:28px;justify-content:flex-start;padding-left:10px' }, Array.from({ length: it.n }, () => el('span', { text: '💎', style: 'width:26px;text-align:center' })));
@@ -96,14 +96,14 @@ const measure = {
 };
 
 const SORT_SETS = [
-  { attr: 'colour', bins: [['pink', '#F5A3BD'], ['mint', '#8FDCCB'], ['sunny', '#F9D77B']] },
+  { attr: 'color', bins: [['pink', '#F5A3BD'], ['green', '#8FDCCB'], ['yellow', '#F9D77B']] },
   { attr: 'kind', bins: [['flowers', ['🌷', '🌸', '🌼']], ['bugs', ['🐛', '🐝', '🦋']], ['fruit', ['🍎', '🍓', '🍋']]] }
 ];
 const dataSort = {
   id: 'sort', subskill: 'data-sort', itemId: it => 'sort:' + it.attr + ':' + it.items.length,
   async play(stage, it, ctx, { praiseLine }) {
     const audio = ctx.audio;
-    const prompt = 'Sort the ' + (it.attr === 'colour' ? 'Squishies by colour' : 'things into their groups') + '. Tap one, then tap its bin.';
+    const prompt = it.attr === 'color' ? 'The Squishies got mixed up! Help Luna sort them by color. Tap a Squishy, then tap its basket.' : 'Help Luna tidy the garden. Tap a thing, then tap the basket where it belongs.';
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div'));
     let misses = 0, picked = null, placed = 0;
@@ -121,13 +121,13 @@ const dataSort = {
         const cell = el('button', { class: 'choice', type: 'button', 'aria-label': bin.name + ' bin', style: 'min-height:96px;min-width:90px;flex-direction:column;justify-content:flex-end' }, [el('div', { class: 'stack', style: 'display:flex;flex-direction:column-reverse;gap:2px;min-height:60px' }), el('div', { class: 'label', text: bin.name })]);
         bin.el = cell;
         cell.addEventListener('click', async () => {
-          if (!picked) { audio.say('Tap a thing first.'); return; }
+          if (!picked) { audio.say('Tap something first, then tap a basket.'); return; }
           const item = picked;
           if (item.bin === bin.name) {
             bin.count++; cell.querySelector('.stack').appendChild(el('span', { text: item.pic, style: 'font-size:22px;line-height:1' }));
             const ie = itemEls[it.items.indexOf(item)]; ie.setAttribute('disabled', ''); ie.classList.remove('picked'); ie.style.visibility = 'hidden'; picked = null; placed++;
             if (placed === it.items.length) {
-              await audio.say('All sorted! Now the chart. ' + it.question);
+              await audio.say('All sorted! Look, the baskets make a chart. ' + it.question);
               // bar chart from the bins + a 3-choice question
               const max = Math.max(...bins.map(b => b.count));
               const chart = el('div', { class: 'row', style: 'align-items:flex-end;gap:18px' }, bins.map(b => el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:4px' }, [el('div', { style: `width:44px;height:${20 + b.count * 22}px;border-radius:10px 10px 4px 4px;background:${b.color || '#C7B4F0'};border:2px solid #9A7FD6` }), el('div', { class: 'label', text: b.name, style: 'font-weight:700' })])));
@@ -142,7 +142,7 @@ const dataSort = {
           } else {
             misses++; cell.classList.add('wobble'); setTimeout(() => cell.classList.remove('wobble'), 500); stage.luna('think', 900);
             const right = bins.find(b => b.name === item.bin).el;
-            if (misses === 1) { right.classList.add('glow'); setTimeout(() => right.classList.remove('glow'), 2500); await audio.say(item.name + ' goes in the ' + item.bin + ' bin.'); }
+            if (misses === 1) { right.classList.add('glow'); setTimeout(() => right.classList.remove('glow'), 2500); await audio.say(item.name + ' goes in the ' + item.bin + ' basket.'); }
             else right.click();
           }
         });
@@ -169,7 +169,7 @@ const shapes = {
   async play(stage, it, ctx, { praiseLine }) {
     const audio = ctx.audio;
     if (it.kind === '2d') {
-      const prompt = 'Find the ' + it.name + '. It can be turned any way.';
+      const prompt = 'Find the ' + it.name + '. Careful, it might be turned around!';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
       const items = shuffle([it.name, ...it.foils]).map(n => { const s = SHAPES2D.find(x => x.name === n); return { id: n, pic: { svg: shapeSVG(s, pick(COLORS), rand(0, 359)) }, ok: n === it.name, say: n }; });
@@ -180,7 +180,7 @@ const shapes = {
       return { outcome: outcomeOf(await grid.done), choices: 3, gpc: it.name };
     }
     if (it.kind === '3d') {
-      const prompt = 'Which one is a ' + it.name + '?';
+      const prompt = 'Luna is looking for a ' + it.name + '. Which one is it?';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
       const items = shuffle([it.name, ...it.foils]).map(n => { const s = SHAPES3D.find(x => x[0] === n); return { id: n, pic: s[1], label: n, ok: n === it.name, say: n }; });
@@ -191,7 +191,7 @@ const shapes = {
       return { outcome: outcomeOf(await grid.done), choices: 3, gpc: it.name };
     }
     // compose: which two shapes make this one? (square from two triangles, rectangle from two squares)
-    const prompt = 'Which two pieces make this ' + it.name + '?';
+    const prompt = 'Luna wants to build this ' + it.name + '. Which two pieces fit together to make it?';
     stage.setPrompt(promptBar(audio, prompt));
     const target = SHAPES2D.find(s => s.name === it.name);
     stage.setObject(el('div', { html: shapeSVG(target, '#7C5CC4', 0) }));
@@ -209,12 +209,12 @@ function gen(family, stageName) {
   if (family === measure) {
     if (stageName === 'attribute') {
       const q = pick([
-        { thing: ['the wand', '🪄'], answer: 'long', question: 'Is it how long, how heavy, or how much it holds?' },
-        { thing: ['the pumpkin', '🎃'], answer: 'heavy', question: 'It is very heavy to lift. What do we measure?' },
-        { thing: ['the bucket', '🪣'], answer: 'holds', question: 'We fill it with water. What do we measure?' },
-        { thing: ['the ribbon', '🎀'], answer: 'long', question: 'We stretch it out. What do we measure?' },
-        { thing: ['the rock', '🪨'], answer: 'heavy', question: 'We lift it up. What do we measure?' },
-        { thing: ['the cup', '☕'], answer: 'holds', question: 'We pour juice in. What do we measure?' }
+        { thing: ['the wand', '🪄'], answer: 'long', question: 'Luna lays her wand on the table to see how far it reaches.' },
+        { thing: ['the pumpkin', '🎃'], answer: 'heavy', question: 'Luna tries to lift the pumpkin. Oof, it is hard to pick up!' },
+        { thing: ['the bucket', '🪣'], answer: 'holds', question: 'Luna fills the bucket with water from the falls.' },
+        { thing: ['the ribbon', '🎀'], answer: 'long', question: 'Luna stretches a ribbon along the castle door.' },
+        { thing: ['the rock', '🪨'], answer: 'heavy', question: 'Rosie tries to lift a big rock. It will not budge!' },
+        { thing: ['the cup', '☕'], answer: 'holds', question: 'Minty pours juice into a cup until it is full.' }
       ]);
       return { kind: 'attribute', key: q.thing[0], ...q };
     }
@@ -236,14 +236,14 @@ function gen(family, stageName) {
   }
   if (family === dataSort) {
     const st = stageName; const set = st === 'two' ? SORT_SETS[0] : pick(SORT_SETS);
+    const ask = st === 'chart' ? pick(['most', 'fewest']) : 'most';
     const binCount = st === 'two' ? 2 : 3;
     const bins = set.bins.slice(0, binCount).map(([name, v]) => ({ name, color: typeof v === 'string' ? v : null, pic: Array.isArray(v) ? v[0] : '' }));
     const items = [];
     const counts = shuffle(binCount === 2 ? [rand(2, 4), rand(2, 4)] : [2, 3, 4]);
     bins.forEach((b, i) => { const v = set.bins[i][1]; for (let k = 0; k < counts[i]; k++) items.push(typeof v === 'string' ? { name: b.name + ' Squishy', bin: b.name, pic: '', svg: squishySVG({ ...SQUISHY_KINDS[0], color: v, dark: '#33254F' }, { size: 44 }) } : { name: v[k % v.length], bin: b.name, pic: v[k % v.length] }); });
     if (counts[0] === counts[1] && binCount === 2) counts[1]++;
-    const ask = st === 'chart' ? pick(['most', 'fewest']) : 'most';
-    return { attr: set.attr, bins, items: shuffle(items), ask, question: 'Which group has the ' + ask + '?' };
+    return { attr: set.attr, bins, items: shuffle(items), ask, question: 'Which basket has the ' + ask + '?' };
   }
   if (family === shapes) {
     if (stageName === '2d') { const names = SHAPES2D.map(s => s.name); const name = pick(names); return { kind: '2d', name, foils: shuffle(names.filter(n => n !== name)).slice(0, 2) }; }
@@ -290,7 +290,7 @@ function showMenu() {
     { id: 'shapes', icon: '🔷', name: 'Shape Stones' }
   ];
   host.replaceChildren(el('div', { class: 'scene falls' }, [
-    el('div', { class: 'scene-head' }, [luna, el('div', {}, [el('div', { class: 'title', text: 'Rainbow Falls' }), el('div', { class: 'line', text: 'The rainbow needs measuring. What first?' })])]),
+    el('div', { class: 'scene-head' }, [luna, el('div', {}, [el('div', { class: 'title', text: 'Rainbow Falls' }), el('div', { class: 'line', text: 'Luna is measuring and sorting by the falls. What first?' })])]),
     el('div', { class: 'encounters' }, modes.map(m => el('button', { class: 'encounter-btn' + (m.primary ? ' primary' : ''), type: 'button', onclick: () => startRound(m.id) }, [el('div', { class: 'icon', text: m.icon }), el('div', { text: m.name })])))
   ]));
   ctx.audio.say('Welcome to Rainbow Falls! What first?');

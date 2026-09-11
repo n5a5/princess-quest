@@ -248,12 +248,12 @@ export function finishRound({ economy, adaptive, cabinetId, firstTries, total })
 export function roundCelebration(audio, stars, onDone) {
   const o = sheet([
     el('div', { class: 'big-emoji', text: '🎉' }),
-    el('h2', { text: 'Round done!' }),
+    el('h2', { text: 'You did it!' }),
     el('div', { class: 'rank', text: '⭐'.repeat(stars) + '☆'.repeat(3 - stars) }),
     bigButton('Yay!', () => { o.remove(); onDone(); })
   ]);
   confetti(50);
-  audio.say('Round done! ' + (stars === 3 ? 'Three stars!' : stars === 2 ? 'Two stars!' : 'One star, and you kept going!'));
+  audio.say('You did it! ' + (stars === 3 ? 'Three stars!' : stars === 2 ? 'Two stars!' : 'One star, and you kept going!'));
 }
 
 // Simple mode menu for a cabinet: big cards, one per mode.

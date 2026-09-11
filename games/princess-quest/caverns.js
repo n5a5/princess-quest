@@ -60,7 +60,7 @@ const gemFrames = {
   async play(stage, it, ctx, { praiseLine }) {
     const audio = ctx.audio;
     if (it.kind === 'small' || it.kind === 'structured') {
-      const prompt = 'How many gems? Look quickly!';
+      const prompt = it.kind === 'small' ? 'Luna found some gems! Look fast. How many are there?' : 'Luna tipped her gems into the pouch. Look fast. How many are there?';
       stage.setPrompt(promptBar(audio, prompt));
       const vis = it.kind === 'small' ? gemCluster(it.n, { scattered: true }) : tenFrame(it.n).el;
       stage.setObject(el('div'));
@@ -70,7 +70,7 @@ const gemFrames = {
       const hidden = el('div', { class: 'picture', text: '✨' });
       stage.setBody(hidden);
       const peek = el('button', { class: 'speak-btn', type: 'button', 'aria-label': 'Peek again', text: '👀', onclick: async () => { stage.setBody(vis); await wait(900); stage.setBody(hidden, el('div', { class: 'row' }, [peek]), grid.el); } });
-      const grid = choiceGrid({ audio, prompt: 'How many gems?', items: numeralChoices(it.n, { min: 1, max: 10 }), praise: praiseLine(), revealText: 'There were ' + gems(it.n) + '.' });
+      const grid = choiceGrid({ audio, prompt: 'How many gems did you see?', items: numeralChoices(it.n, { min: 1, max: 10 }), praise: praiseLine(), revealText: 'There were ' + gems(it.n) + '.' });
       grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
       stage.setBody(hidden, el('div', { class: 'row' }, [peek]), grid.el);
       const r = await grid.done;
@@ -78,7 +78,7 @@ const gemFrames = {
       return { outcome: outcomeOf(r), choices: 3, gpc: 'n' + it.n };
     }
     // make10: frame shows n gems; tap the empty cells until the frame is full, then Done.
-    const prompt = gems(it.n) + '. How many more to make 10? Tap the empty spots.';
+    const prompt = 'Luna\'s pouch holds ten gems. She has ' + it.n + '. Tap the empty pockets to fill it up.';
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div'));
     let misses = 0;
@@ -88,13 +88,13 @@ const gemFrames = {
         const added = frame.count() - it.n;
         if (frame.count() === 10) {
           done.setAttribute('disabled', '');
-          await audio.say(it.n + ' and ' + added + ' make 10!');
+          await audio.say(it.n + ' and ' + added + ' more make ten. The pouch is full!');
           audio.say(praiseLine());
           resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4, gpc: 'make10-' + it.n });
         } else {
           misses++; stage.luna('think', 900);
-          if (misses === 1) { frame.cells.forEach((c, i) => { if (i >= it.n) c.classList.add('glow'); }); await audio.say('Fill every empty spot. Count as you tap.'); }
-          else { frame.cells.forEach((c, i) => { if (i >= it.n && !c.classList.contains('on')) c.click(); }); await audio.say(it.n + ' and ' + (10 - it.n) + ' make 10.'); done.click(); }
+          if (misses === 1) { frame.cells.forEach((c, i) => { if (i >= it.n) c.classList.add('glow'); }); await audio.say('Fill every empty pocket. Count as you tap.'); }
+          else { frame.cells.forEach((c, i) => { if (i >= it.n && !c.classList.contains('on')) c.click(); }); await audio.say(it.n + ' and ' + (10 - it.n) + ' more make ten.'); done.click(); }
         }
       }, 'gold');
       stage.setBody(frame.el, el('div', { class: 'row' }, [done]));
@@ -109,22 +109,22 @@ const crystalBridge = {
     const audio = ctx.audio;
     const { a, b, op } = it;
     const answer = op === '+' ? a + b : a - b;
+    const friend = pick(['Rosie', 'Minty', 'Sunny']);
     const prompt = op === '+'
-      ? 'The bridge has ' + gems(a) + '. ' + b + ' more come. How many gems now?'
-      : 'The bridge has ' + gems(a) + '. ' + b + ' fall' + (b === 1 ? 's' : '') + ' off. How many gems are left?';
+      ? 'Luna has ' + gems(a) + ' in her pouch. She finds ' + b + ' more. How many gems does she have now?'
+      : 'Luna has ' + gems(a) + ' in her pouch. She gives ' + b + ' to ' + friend + '. How many gems are left?';
     stage.setPrompt(promptBar(audio, prompt));
-    const groupA = gemCluster(a);
-    const groupB = gemCluster(b);
-    groupB.style.opacity = '0.35';
-    const bridge = el('div', { class: 'bridge' }, Array.from({ length: 10 }, (_, i) => el('span', { class: i < a ? 'on' : '' })));
+    const found = gemCluster(b);
+    found.style.opacity = '0.35';
+    const pouch = tenFrame(a);
     stage.setObject(el('div'));
-    const vis = el('div', { class: 'board' }, [bridge, el('div', { class: 'row' }, [groupA, el('span', { class: 'word-big', text: op }), groupB])]);
+    const vis = el('div', { class: 'board' }, [pouch.el, el('div', { class: 'row' }, [el('span', { class: 'word-big', text: op === '+' ? '+' : '−' }), found])]);
     stage.setBody(vis);
     await audio.say(prompt);
-    // animate the change on the bridge so the quantity is visible before answering
-    if (op === '+') { for (let i = a; i < a + b; i++) { bridge.children[i].classList.add('on'); await wait(220); } groupB.style.opacity = '1'; }
-    else { for (let i = a - 1; i >= a - b; i--) { bridge.children[i].classList.remove('on'); await wait(220); } groupB.style.opacity = '1'; groupB.style.filter = 'grayscale(1)'; }
-    const grid = choiceGrid({ audio, prompt: 'How many gems?', items: numeralChoices(answer, { min: 0, max: 10 }), praise: praiseLine(), revealText: 'It is ' + answer + '. ' + a + ' ' + (op === '+' ? 'plus' : 'take away') + ' ' + b + ' is ' + answer + '.' });
+    // the pouch changes before she answers, so the quantity is always visible
+    if (op === '+') { for (let i = a; i < a + b; i++) { pouch.cells[i].classList.add('on'); pouch.cells[i].textContent = GEM; await wait(220); } found.style.opacity = '1'; }
+    else { for (let i = a - 1; i >= a - b; i--) { pouch.cells[i].classList.remove('on'); pouch.cells[i].textContent = ''; await wait(220); } found.style.opacity = '1'; found.style.filter = 'grayscale(1)'; }
+    const grid = choiceGrid({ audio, prompt: 'How many gems now?', items: numeralChoices(answer, { min: 0, max: 10 }), praise: praiseLine(), revealText: (op === '+' ? a + ' and ' + b + ' more is ' : a + ' take away ' + b + ' is ') + answer + '.' });
     grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
     stage.setBody(vis, grid.el);
     const r = await grid.done;
@@ -138,11 +138,11 @@ const teenTower = {
     const audio = ctx.audio;
     if (it.kind === 'teens') {
       const ones = it.n - 10;
-      const prompt = 'A full frame is ten. Ten and ' + ones + ' more. How many gems?';
+      const prompt = 'This pouch is full. That is ten gems. Luna finds ' + gems(ones) + ' more. How many gems altogether?';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
       const vis = el('div', { class: 'board' }, [tenFrame(10).el, gemCluster(ones)]);
-      const grid = choiceGrid({ audio, prompt: 'How many gems?', items: numeralChoices(it.n, { min: 10, max: 20 }), praise: praiseLine(), revealText: 'Ten and ' + ones + ' is ' + it.n + '.' });
+      const grid = choiceGrid({ audio, prompt: 'How many gems altogether?', items: numeralChoices(it.n, { min: 10, max: 20 }), praise: praiseLine(), revealText: 'Ten and ' + ones + ' more is ' + it.n + '.' });
       grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
       stage.setBody(vis, grid.el);
       await audio.say(prompt);
@@ -150,16 +150,16 @@ const teenTower = {
       return { outcome: outcomeOf(r), choices: 3, gpc: 'teen' + it.n };
     }
     if (it.kind === 'compare') {
-      const prompt = 'Which pile has more gems? Or are they the same?';
+      const prompt = 'Rosie and Minty each found gems. Which pile has more? Or is it the same?';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
       const items = [
         { id: 'left', pic: '', label: String(it.a), ok: it.a > it.b, say: 'the pile of ' + it.a },
-        { id: 'same', pic: '', label: '=', ok: it.a === it.b, say: 'the same', textOnly: true },
+        { id: 'same', pic: '', label: 'same', ok: it.a === it.b, say: 'the same', textOnly: true },
         { id: 'right', pic: '', label: String(it.b), ok: it.b > it.a, say: 'the pile of ' + it.b }
       ];
       const vis = el('div', { class: 'row' }, [gemCluster(it.a), el('span', { class: 'word-big', text: '?' }), gemCluster(it.b)]);
-      const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: it.a === it.b ? 'They are the same.' : Math.max(it.a, it.b) + ' is more than ' + Math.min(it.a, it.b) + '.' });
+      const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: it.a === it.b ? 'They found the same. ' + it.a + ' and ' + it.b + '.' : 'The pile of ' + Math.max(it.a, it.b) + ' has more than ' + Math.min(it.a, it.b) + '.' });
       grid.el.classList.add('three');
       grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
       stage.setBody(vis, grid.el);
@@ -169,7 +169,7 @@ const teenTower = {
     }
     // numberline: tap the number after/before n on a 0–20 line
     const target = it.after ? it.n + 1 : it.n - 1;
-    const prompt = 'Tap the number that comes ' + (it.after ? 'after' : 'before') + ' ' + it.n + '.';
+    const prompt = 'Luna is hopping along the cave stones. She is on ' + it.n + '. Tap the stone that comes ' + (it.after ? 'next.' : 'just before it.');
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div'));
     let misses = 0;
@@ -181,7 +181,7 @@ const teenTower = {
         b.addEventListener('click', async () => {
           audio.stop();
           if (v === target) { b.classList.add('on'); await audio.say(target + '! ' + praiseLine()); resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4, gpc: 'line' }); }
-          else { misses++; b.classList.add('wobble'); setTimeout(() => b.classList.remove('wobble'), 500); stage.luna('think', 900); if (misses === 1) { const right = [...line.children].find(x => x.textContent === String(target)); right.classList.add('glow'); await audio.say(it.n + '. ' + (it.after ? 'What comes next?' : 'What comes just before?')); } else { const right = [...line.children].find(x => x.textContent === String(target)); right.click(); } }
+          else { misses++; b.classList.add('wobble'); setTimeout(() => b.classList.remove('wobble'), 500); stage.luna('think', 900); if (misses === 1) { const right = [...line.children].find(x => x.textContent === String(target)); right.classList.add('glow'); await audio.say('Luna is on ' + it.n + '. ' + (it.after ? 'What comes next?' : 'What comes just before?')); } else { const right = [...line.children].find(x => x.textContent === String(target)); right.click(); } }
         });
         return b;
       }));
@@ -197,7 +197,10 @@ const caveCount = {
     const audio = ctx.audio;
     const seq = it.kind === 'tens' ? [0, 1, 2, 3].map(k => it.start + k * 10) : it.kind === 'backward' ? [0, 1, 2, 3].map(k => it.start - k) : [0, 1, 2, 3].map(k => it.start + k);
     const shown = seq.slice(0, 3), answer = seq[3];
-    const prompt = (it.kind === 'backward' ? 'Count back. ' : it.kind === 'tens' ? 'Count by tens. ' : 'Count on. ') + shown.join(', ') + ', and then?';
+    const prompt = it.kind === 'backward'
+      ? 'Luna hops back down the cave steps. ' + shown.join(', ') + '. Which step comes next?'
+      : it.kind === 'tens' ? 'Luna counts her gem piles by tens. ' + shown.join(', ') + '. What comes next?'
+      : 'Luna hops up the cave steps. ' + shown.join(', ') + '. Which step comes next?';
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div'));
     const path = el('div', { class: 'number-line' }, [...shown.map(v => el('button', { type: 'button', class: 'on', text: String(v), disabled: '' })), el('button', { type: 'button', text: '?', disabled: '' })]);
@@ -218,11 +221,13 @@ const numberStories = {
     const audio = ctx.audio;
     if (it.kind === 'bonds' || it.kind === 'decompose') {
       const whole = it.a + it.b;
-      const prompt = gems(whole) + '. ' + it.a + (it.a === 1 ? ' goes' : ' go') + ' in this pile. How many go in the other pile?';
+      const prompt = it.kind === 'bonds'
+        ? 'The crystal door needs ' + whole + ' gems to open. Luna has ' + it.a + '. How many more does she need?'
+        : 'Luna has ' + gems(whole) + ' to share with Rosie. Luna keeps ' + it.a + '. How many does Rosie get?';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
       const vis = el('div', { class: 'row' }, [gemCluster(it.a), el('span', { class: 'word-big', text: 'and' }), el('span', { class: 'word-big', text: '?' })]);
-      const grid = choiceGrid({ audio, prompt, items: numeralChoices(it.b, { min: 0, max: 10 }), praise: praiseLine(), revealText: whole + ' is ' + it.a + ' and ' + it.b + '.' });
+      const grid = choiceGrid({ audio, prompt, items: numeralChoices(it.b, { min: 0, max: 10 }), praise: praiseLine(), revealText: it.a + ' and ' + it.b + ' make ' + whole + '.' });
       grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
       stage.setBody(el('div', { class: 'word-big', text: String(whole) }), vis, grid.el);
       await audio.say(prompt);
@@ -232,11 +237,15 @@ const numberStories = {
     if (it.kind === 'problems') {
       const [name, pic] = it.thing;
       const answer = it.op === '+' ? it.a + it.b : it.a - it.b;
-      const prompt = it.op === '+' ? it.a + ' ' + name + ' are playing. ' + it.b + ' more come. How many ' + name + ' now?' : it.a + ' ' + name + ' are playing. ' + it.b + ' go home. How many ' + name + ' are left?';
+      const one = name.replace(/ies$/, 'y').replace(/s$/, '');
+      const cnt = (n, w) => n + ' ' + (n === 1 ? one : w);
+      const prompt = it.op === '+'
+        ? cnt(it.a, name) + ' ' + (it.a === 1 ? 'is' : 'are') + ' playing in the meadow. ' + cnt(it.b, name) + ' more ' + (it.b === 1 ? 'comes' : 'come') + ' to play. How many ' + name + ' are playing now?'
+        : cnt(it.a, name) + ' ' + (it.a === 1 ? 'is' : 'are') + ' playing in the meadow. ' + cnt(it.b, name) + ' ' + (it.b === 1 ? 'goes' : 'go') + ' home. How many ' + name + ' are still playing?';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
       const vis = el('div', { class: 'row', style: 'font-size:38px' }, [el('span', { text: pic.repeat(it.a) }), el('span', { class: 'word-big', text: it.op }), el('span', { text: pic.repeat(it.b), style: it.op === '-' ? 'filter:grayscale(1);opacity:.5' : '' })]);
-      const grid = choiceGrid({ audio, prompt, items: numeralChoices(answer, { min: 0, max: 10 }), praise: praiseLine(), revealText: 'There are ' + answer + '.' });
+      const grid = choiceGrid({ audio, prompt, items: numeralChoices(answer, { min: 0, max: 10 }), praise: praiseLine(), revealText: 'Now there ' + (answer === 1 ? 'is ' : 'are ') + cnt(answer, name) + '.' });
       grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
       stage.setBody(vis, grid.el);
       await audio.say(prompt);
@@ -245,7 +254,7 @@ const numberStories = {
     }
     // truefalse: three choices (true / false / "not sure" is not offered; use equation cards: which one is true?)
     const eqs = it.eqs; // [{ text, ok }]
-    const prompt = 'Which one is true? Count the gems.';
+    const prompt = 'Luna wrote three number spells. Only one is true. Count the gems, then tap the true spell.';
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div'));
     const grid = choiceGrid({ audio, prompt, items: eqs.map(e => ({ id: e.text, pic: '', label: e.text, ok: e.ok, say: e.text.replace('+', 'plus').replace('=', 'equals'), textOnly: true })), praise: praiseLine(), revealText: eqs.find(e => e.ok).text.replace('+', 'plus').replace('=', 'equals') + ' is true.' });
@@ -321,17 +330,17 @@ function showMenu() {
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level }));
   const modes = [
     { id: 'mix', icon: '💎', name: "Today's crystals", primary: true },
-    { id: 'frames', icon: '🔟', name: 'Gem Frames' },
-    { id: 'bridge', icon: '🌉', name: 'Crystal Bridge' },
-    { id: 'teen', icon: '🗼', name: 'Teen Tower' },
-    { id: 'count', icon: '🪜', name: 'Cave Count' },
-    { id: 'stories', icon: '📜', name: 'Number Stories' }
+    { id: 'frames', icon: '👀', name: 'Quick Peek' },
+    { id: 'bridge', icon: '👝', name: 'Gem Pouch' },
+    { id: 'teen', icon: '💎', name: 'Big Gem Piles' },
+    { id: 'count', icon: '🪜', name: 'Cave Steps' },
+    { id: 'stories', icon: '📜', name: 'Number Spells' }
   ];
   host.replaceChildren(el('div', { class: 'scene caverns' }, [
-    el('div', { class: 'scene-head' }, [luna, el('div', {}, [el('div', { class: 'title', text: 'Crystal Caverns' }), el('div', { class: 'line', text: 'The crystals need counting. Which cave today?' })])]),
+    el('div', { class: 'scene-head' }, [luna, el('div', {}, [el('div', { class: 'title', text: 'Crystal Caverns' }), el('div', { class: 'line', text: 'Luna keeps her gems in a pouch with ten pockets. Where to?' })])]),
     el('div', { class: 'encounters' }, modes.map(m => el('button', { class: 'encounter-btn' + (m.primary ? ' primary' : ''), type: 'button', onclick: () => startRound(m.id) }, [el('div', { class: 'icon', text: m.icon }), el('div', { text: m.name })])))
   ]));
-  ctx.audio.say('Welcome to the Crystal Caverns! Which cave today?');
+  ctx.audio.say('Welcome to the Crystal Caverns! Where shall we go?');
 }
 
 export async function mount(h, c) { host = h; ctx = c; showMenu(); }

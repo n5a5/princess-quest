@@ -72,7 +72,7 @@ function renderHome() {
       ]),
       el('div', { class: 'quest' }, [
         el('div', { class: 'icon', text: quest.claimed ? '✅' : '🗺️' }),
-        el('div', { class: 'text', text: quest.claimed ? 'Today\'s quest is done!' : 'Today: ' + (req ? req.name : 'a place') + ', then one you choose.' }),
+        el('div', { class: 'text', text: quest.claimed ? 'Today\'s quest is done!' : 'Play with Luna at ' + (req ? req.name : 'a place') + '. Then pick any place you like!' }),
         quest.claimed ? el('div', { class: 'stars', text: '⭐⭐' })
           : questDone ? el('button', { class: 'claim', type: 'button', text: 'Open chest!', onclick: claimQuest })
           : el('div', { class: 'stars', text: questStars })
