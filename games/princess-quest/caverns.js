@@ -392,10 +392,14 @@ function gen(family, stageName) {
         const add = Math.random() < 0.6; const a = rand(1, 6); const b = add ? rand(1, 10 - a) : rand(1, a);
         const eq = (x, y, o) => x + ' ' + o + ' ' + y + ' = ' + (o === '+' ? x + y : x - y);
         const right = eq(a, b, add ? '+' : '−');
-        const foil1 = add ? eq(a, b, '−') : eq(a, b, '+');
-        let foil2 = eq(a + 1, b, add ? '+' : '−');
-        if (foil2 === right || foil2 === foil1) foil2 = eq(a + 2, b, add ? '+' : '−');
-        return { kind: 'match', a, b, op: add ? '+' : '-', eqs: shuffle([{ text: right, ok: true }, { text: foil1, ok: false }, { text: foil2, ok: false }]) };
+        // Foils stay honest kindergarten spells: results 0–10, never negative, never the right one.
+        const val = t => Number(t.split('= ')[1]);
+        const cands = add
+          ? [eq(Math.max(a, b), Math.min(a, b), '−'), eq(a + 1, b, '+'), eq(a, b + 1, '+'), eq(a + 2, b, '+')]
+          : [eq(a, b, '+'), eq(a + 1, b, '−'), eq(a, b + 1, '−'), eq(a + 2, b, '−'), eq(a, Math.max(0, b - 1), '−')];
+        const foils = [...new Set(cands)].filter(t => t !== right && val(t) >= 0 && val(t) <= 10).slice(0, 2);
+        while (foils.length < 2) foils.push(eq(Math.min(10, a + 3 + foils.length), 0, '+'));
+        return { kind: 'match', a, b, op: add ? '+' : '-', eqs: shuffle([{ text: right, ok: true }, ...foils.map(t => ({ text: t, ok: false }))]) };
       }
       const a = rand(1, 5), b = rand(1, 5); const s = a + b;
       const wrong1 = s + pick([1, 2]), wrong2 = Math.max(0, s - pick([1, 2]));

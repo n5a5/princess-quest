@@ -27,15 +27,23 @@ let current = null;   // { entry, module }
 
 // Back-button navigation: every screen below the map pushes a history entry with a handler that
 // restores the screen above it. The phone's back button pops one level; from the map it exits.
+// Entries carry a session id: after a reload the browser still holds this page's older entries with stale
+// depths, and landing on one of those must read as depth 0 (the map), not as "still inside a place".
+const NAV_SID = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const nav = {
-  stack: [], ignore: 0,
-  push(handler) { nav.stack.push(handler); history.pushState({ depth: nav.stack.length }, ''); },
+  stack: [], ignore: 0, waited: 0,
+  push(handler) { nav.stack.push(handler); history.pushState({ depth: nav.stack.length, sid: NAV_SID }, ''); },
   pop() { if (!nav.stack.length) return; nav.ignore++; history.back(); },
-  // A tap on Back while a pop is still in flight (e.g. right after "Yay!") waits for that popstate first.
-  toMap() { if (nav.ignore > 0) { setTimeout(() => nav.toMap(), 120); return; } if (nav.stack.length) history.go(-nav.stack.length); else closeCabinet(); }
+  // A tap on Back while a pop is still in flight (e.g. right after "Yay!") waits briefly for that popstate.
+  toMap() {
+    if (nav.ignore > 0 && nav.waited < 8) { nav.waited++; setTimeout(() => nav.toMap(), 120); return; }
+    nav.waited = 0; nav.ignore = 0;
+    if (nav.stack.length) history.go(-nav.stack.length); else closeCabinet();
+  }
 };
+history.replaceState({ depth: 0, sid: NAV_SID }, '');
 window.addEventListener('popstate', e => {
-  const depth = (e.state && e.state.depth) || 0;
+  const depth = e.state && e.state.sid === NAV_SID ? (e.state.depth || 0) : 0;
   const silent = nav.ignore > 0;
   while (nav.stack.length > depth) { const h = nav.stack.pop(); if (!silent) { try { h(); } catch (err) { console.warn(err); } } }
   if (silent) nav.ignore--;
@@ -224,6 +232,7 @@ async function boot() {
   $('mute-btn').addEventListener('click', () => { speech.toggleMuted(); if (speech.muted) audio.stop(); updateBar(); });
   $('gear-btn').addEventListener('click', showPin);
   document.addEventListener('pointerdown', () => clock.touch(), { passive: true });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(e => console.warn('sw', e));
+  // ?nosw=1 skips the service worker (local testing only: no cache-first surprises while editing files).
+  if ('serviceWorker' in navigator && !/[?&]nosw=1/.test(location.search)) navigator.serviceWorker.register('sw.js').catch(e => console.warn('sw', e));
 }
 boot();
