@@ -117,4 +117,17 @@ test('quest completes with required plus a different choice, then claims once', 
   assert.equal(economy.streak().playedToday, true);
 });
 
+test('quest falls back to an available cabinet when no tier-1 cabinet is ready', () => {
+  const { adaptive } = setup();
+  const q = adaptive.todayQuest(['try-it']);
+  assert.equal(q.requiredCabinet, 'try-it');
+  assert.equal(q.requiredSubskill, null);
+});
+
+test('quest only considers available cabinets', () => {
+  const { adaptive } = setup();
+  const q = adaptive.todayQuest(['sound-garden', 'number-kingdom']);
+  assert.ok(['sound-garden', 'number-kingdom'].includes(q.requiredCabinet));
+});
+
 test('diffDays', () => { assert.equal(diffDays('2026-09-01', '2026-09-10'), 9); });

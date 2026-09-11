@@ -14,8 +14,13 @@ export function createSpeech({ settings, onChange = () => {} }) {
     const en = englishVoices();
     if (!en.length) return;
     const byName = settings.voiceName && en.find(v => v.name === settings.voiceName);
+    const us = v => /en[-_]US/i.test(v.lang);
+    // Soft preference for voices commonly shipped as female; falls through if none exist.
+    const softFemale = /zira|aria|jenny|ana\b|samantha|karen|moira|female|google us english/i;
     voice = byName
-      || en.find(v => v.localService && /en[-_]US/i.test(v.lang))
+      || en.find(v => v.localService && us(v) && softFemale.test(v.name))
+      || en.find(v => us(v) && softFemale.test(v.name))
+      || en.find(v => v.localService && us(v))
       || en.find(v => /en[-_]US/i.test(v.lang))
       || en.find(v => v.localService)
       || en[0];

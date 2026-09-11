@@ -49,7 +49,7 @@ export function choiceGrid({ speech, prompt, items, praise, oneCol = false, reve
       resolve(result);
     };
     for (const it of items) {
-      const b = el('button', { class: 'choice', type: 'button', 'data-id': it.id }, [
+      const b = el('button', { class: 'choice', type: 'button', 'data-id': it.id, 'aria-label': it.label || it.say || String(it.id) }, [
         it.pic && it.pic.svg ? el('span', { html: it.pic.svg }) : el('span', { text: it.pic || '' }),
         it.label ? el('span', { class: 'label', text: it.label }) : null
       ]);

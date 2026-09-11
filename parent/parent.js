@@ -137,4 +137,7 @@ function importSave(e) {
   f.text().then(t => { if (economy.importJSON(t)) { alert('Imported.'); render(); } else alert('That file is not a valid save.'); });
 }
 
-pinGate();
+// The shell already checked the PIN; skip the gate when it hands us the session flag.
+let unlocked = false;
+try { unlocked = sessionStorage.getItem('arcade.parentOk') === '1'; } catch {}
+if (unlocked) render(); else pinGate();

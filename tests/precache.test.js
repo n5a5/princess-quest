@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './helpers.js';
 
-const SKIP = /^(docs\/|tests\/|\.claude\/|README\.md$|\.gitignore$|sw\.js$)/;
+const SKIP = /^(docs\/|tests\/|\.claude\/|README\.md$|\.gitignore$|\.gitattributes$|sw\.js$)/;
 
 test('sw.js ASSETS matches tracked files', () => {
   const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');

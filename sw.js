@@ -1,5 +1,5 @@
 // sw.js — cache-first with a versioned precache. Bump VERSION on every release.
-const VERSION = 'arcade-v3.0.1';
+const VERSION = 'arcade-v3.0.3';
 const ASSETS = [
   '',
   'index.html',

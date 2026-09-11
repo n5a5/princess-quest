@@ -124,7 +124,10 @@ function showPin() {
       else if (entry.length < 4) entry += k;
       render();
       if (entry.length === 4) {
-        if (entry === economy.save.child.pin) { location.href = 'parent/index.html'; }
+        if (entry === economy.save.child.pin) {
+          try { sessionStorage.setItem('arcade.parentOk', '1'); } catch {}
+          location.href = 'parent/index.html';
+        }
         else { entry = ''; render(); toast('Try again'); }
       }
     } }));

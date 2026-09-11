@@ -123,7 +123,11 @@ export function createAdaptive({ economy }) {
         scored.push({ cabinet, subskill: weakest.id, score: (1 - meanAcc) + stale });
       }
       scored.sort((a, b) => b.score - a.score);
-      return scored.find(x => x.cabinet !== excluded) || scored[0] || { cabinet: 'word-builder', subskill: 'phonics-encode', score: 0 };
+      const best = scored.find(x => x.cabinet !== excluded) || scored[0];
+      if (best) return best;
+      // No tier-1 cabinet is available yet: fall back to whatever is playable.
+      const fallback = (availableCabinets || []).find(c => c !== excluded) || (availableCabinets || [])[0] || 'word-builder';
+      return { cabinet: fallback, subskill: null, score: 0 };
     },
 
     todayQuest(availableCabinets = null) {
