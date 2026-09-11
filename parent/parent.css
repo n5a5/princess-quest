@@ -20,3 +20,13 @@ label.toggle { display: flex; align-items: center; gap: 8px; min-height: 40px; }
 .pin-grid { display: grid; grid-template-columns: repeat(3, 72px); gap: 10px; }
 .pin-grid button { min-height: 64px; font-size: 22px; }
 .line { margin: 4px 0; }
+.kit { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.kit .snd { display: flex; align-items: center; gap: 8px; border: 2px solid #ede9fe; border-radius: 12px; padding: 8px; }
+.kit .snd.done { border-color: #86efac; background: #f0fdf4; }
+.kit .chip { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: #f5f3ff; border: 2px solid #c4b5fd; color: #7c3aed; font-weight: 900; font-size: 20px; }
+.kit .meta { flex: 1; min-width: 0; }
+.kit .meta .tip { display: block; color: #6b7280; font-size: 12px; }
+.kit button { min-width: 44px; padding: 6px 10px; }
+.kit button.rec { background: #fee2e2; border-color: #fca5a5; }
+.kit button.rec.live { background: #ef4444; color: #fff; animation: blink 0.8s infinite; }
+@keyframes blink { 50% { opacity: 0.6; } }

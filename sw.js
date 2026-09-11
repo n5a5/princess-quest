@@ -1,5 +1,5 @@
 // sw.js — cache-first with a versioned precache. Bump VERSION on every release.
-const VERSION = 'arcade-v3.0.3';
+const VERSION = 'arcade-v3.0.4';
 const ASSETS = [
   '',
   'index.html',
@@ -14,6 +14,7 @@ const ASSETS = [
   'shared/content.js',
   'shared/session.js',
   'shared/speech.js',
+  'shared/soundkit.js',
   'shared/ui.js',
   'games/registry.js',
   'games/princess-quest/try-it.js',
@@ -21,7 +22,8 @@ const ASSETS = [
   'parent/parent.css',
   'parent/parent.js',
   'content/standards.json',
-  'content/praise.json'
+  'content/praise.json',
+  'content/sounds.json'
 ];
 
 self.addEventListener('install', e => {

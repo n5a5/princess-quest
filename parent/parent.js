@@ -3,10 +3,15 @@ import { createEconomy } from '../shared/economy.js';
 import { createAdaptive, SUBSKILLS } from '../shared/adaptive.js';
 import { REGISTRY } from '../games/registry.js';
 import { el } from '../shared/ui.js';
+import { createSoundKit } from '../shared/soundkit.js';
+import { createContentLoader } from '../shared/content.js';
 
 const economy = createEconomy({ storage: localStorage });
 const adaptive = createAdaptive({ economy });
+const soundkit = createSoundKit();
+const content = createContentLoader({ base: '../content/' });
 const app = document.getElementById('app');
+let SOUNDS = [];
 
 const BASELINE = [
   ['Phonics / word analysis', 'Emerging K', '70', 1], ['High-frequency words', 'Emerging K', '—', 1],
@@ -76,6 +81,7 @@ function render() {
       ]),
       el('p', { class: 'muted', text: 'Targets: i-Ready reading 396 → 439 typical / 450 stretch; math 372 → 396 / 410.' })
     ]),
+    soundKitSection(),
     el('section', {}, [
       el('h2', { text: 'Modules' }),
       el('div', { class: 'row' }, REGISTRY.map(r => el('label', { class: 'toggle' }, [
@@ -115,6 +121,61 @@ function render() {
   );
 }
 
+// Sound Kit: record each phoneme once in the parent's voice. Clips live in this device's IndexedDB.
+function soundKitSection() {
+  const section = el('section', {}, [el('h2', { text: 'Sound Kit (letter sounds in your voice)' })]);
+  const status = el('p', { class: 'muted' });
+  section.appendChild(status);
+  if (!soundkit.canRecord()) {
+    status.textContent = 'This browser cannot record audio. Open Parent Corner in Chrome over https to record.';
+    return section;
+  }
+  status.textContent = 'The app cannot say pure sounds like /s/ or /t/ with text-to-speech. Tap Record, say just the sound once, short and clean (say "t", not "tuh"). Recording stops by itself after about 2 seconds. ' +
+    `${soundkit.count()} of ${SOUNDS.length} recorded on this device.`;
+  const grid = el('div', { class: 'kit' });
+  section.appendChild(grid);
+  for (const s of SOUNDS) {
+    const row = el('div', { class: 'snd' + (soundkit.has(s.id) ? ' done' : '') });
+    const recBtn = el('button', { type: 'button', class: 'rec', text: soundkit.has(s.id) ? 'Re-record' : 'Record' });
+    const playBtn = el('button', { type: 'button', text: '▶', 'aria-label': 'Play', ...(soundkit.has(s.id) ? {} : { disabled: '' }) });
+    const delBtn = el('button', { type: 'button', text: '✕', 'aria-label': 'Delete', ...(soundkit.has(s.id) ? {} : { disabled: '' }) });
+    let session = null;
+    recBtn.addEventListener('click', async () => {
+      if (session) { session.stop(); return; }
+      try {
+        session = await soundkit.record(2000);
+        recBtn.textContent = '■ Stop'; recBtn.classList.add('live');
+        const blob = await session.blob;
+        session = null;
+        recBtn.classList.remove('live');
+        if (blob.size < 200) { recBtn.textContent = 'Record'; alert('That recording was empty. Try again.'); return; }
+        await soundkit.save(s.id, blob);
+        row.classList.add('done'); recBtn.textContent = 'Re-record';
+        playBtn.removeAttribute('disabled'); delBtn.removeAttribute('disabled');
+        status.textContent = status.textContent.replace(/\d+ of \d+ recorded/, `${soundkit.count()} of ${SOUNDS.length} recorded`);
+        soundkit.play(s.id);
+      } catch (e) {
+        session = null; recBtn.classList.remove('live'); recBtn.textContent = 'Record';
+        alert('Microphone not available: ' + (e && e.message ? e.message : e));
+      }
+    });
+    playBtn.addEventListener('click', () => soundkit.play(s.id));
+    delBtn.addEventListener('click', async () => {
+      await soundkit.remove(s.id);
+      row.classList.remove('done'); recBtn.textContent = 'Record';
+      playBtn.setAttribute('disabled', ''); delBtn.setAttribute('disabled', '');
+      status.textContent = status.textContent.replace(/\d+ of \d+ recorded/, `${soundkit.count()} of ${SOUNDS.length} recorded`);
+    });
+    row.append(
+      el('span', { class: 'chip', text: s.label }),
+      el('div', { class: 'meta' }, [el('span', { text: s.pic + ' ' + s.word }), el('span', { class: 'tip', text: s.tip })]),
+      recBtn, playBtn, delBtn
+    );
+    grid.appendChild(row);
+  }
+  return section;
+}
+
 function voiceSelect() {
   const s = economy.save;
   const sel = el('select', { onchange: e => { s.settings.voiceName = e.target.value; economy.persist(); } });
@@ -138,6 +199,11 @@ function importSave(e) {
 }
 
 // The shell already checked the PIN; skip the gate when it hands us the session flag.
-let unlocked = false;
-try { unlocked = sessionStorage.getItem('arcade.parentOk') === '1'; } catch {}
-if (unlocked) render(); else pinGate();
+async function start() {
+  try { SOUNDS = (await content.load('sounds')).sounds; } catch (e) { console.warn(e); }
+  await soundkit.load();
+  let unlocked = false;
+  try { unlocked = sessionStorage.getItem('arcade.parentOk') === '1'; } catch {}
+  if (unlocked) render(); else pinGate();
+}
+start();

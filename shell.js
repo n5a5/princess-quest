@@ -5,12 +5,14 @@ import { createAdaptive } from './shared/adaptive.js';
 import { createContentLoader } from './shared/content.js';
 import { createSessionClock } from './shared/session.js';
 import { createSpeech } from './shared/speech.js';
+import { createSoundKit } from './shared/soundkit.js';
 import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick } from './shared/ui.js';
 
 const economy = createEconomy({ storage: localStorage });
 const adaptive = createAdaptive({ economy });
 const content = createContentLoader();
-const speech = createSpeech({ settings: economy.save.settings, onChange: () => economy.persist() });
+const soundkit = createSoundKit();
+const speech = createSpeech({ settings: economy.save.settings, onChange: () => economy.persist(), soundkit });
 const clock = createSessionClock();
 
 const $ = id => document.getElementById(id);
@@ -79,7 +81,7 @@ async function openCabinet(r) {
     $('home').hidden = true; $('cabinet').hidden = false; $('back-btn').hidden = false;
     $('title').textContent = r.icon + ' ' + r.name;
     window.scrollTo(0, 0);
-    await mod.mount($('cabinet'), { economy, adaptive, content, speech, exit: closeCabinet, praise });
+    await mod.mount($('cabinet'), { economy, adaptive, content, speech, soundkit, exit: closeCabinet, praise });
   } catch (e) {
     console.error(e);
     toast('This game needs one visit online first.');
@@ -136,6 +138,11 @@ function showPin() {
 
 async function boot() {
   try { praise = await content.load('praise'); } catch (e) { console.warn(e); }
+  try {
+    const { sounds } = await content.load('sounds');
+    speech.setSounds(Object.fromEntries(sounds.map(s => [s.id, s])));
+  } catch (e) { console.warn(e); }
+  soundkit.load().then(n => { if (!n) console.info('No phoneme clips recorded yet; using TTS fallback. Record them in Parent Corner.'); });
   $('start-btn').addEventListener('click', () => {
     speech.activate();
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
