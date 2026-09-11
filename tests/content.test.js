@@ -17,6 +17,23 @@ test('standards.json has verified K benchmarks', () => {
   assert.equal(s.ela['ELA.K.R.1.2'], undefined, 'R.1.2 does not exist at K');
 });
 
+test('phonics.json: every unit uses a known phoneme id, graphemes spell the word, stages have enough words', () => {
+  const ids = new Set(readJSON('content/sounds.json').sounds.map(s => s.id));
+  const { stages } = readJSON('content/phonics.json');
+  assert.deepEqual(stages.map(s => s.id), ['a', 'b', 'c', 'd', 'd2', 'e', 'f']);
+  const seen = new Set();
+  for (const st of stages) {
+    assert.ok(st.words.length >= 24, `${st.id} has ${st.words.length} words`);
+    for (const w of st.words) {
+      assert.ok(!seen.has(w.w), 'duplicate word ' + w.w); seen.add(w.w);
+      assert.ok(w.p && w.p.trim(), w.w + ' needs a picture');
+      assert.equal(w.u.map(u => u[0]).join(''), w.w, w.w + ' graphemes must spell the word');
+      for (const [g, p] of w.u) { assert.ok(g, w.w); if (p !== null) assert.ok(ids.has(p), `${w.w}: unknown phoneme ${p}`); }
+      assert.ok(w.u.some(u => u[1] !== null), w.w);
+    }
+  }
+});
+
 test('praise.json pools are non-empty and use {name}', () => {
   const p = readJSON('content/praise.json');
   for (const k of ['praise', 'retry', 'greeting', 'reveal']) {

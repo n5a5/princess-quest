@@ -1,7 +1,7 @@
-// games/princess-quest/try-it.js — temporary Step 1 demo: "Which one starts with /m/?" Removed in Step 2.
+// games/princess-quest/try-it.js — temporary demo: "Which one starts with /m/?" Replaced by Word Builder.
 import { el, shuffle, runRound, roundCelebration } from '../../shared/ui.js';
 
-// /m/ in a prompt plays the parent-recorded clip for that sound (or a TTS fallback).
+// /m/ in a prompt plays the phoneme through the audio layer (recording → bundled clip → safe TTS).
 const ITEMS = [
   { id: 'm', ok: { pic: '🌙', word: 'moon' }, others: [{ pic: '☀️', word: 'sun' }, { pic: '🐱', word: 'cat' }] },
   { id: 's', ok: { pic: '☀️', word: 'sun' }, others: [{ pic: '🐶', word: 'dog' }, { pic: '🎩', word: 'hat' }] },
@@ -17,7 +17,7 @@ export async function mount(host, ctx) {
   host.replaceChildren(root);
   const praise = await ctx.content.load('praise');
   const { stars } = await runRound({
-    root, speech: ctx.speech, adaptive: ctx.adaptive, economy: ctx.economy,
+    root, audio: ctx.audio, adaptive: ctx.adaptive, economy: ctx.economy,
     praiseLines: praise.praise, name: ctx.economy.save.child.name, cabinetId: 'try-it',
     items: ITEMS,
     makeItem: it => ({
@@ -27,7 +27,7 @@ export async function mount(host, ctx) {
       revealText: it.ok.word + ' starts with /' + it.id + '/.'
     })
   });
-  if (root) roundCelebration(ctx.speech, stars, () => ctx.exit());
+  if (root) roundCelebration(ctx.audio, stars, () => ctx.exit());
 }
 
 export function unmount() { root = null; }

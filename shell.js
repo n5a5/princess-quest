@@ -5,14 +5,17 @@ import { createAdaptive } from './shared/adaptive.js';
 import { createContentLoader } from './shared/content.js';
 import { createSessionClock } from './shared/session.js';
 import { createSpeech } from './shared/speech.js';
-import { createSoundKit } from './shared/soundkit.js';
+import { createAudioStore } from './shared/audiostore.js';
+import { createAudio, createHtmlPlayer } from './shared/audio.js';
 import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick } from './shared/ui.js';
 
 const economy = createEconomy({ storage: localStorage });
 const adaptive = createAdaptive({ economy });
 const content = createContentLoader();
-const soundkit = createSoundKit();
-const speech = createSpeech({ settings: economy.save.settings, onChange: () => economy.persist(), soundkit });
+const speech = createSpeech({ settings: economy.save.settings, onChange: () => economy.persist() });
+const store = createAudioStore();
+const player = createHtmlPlayer();
+const audio = createAudio({ speech, store, player, manifest: null, sounds: {}, settings: economy.save.settings });
 const clock = createSessionClock();
 
 const $ = id => document.getElementById(id);
@@ -64,24 +67,24 @@ function renderHome() {
   updateBar();
 }
 
-function soon(r) { speech.speak(r.name + ' is growing. Coming soon!'); toast('🌱 ' + r.name + ' is coming soon'); }
+function soon(r) { audio.say(r.name + ' is growing. Coming soon!'); toast('🌱 ' + r.name + ' is coming soon'); }
 
 function claimQuest() {
   if (!adaptive.claimQuest()) return;
   confetti(60);
-  speech.speak('Quest complete! Ten gems for you, ' + economy.save.child.name + '!');
+  audio.say('Quest complete! Ten gems for you, ' + economy.save.child.name + '!');
   renderHome();
 }
 
 async function openCabinet(r) {
-  speech.stop();
+  audio.stop();
   try {
     const mod = await import(r.entry);
     current = { entry: r, module: mod };
     $('home').hidden = true; $('cabinet').hidden = false; $('back-btn').hidden = false;
     $('title').textContent = r.icon + ' ' + r.name;
     window.scrollTo(0, 0);
-    await mod.mount($('cabinet'), { economy, adaptive, content, speech, soundkit, exit: closeCabinet, praise });
+    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, exit: closeCabinet, praise });
   } catch (e) {
     console.error(e);
     toast('This game needs one visit online first.');
@@ -90,7 +93,7 @@ async function openCabinet(r) {
 }
 
 function closeCabinet() {
-  speech.stop();
+  audio.stop();
   if (current && current.module.unmount) { try { current.module.unmount(); } catch (e) { console.warn(e); } }
   current = null;
   $('cabinet').replaceChildren();
@@ -106,13 +109,13 @@ function showShaper() {
     bigButton('All done ✅', async () => {
       o.remove();
       confetti(80);
-      await speech.speak('You did wonderful work today, ' + economy.save.child.name + '. Let\'s take three big breaths.');
-      await breathingBubble(speech);
-      speech.speak('All done. See you next time!');
+      await audio.say('You did wonderful work today, ' + economy.save.child.name + '. Let\'s take three big breaths.');
+      await breathingBubble(audio);
+      audio.say('All done. See you next time!');
       clock.reset();
     })
   ]);
-  speech.speak('Great job! One more, or all done?');
+  audio.say('Great job! One more, or all done?');
 }
 
 function showPin() {
@@ -136,23 +139,33 @@ function showPin() {
   const o = sheet([el('h2', { text: 'Parent corner' }), dots, el('div', { class: 'pin-grid' }, keys), bigButton('Cancel', () => o.remove(), 'soft')]);
 }
 
-async function boot() {
-  try { praise = await content.load('praise'); } catch (e) { console.warn(e); }
+async function loadAudioContent() {
   try {
     const { sounds } = await content.load('sounds');
-    speech.setSounds(Object.fromEntries(sounds.map(s => [s.id, s])));
+    audio.setSounds(Object.fromEntries(sounds.map(s => [s.id, s])));
   } catch (e) { console.warn(e); }
-  soundkit.load().then(n => { if (!n) console.info('No phoneme clips recorded yet; using TTS fallback. Record them in Parent Corner.'); });
-  $('start-btn').addEventListener('click', () => {
+  try {
+    const manifest = await content.load('audio-manifest');
+    audio.setManifest(manifest);
+    player.preload((manifest.phonemes || []).map(id => './assets/audio/phonemes/' + id + '.' + manifest.ext));
+  } catch (e) { console.warn('no bundled audio manifest', e); }
+  await store.load();
+}
+
+async function boot() {
+  try { praise = await content.load('praise'); } catch (e) { console.warn(e); }
+  const audioReady = loadAudioContent();
+  $('start-btn').addEventListener('click', async () => {
     speech.activate();
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     $('splash').remove();
     $('topbar').hidden = false;
     renderHome();
-    speech.speak(withName(pick(praise.greeting), economy.save.child.name));
+    await audioReady;
+    audio.say(withName(pick(praise.greeting), economy.save.child.name));
   });
   $('back-btn').addEventListener('click', closeCabinet);
-  $('mute-btn').addEventListener('click', () => { speech.toggleMuted(); updateBar(); });
+  $('mute-btn').addEventListener('click', () => { speech.toggleMuted(); if (speech.muted) audio.stop(); updateBar(); });
   $('gear-btn').addEventListener('click', showPin);
   document.addEventListener('pointerdown', () => clock.touch(), { passive: true });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(e => console.warn('sw', e));

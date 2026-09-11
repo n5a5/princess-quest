@@ -1,0 +1,47 @@
+﻿{
+    "ext":  "ogg",
+    "generated":  "2026-09-11",
+    "source":  "Bundled defaults synthesized with Windows SAPI (Microsoft Zira) via SSML IPA phoneme tags; see tools/build-phoneme-audio.ps1. Parent recordings override.",
+    "phonemes":  [
+                     "s",
+                     "m",
+                     "f",
+                     "l",
+                     "n",
+                     "r",
+                     "v",
+                     "z",
+                     "sh",
+                     "th",
+                     "ng",
+                     "h",
+                     "w",
+                     "y",
+                     "j",
+                     "b",
+                     "d",
+                     "g",
+                     "k",
+                     "p",
+                     "t",
+                     "ch",
+                     "qu",
+                     "x",
+                     "a",
+                     "e",
+                     "i",
+                     "o",
+                     "u",
+                     "ae",
+                     "ee",
+                     "ie",
+                     "oe",
+                     "ue"
+                 ],
+    "letters":  [
+
+                ],
+    "words":  [
+
+              ]
+}

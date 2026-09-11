@@ -1,15 +1,20 @@
-// parent/parent.js — PIN-gated dashboard skeleton: per-sub-skill table, baseline, settings, export/import.
+// parent/parent.js — PIN-gated dashboard: per-sub-skill table, baseline, Sound Check, settings, export/import.
 import { createEconomy } from '../shared/economy.js';
 import { createAdaptive, SUBSKILLS } from '../shared/adaptive.js';
 import { REGISTRY } from '../games/registry.js';
 import { el } from '../shared/ui.js';
-import { createSoundKit } from '../shared/soundkit.js';
+import { createAudioStore } from '../shared/audiostore.js';
 import { createContentLoader } from '../shared/content.js';
+import { createSpeech } from '../shared/speech.js';
+import { createAudio, createHtmlPlayer, decodeSteps } from '../shared/audio.js';
 
 const economy = createEconomy({ storage: localStorage });
 const adaptive = createAdaptive({ economy });
-const soundkit = createSoundKit();
+const store = createAudioStore();
 const content = createContentLoader({ base: '../content/' });
+const speech = createSpeech({ settings: economy.save.settings, onChange: () => economy.persist() });
+const player = createHtmlPlayer();
+const audio = createAudio({ speech, store, player, manifest: null, sounds: {}, settings: economy.save.settings, base: '../assets/audio/' });
 const app = document.getElementById('app');
 let SOUNDS = [];
 
@@ -81,7 +86,7 @@ function render() {
       ]),
       el('p', { class: 'muted', text: 'Targets: i-Ready reading 396 → 439 typical / 450 stretch; math 372 → 396 / 410.' })
     ]),
-    soundKitSection(),
+    soundCheckSection(),
     el('section', {}, [
       el('h2', { text: 'Modules' }),
       el('div', { class: 'row' }, REGISTRY.map(r => el('label', { class: 'toggle' }, [
@@ -106,79 +111,98 @@ function render() {
       el('div', { class: 'row' }, [
         el('label', { text: 'Voice ' }), voiceSelect(),
         el('label', { text: 'Speed ' }), el('select', { onchange: e => { s.settings.rate = Number(e.target.value); economy.persist(); } },
-          [['0.8', 'Slower'], ['0.9', 'Normal'], ['1', 'Quicker']].map(([v, t]) => el('option', { value: v, text: t, ...(String(s.settings.rate) === v ? { selected: '' } : {}) })))
+          [['0.8', 'Slower'], ['0.9', 'Normal'], ['1', 'Quicker']].map(([v, t]) => el('option', { value: v, text: t, ...(String(s.settings.rate) === v ? { selected: '' } : {}) }))),
+        el('button', { type: 'button', text: '▶ Test voice', onclick: () => audio.say('Hello! I am the story voice. The cat sat on the mat.') })
       ])
     ]),
     el('section', {}, [
       el('h2', { text: 'Save data' }),
       el('div', { class: 'row' }, [
-        el('button', { type: 'button', text: 'Export JSON', onclick: exportSave }),
-        el('label', { class: 'toggle' }, ['Import JSON ', el('input', { type: 'file', accept: 'application/json', onchange: importSave })]),
+        el('button', { type: 'button', text: 'Export progress JSON', onclick: exportSave }),
+        el('label', { class: 'toggle' }, ['Import progress ', el('input', { type: 'file', accept: 'application/json', onchange: importSave })]),
         el('button', { type: 'button', class: 'danger', text: 'Reset all progress', onclick: () => { if (confirm('Reset ALL progress? This cannot be undone.')) { economy.reset(); render(); } } })
       ]),
-      el('p', { class: 'muted', text: 'Devices do not sync. Use export/import to move progress between phone, tablet, and PC.' })
+      el('p', { class: 'muted', text: 'Devices do not sync. Use export/import to move progress between phone, tablet, and PC. Recorded sounds have their own export in Sound Check.' })
     ])
   );
 }
 
-// Sound Kit: record each phoneme once in the parent's voice. Clips live in this device's IndexedDB.
-function soundKitSection() {
-  const section = el('section', {}, [el('h2', { text: 'Sound Kit (letter sounds in your voice)' })]);
-  const status = el('p', { class: 'muted' });
-  section.appendChild(status);
-  if (!soundkit.canRecord()) {
-    status.textContent = 'This browser cannot record audio. Open Parent Corner in Chrome over https to record.';
-    return section;
-  }
-  status.textContent = 'The app cannot say pure sounds like /s/ or /t/ with text-to-speech. Tap Record, say just the sound once, short and clean (say "t", not "tuh"). Recording stops by itself after about 2 seconds. ' +
-    `${soundkit.count()} of ${SOUNDS.length} recorded on this device.`;
+// Sound Check: every phoneme with its current source (recorded / bundled / TTS / none), a play button,
+// an optional recording in the parent's voice, and a "decode demo" so the blend timing can be judged by ear.
+function soundCheckSection() {
+  const section = el('section', {}, [el('h2', { text: 'Sound Check (letter sounds)' })]);
+  const recorded = store.count('phoneme');
+  const bundledCount = SOUNDS.filter(s => audio.phonemeSource(s.id) !== 'none' && audio.phonemeSource(s.id) !== 'tts').length;
+  section.appendChild(el('p', { class: 'muted', text:
+    `The app never asks text-to-speech to say a bare letter sound (that is where "buh" comes from). Each sound plays a recorded clip if you made one, otherwise a bundled default clip. ` +
+    `${bundledCount} of ${SOUNDS.length} sounds have a bundled default; ${recorded} recorded in your voice on this device. ` +
+    `Tap ▶ to hear the version she will hear. If a default sounds wrong, record it: tap Record, say just the sound once, clean and short. Continuants (s, m, f) can be stretched; stops (b, p, t) must be clipped with no "uh".` }));
+  const demoRow = el('div', { class: 'row' }, [
+    el('button', { type: 'button', text: '▶ Decode demo: cat', onclick: () => audio.decode({ word: 'cat', units: [['c', 'k'], ['a', 'a'], ['t', 't']] }) }),
+    el('button', { type: 'button', text: '▶ Decode demo: ship', onclick: () => audio.decode({ word: 'ship', units: [['sh', 'sh'], ['i', 'i'], ['p', 'p']] }) }),
+    el('button', { type: 'button', text: '▶ Decode demo: cake', onclick: () => audio.decode({ word: 'cake', units: [['c', 'k'], ['a', 'ae'], ['k', 'k'], ['e', null]] }) }),
+    el('button', { type: 'button', text: '■ Stop', onclick: () => audio.stop() })
+  ]);
+  section.appendChild(demoRow);
   const grid = el('div', { class: 'kit' });
   section.appendChild(grid);
+  const canRecord = store.canRecord();
   for (const s of SOUNDS) {
-    const row = el('div', { class: 'snd' + (soundkit.has(s.id) ? ' done' : '') });
-    const recBtn = el('button', { type: 'button', class: 'rec', text: soundkit.has(s.id) ? 'Re-record' : 'Record' });
-    const playBtn = el('button', { type: 'button', text: '▶', 'aria-label': 'Play', ...(soundkit.has(s.id) ? {} : { disabled: '' }) });
-    const delBtn = el('button', { type: 'button', text: '✕', 'aria-label': 'Delete', ...(soundkit.has(s.id) ? {} : { disabled: '' }) });
+    const row = el('div', { class: 'snd' });
+    const src = el('span', { class: 'src' });
+    const refresh = () => {
+      const kind = audio.phonemeSource(s.id);
+      src.textContent = { recorded: '🎙 your voice', bundled: '📦 default', tts: '🤖 tts', none: '⚠ silent' }[kind];
+      row.className = 'snd ' + kind;
+    };
+    refresh();
+    const playBtn = el('button', { type: 'button', text: '▶', 'aria-label': 'Play', onclick: () => { audio.stop(); audio.phoneme(s.id); } });
+    const recBtn = el('button', { type: 'button', class: 'rec', text: 'Record', ...(canRecord ? {} : { disabled: '' }) });
+    const delBtn = el('button', { type: 'button', text: '✕', 'aria-label': 'Delete recording', ...(store.has('phoneme', s.id) ? {} : { disabled: '' }) });
     let session = null;
     recBtn.addEventListener('click', async () => {
       if (session) { session.stop(); return; }
       try {
-        session = await soundkit.record(2000);
+        session = await store.record(2000);
         recBtn.textContent = '■ Stop'; recBtn.classList.add('live');
         const blob = await session.blob;
         session = null;
-        recBtn.classList.remove('live');
-        if (blob.size < 200) { recBtn.textContent = 'Record'; alert('That recording was empty. Try again.'); return; }
-        await soundkit.save(s.id, blob);
-        row.classList.add('done'); recBtn.textContent = 'Re-record';
-        playBtn.removeAttribute('disabled'); delBtn.removeAttribute('disabled');
-        status.textContent = status.textContent.replace(/\d+ of \d+ recorded/, `${soundkit.count()} of ${SOUNDS.length} recorded`);
-        soundkit.play(s.id);
+        recBtn.classList.remove('live'); recBtn.textContent = 'Record';
+        if (blob.size < 200) { alert('That recording was empty. Try again.'); return; }
+        await store.save('phoneme', s.id, blob);
+        delBtn.removeAttribute('disabled');
+        refresh();
+        audio.phoneme(s.id);
       } catch (e) {
         session = null; recBtn.classList.remove('live'); recBtn.textContent = 'Record';
         alert('Microphone not available: ' + (e && e.message ? e.message : e));
       }
     });
-    playBtn.addEventListener('click', () => soundkit.play(s.id));
-    delBtn.addEventListener('click', async () => {
-      await soundkit.remove(s.id);
-      row.classList.remove('done'); recBtn.textContent = 'Record';
-      playBtn.setAttribute('disabled', ''); delBtn.setAttribute('disabled', '');
-      status.textContent = status.textContent.replace(/\d+ of \d+ recorded/, `${soundkit.count()} of ${SOUNDS.length} recorded`);
-    });
+    delBtn.addEventListener('click', async () => { await store.remove('phoneme', s.id); delBtn.setAttribute('disabled', ''); refresh(); });
     row.append(
       el('span', { class: 'chip', text: s.label }),
-      el('div', { class: 'meta' }, [el('span', { text: s.pic + ' ' + s.word }), el('span', { class: 'tip', text: s.tip })]),
-      recBtn, playBtn, delBtn
+      el('div', { class: 'meta' }, [el('span', { text: s.pic + ' ' + s.word + ' · ' }), src, el('span', { class: 'tip', text: s.tip })]),
+      playBtn, recBtn, delBtn
     );
     grid.appendChild(row);
   }
+  section.appendChild(el('div', { class: 'row' }, [
+    el('button', { type: 'button', text: 'Export recordings', onclick: async () => {
+      const blob = new Blob([await store.exportJSON()], { type: 'application/json' });
+      const a = el('a', { href: URL.createObjectURL(blob), download: 'amelia-sound-kit.json' });
+      document.body.appendChild(a); a.click(); a.remove();
+    } }),
+    el('label', { class: 'toggle' }, ['Import recordings ', el('input', { type: 'file', accept: 'application/json', onchange: async e => {
+      const f = e.target.files[0]; if (!f) return;
+      try { const n = await store.importJSON(await f.text()); alert('Imported ' + n + ' recordings.'); render(); } catch (err) { alert('Not a sound kit file.'); }
+    } })])
+  ]));
   return section;
 }
 
 function voiceSelect() {
   const s = economy.save;
-  const sel = el('select', { onchange: e => { s.settings.voiceName = e.target.value; economy.persist(); } });
+  const sel = el('select', { onchange: e => { speech.setVoice(e.target.value); } });
   const fill = () => {
     const voices = ('speechSynthesis' in window ? speechSynthesis.getVoices() : []).filter(v => /^en/i.test(v.lang));
     sel.replaceChildren(el('option', { value: '', text: 'Automatic (en-US)' }), ...voices.map(v => el('option', { value: v.name, text: v.name + ' (' + v.lang + (v.localService ? ', offline' : '') + ')', ...(s.settings.voiceName === v.name ? { selected: '' } : {}) })));
@@ -198,10 +222,10 @@ function importSave(e) {
   f.text().then(t => { if (economy.importJSON(t)) { alert('Imported.'); render(); } else alert('That file is not a valid save.'); });
 }
 
-// The shell already checked the PIN; skip the gate when it hands us the session flag.
 async function start() {
-  try { SOUNDS = (await content.load('sounds')).sounds; } catch (e) { console.warn(e); }
-  await soundkit.load();
+  try { SOUNDS = (await content.load('sounds')).sounds; audio.setSounds(Object.fromEntries(SOUNDS.map(s => [s.id, s]))); } catch (e) { console.warn(e); }
+  try { audio.setManifest(await content.load('audio-manifest')); } catch (e) { console.warn('no manifest', e); }
+  await store.load();
   let unlocked = false;
   try { unlocked = sessionStorage.getItem('arcade.parentOk') === '1'; } catch {}
   if (unlocked) render(); else pinGate();

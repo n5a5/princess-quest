@@ -1,6 +1,6 @@
-// shared/soundkit.js — parent-recorded phoneme clips in IndexedDB. Browser-only.
-// speech.speak() plays a clip for every /id/ token when one exists; otherwise falls back to TTS.
-const DB = 'arcade-soundkit';
+// shared/audiostore.js — recorded audio clips in IndexedDB, keyed "kind:id" (phoneme:m, word:cat, letter:s).
+// Browser-only. Recordings override bundled defaults; nothing here is required for the app to work.
+const DB = 'arcade-audiostore';
 const STORE = 'clips';
 
 function openDB() {
@@ -12,9 +12,11 @@ function openDB() {
   });
 }
 
-export function createSoundKit() {
+export const clipKey = (kind, id) => kind + ':' + id;
+
+export function createAudioStore() {
   let dbPromise = null;
-  const cache = new Map(); // id → Blob
+  const cache = new Map(); // key → Blob
   const db = () => (dbPromise ||= openDB());
 
   async function write(fn) {
@@ -28,7 +30,6 @@ export function createSoundKit() {
   }
 
   const api = {
-    // Loads every clip into memory once. Returns the count. Safe to call when IndexedDB is unavailable.
     async load() {
       try {
         const d = await db();
@@ -41,26 +42,15 @@ export function createSoundKit() {
           t.onerror = () => reject(t.error);
         });
         rows.forEach(([k, v]) => cache.set(k, v));
-      } catch (e) { console.warn('soundkit unavailable', e); }
+      } catch (e) { console.warn('audiostore unavailable', e); }
       return cache.size;
     },
-    has: id => cache.has(id),
-    count: () => cache.size,
-    async save(id, blob) { cache.set(id, blob); await write(s => s.put(blob, id)); },
-    async remove(id) { cache.delete(id); await write(s => s.delete(id)); },
-    // Resolves true when the clip finished playing, false when missing or blocked.
-    play(id) {
-      const blob = cache.get(id);
-      if (!blob) return Promise.resolve(false);
-      return new Promise(resolve => {
-        const url = URL.createObjectURL(blob);
-        const a = new Audio(url);
-        const done = ok => { URL.revokeObjectURL(url); resolve(ok); };
-        a.onended = () => done(true);
-        a.onerror = () => done(false);
-        a.play().catch(() => done(false));
-      });
-    },
+    has: (kind, id) => cache.has(clipKey(kind, id)),
+    get: (kind, id) => cache.get(clipKey(kind, id)) || null,
+    count: kind => [...cache.keys()].filter(k => !kind || k.startsWith(kind + ':')).length,
+    ids: kind => [...cache.keys()].filter(k => k.startsWith(kind + ':')).map(k => k.slice(kind.length + 1)),
+    async save(kind, id, blob) { cache.set(clipKey(kind, id), blob); await write(s => s.put(blob, clipKey(kind, id))); },
+    async remove(kind, id) { cache.delete(clipKey(kind, id)); await write(s => s.delete(clipKey(kind, id))); },
     canRecord: () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && globalThis.MediaRecorder),
     // Starts recording; auto-stops at maxMs. Returns { stop(), blob: Promise<Blob> }.
     async record(maxMs = 1800) {
@@ -77,6 +67,30 @@ export function createSoundKit() {
       rec.start();
       const timer = setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, maxMs);
       return { stop: () => { clearTimeout(timer); if (rec.state !== 'inactive') rec.stop(); }, blob };
+    },
+    // Export/import so recordings can move between devices (JSON with base64 clips).
+    async exportJSON() {
+      const clips = {};
+      for (const [k, blob] of cache) {
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        let bin = ''; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+        clips[k] = { type: blob.type, b64: btoa(bin) };
+      }
+      return JSON.stringify({ version: 1, clips });
+    },
+    async importJSON(text) {
+      const parsed = JSON.parse(text);
+      if (!parsed || typeof parsed.clips !== 'object') throw new Error('Not a sound kit file');
+      let n = 0;
+      for (const [k, v] of Object.entries(parsed.clips)) {
+        const bin = atob(v.b64);
+        const buf = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        const [kind, ...rest] = k.split(':');
+        await api.save(kind, rest.join(':'), new Blob([buf], { type: v.type || 'audio/webm' }));
+        n++;
+      }
+      return n;
     }
   };
   return api;
