@@ -10,7 +10,7 @@ Design documents: `docs/superpowers/specs/2026-09-11-princess-quest-ideal-archit
 npx http-server . -p 8765 -c-1
 ```
 
-Open http://localhost:8765/. Tests: `node --test tests/*.test.js` (42 tests, no dependencies). Parent Corner: tap ⚙ on the map, PIN `1234`.
+Open http://localhost:8765/. Tests: `node --test tests/*.test.js` (61 tests, no dependencies; generators are stress-tested with thousands of draws and every content word is checked for a bundled clip). Parent Corner: tap ⚙ on the map, PIN `1234`.
 
 ## The kingdom
 
