@@ -6,14 +6,14 @@ import { el } from '../shared/ui.js';
 import { createAudioStore } from '../shared/audiostore.js';
 import { createContentLoader } from '../shared/content.js';
 import { createSpeech } from '../shared/speech.js';
-import { createAudio, createHtmlPlayer, decodeSteps } from '../shared/audio.js';
+import { createAudio, createWebAudioPlayer, decodeSteps } from '../shared/audio.js';
 
 const economy = createEconomy({ storage: localStorage });
 const adaptive = createAdaptive({ economy });
 const store = createAudioStore();
 const content = createContentLoader({ base: '../content/' });
 const speech = createSpeech({ settings: economy.save.settings, onChange: () => economy.persist() });
-const player = createHtmlPlayer();
+const player = createWebAudioPlayer();
 const audio = createAudio({ speech, store, player, manifest: null, sounds: {}, settings: economy.save.settings, base: '../assets/audio/' });
 const app = document.getElementById('app');
 let SOUNDS = [];

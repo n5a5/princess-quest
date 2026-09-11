@@ -33,8 +33,9 @@ export function letterName(grapheme) {
   return grapheme.split('').map(c => LETTER_NAMES[c.toLowerCase()] || c).join(' ');
 }
 
-// Timing (ms) for the decoding sequence. Tuned for a 6-year-old: slow first pass, quick blend.
-export const TIMING = { betweenSounds: 450, beforeBlend: 650, blendGap: 90, beforeWord: 350 };
+// Timing (ms) for the decoding sequence. Tuned for a 6-year-old: slow first pass, then CONNECTED
+// phonation for the blend (sounds run together with no silence; Gonzalez-Frey & Ehri 2021), then the word.
+export const TIMING = { betweenSounds: 450, beforeBlend: 650, blendGap: 0, blendCrossfade: 60, beforeWord: 350 };
 
 // A word is a list of units [grapheme, phoneme|null]; null marks a silent letter (the e in cake).
 // Items may give `units` directly (content/phonics.json) or `phonemes` (+ optional `graphemes`).
@@ -54,10 +55,7 @@ export function decodeSteps(item, { blend = true } = {}) {
   });
   if (blend) {
     steps.push({ gap: TIMING.beforeBlend });
-    units.forEach((u, n) => {
-      if (n > 0) steps.push({ gap: TIMING.blendGap });
-      steps.push({ phoneme: u.p, index: u.index, kind: 'blend' });
-    });
+    steps.push({ blend: units.map(u => u.p), indexes: units.map(u => u.index), kind: 'blend' });
   }
   steps.push({ gap: TIMING.beforeWord });
   steps.push({ word: item.word, kind: 'word' });
@@ -68,13 +66,13 @@ export function decodeSteps(item, { blend = true } = {}) {
 export function swapSteps(newItem, changedIndex) {
   const units = spoken(newItem);
   const changed = units.find(u => u.index === changedIndex) || units[0];
-  const steps = [{ phoneme: changed.p, index: changed.index, kind: 'sound' }, { gap: TIMING.beforeBlend }];
-  units.forEach((u, n) => {
-    if (n > 0) steps.push({ gap: TIMING.blendGap });
-    steps.push({ phoneme: u.p, index: u.index, kind: 'blend' });
-  });
-  steps.push({ gap: TIMING.beforeWord }, { word: newItem.word, kind: 'word' });
-  return steps;
+  return [
+    { phoneme: changed.p, index: changed.index, kind: 'sound' },
+    { gap: TIMING.beforeBlend },
+    { blend: units.map(u => u.p), indexes: units.map(u => u.index), kind: 'blend' },
+    { gap: TIMING.beforeWord },
+    { word: newItem.word, kind: 'word' }
+  ];
 }
 
 export function createAudio({ speech, store, player, manifest, sounds, settings, base = './assets/audio/' }) {
@@ -134,6 +132,24 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
         else await speech.speakText(part.text);
       }
     },
+    // Source for one phoneme without playing it: a Blob (recording), a URL (bundled), or null.
+    phonemeSrc(id) {
+      const rec = store && store.get('phoneme', id);
+      if (rec) return rec;
+      return bundled('phonemes', id);
+    },
+    // Connected phonation: all sounds of a word run together with a short crossfade and no silence.
+    // Falls back to back-to-back playback when the player cannot chain or a sound has no clip.
+    // onSound(i) fires as the i-th sound starts, so tiles can light up in time with the audio.
+    async blend(phonemes, { onSound = () => {} } = {}) {
+      if (api.muted) return false;
+      const srcs = phonemes.map(api.phonemeSrc);
+      if (player.chain && srcs.every(Boolean)) {
+        return player.chain(srcs, { gapMs: TIMING.blendGap, crossfadeMs: TIMING.blendCrossfade, onStart: onSound });
+      }
+      for (let i = 0; i < phonemes.length; i++) { onSound(i); await api.phoneme(phonemes[i]); }
+      return true;
+    },
     // Plays steps in order; onStep(step) fires as each sound/word starts. Cancelled by stop().
     async sequence(steps, { onStep = () => {} } = {}) {
       api.stop();
@@ -141,6 +157,10 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
       for (const step of steps) {
         if (my !== seq) return false;
         if (step.gap) { await wait(step.gap); continue; }
+        if (step.blend) {
+          await api.blend(step.blend, { onSound: i => { if (my === seq) onStep({ kind: 'blend', phoneme: step.blend[i], index: step.indexes ? step.indexes[i] : i }); } });
+          continue;
+        }
         onStep(step);
         if (step.phoneme) await api.phoneme(step.phoneme);
         else if (step.letter) await api.letter(step.letter);
@@ -177,6 +197,79 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
     }
   };
   return api;
+}
+
+// Web Audio player: decoded buffers cached in memory, sample-accurate chaining with crossfade for
+// connected-phonation blending, instant stop. Falls back to the HTML player if AudioContext is missing.
+export function createWebAudioPlayer() {
+  const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+  if (!AC) return createHtmlPlayer();
+  let ctx = null;
+  const buffers = new Map(); // key → Promise<AudioBuffer>
+  let playing = [];          // active source nodes
+  let timers = [];
+  const keyOf = src => (src instanceof Blob ? src : String(src));
+  function context() { if (!ctx) ctx = new AC(); if (ctx.state === 'suspended') ctx.resume().catch(() => {}); return ctx; }
+  function decode(src) {
+    const k = keyOf(src);
+    if (!buffers.has(k)) {
+      const p = (src instanceof Blob ? src.arrayBuffer() : fetch(src).then(r => { if (!r.ok) throw new Error('audio ' + r.status); return r.arrayBuffer(); }))
+        .then(ab => context().decodeAudioData(ab))
+        .catch(e => { buffers.delete(k); throw e; });
+      buffers.set(k, p);
+    }
+    return buffers.get(k);
+  }
+  function stopAll() {
+    for (const s of playing) { try { s.stop(); } catch {} }
+    playing = [];
+    for (const t of timers) clearTimeout(t);
+    timers = [];
+  }
+  function schedule(buffer, at, fadeIn, fadeOut) {
+    const c = context();
+    const src = c.createBufferSource();
+    const g = c.createGain();
+    src.buffer = buffer;
+    src.connect(g); g.connect(c.destination);
+    const end = at + buffer.duration;
+    g.gain.setValueAtTime(fadeIn ? 0 : 1, at);
+    if (fadeIn) g.gain.linearRampToValueAtTime(1, at + fadeIn);
+    if (fadeOut) { g.gain.setValueAtTime(1, Math.max(at, end - fadeOut)); g.gain.linearRampToValueAtTime(0, end); }
+    src.start(at);
+    playing.push(src);
+    return end;
+  }
+  return {
+    async play(src) {
+      let buffer;
+      try { buffer = await decode(src); } catch (e) { console.warn('audio missing', src, e); return false; }
+      stopAll();
+      const c = context();
+      const end = schedule(buffer, c.currentTime + 0.01, 0, 0.01);
+      return new Promise(resolve => { timers.push(setTimeout(() => resolve(true), Math.max(0, (end - c.currentTime) * 1000))); });
+    },
+    // Plays clips back to back. gapMs adds silence; crossfadeMs overlaps the tail of one clip with the head of the next.
+    async chain(srcs, { gapMs = 0, crossfadeMs = 60, onStart = () => {} } = {}) {
+      let bufs;
+      try { bufs = await Promise.all(srcs.map(decode)); } catch (e) { console.warn('audio missing in chain', e); return false; }
+      stopAll();
+      const c = context();
+      const xf = crossfadeMs / 1000;
+      let at = c.currentTime + 0.02;
+      const t0 = c.currentTime;
+      bufs.forEach((b, i) => {
+        const startAt = at;
+        timers.push(setTimeout(() => onStart(i), Math.max(0, (startAt - t0) * 1000)));
+        const end = schedule(b, startAt, i > 0 ? xf : 0, i < bufs.length - 1 ? xf : 0.01);
+        at = end - (i < bufs.length - 1 ? xf : 0) + gapMs / 1000;
+      });
+      return new Promise(resolve => { timers.push(setTimeout(() => resolve(true), Math.max(0, (at - c.currentTime) * 1000))); });
+    },
+    stop() { stopAll(); },
+    preload(srcs) { srcs.forEach(s => decode(s).catch(() => {})); },
+    unlock() { context(); }
+  };
 }
 
 // Browser player for URLs and Blobs with a small object-URL cache for bundled files.

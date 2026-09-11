@@ -6,7 +6,7 @@ import { createContentLoader } from './shared/content.js';
 import { createSessionClock } from './shared/session.js';
 import { createSpeech } from './shared/speech.js';
 import { createAudioStore } from './shared/audiostore.js';
-import { createAudio, createHtmlPlayer } from './shared/audio.js';
+import { createAudio, createWebAudioPlayer } from './shared/audio.js';
 import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick } from './shared/ui.js';
 
 const economy = createEconomy({ storage: localStorage });
@@ -14,7 +14,7 @@ const adaptive = createAdaptive({ economy });
 const content = createContentLoader();
 const speech = createSpeech({ settings: economy.save.settings, onChange: () => economy.persist() });
 const store = createAudioStore();
-const player = createHtmlPlayer();
+const player = createWebAudioPlayer();
 const audio = createAudio({ speech, store, player, manifest: null, sounds: {}, settings: economy.save.settings });
 const clock = createSessionClock();
 
@@ -157,6 +157,7 @@ async function boot() {
   const audioReady = loadAudioContent();
   $('start-btn').addEventListener('click', async () => {
     speech.activate();
+    if (player.unlock) player.unlock();
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     $('splash').remove();
     $('topbar').hidden = false;
