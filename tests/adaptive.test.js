@@ -174,3 +174,13 @@ test('quest completes when both stops are done, then claims once; extra rounds a
 });
 
 test('diffDays', () => { assert.equal(diffDays('2026-09-01', '2026-09-10'), 9); });
+
+test('an introduction or self-check (one choice) is logged but never moves mastery', () => {
+  const { adaptive, economy } = setup();
+  const before = adaptive.mastery('sight-words');
+  adaptive.record({ subskill: 'sight-words', outcome: 'firstTry', choices: 1, review: true });
+  assert.equal(adaptive.mastery('sight-words'), before);
+  assert.equal(economy.save.log.length, 1, 'still logged for the parent corner');
+  adaptive.record({ subskill: 'sight-words', outcome: 'firstTry', choices: 4 });
+  assert.ok(adaptive.mastery('sight-words') > before, 'a real choice item still counts');
+});
