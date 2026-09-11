@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Amelia's Arcade</title>
-<meta name="theme-color" content="#7c3aed">
+<title>Princess Quest</title>
+<meta name="theme-color" content="#2A1E45">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -12,16 +12,18 @@
 </head>
 <body>
 <div id="splash">
-  <div class="crown">👑</div>
-  <h1>Amelia's Arcade</h1>
-  <button class="big-btn" id="start-btn" type="button">Tap to start</button>
+  <div id="splash-stars"></div>
+  <div class="hero" id="splash-hero"></div>
+  <h1>Princess Quest</h1>
+  <p>Luna is waiting for you</p>
+  <button class="big-btn gold" id="start-btn" type="button">Tap to start</button>
 </div>
 
 <header id="topbar" hidden>
-  <button class="bar-btn" id="back-btn" type="button" aria-label="Back" hidden>←</button>
-  <div class="title" id="title">👑 Amelia's Arcade</div>
+  <button class="bar-btn" id="back-btn" type="button" aria-label="Back to the kingdom" hidden>←</button>
+  <div class="title" id="title">Princess Quest</div>
   <button class="bar-btn" id="mute-btn" type="button" aria-label="Sound on or off">🔊</button>
-  <div class="gems" aria-label="Gems">💎 <span id="gem-count">0</span></div>
+  <div class="gems" aria-label="Gems"><span id="gem-icon"></span><span id="gem-count">0</span></div>
   <button class="bar-btn" id="gear-btn" type="button" aria-label="Parent corner">⚙️</button>
 </header>
 

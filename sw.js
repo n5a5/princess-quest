@@ -1,5 +1,5 @@
 // sw.js — cache-first with a versioned precache. Bump VERSION on every release.
-const VERSION = 'arcade-v3.1.0';
+const VERSION = 'arcade-v3.2.0';
 const ASSETS = [
   '',
   'assets/audio/phonemes/a.ogg',
@@ -36,12 +36,16 @@ const ASSETS = [
   'assets/audio/phonemes/x.ogg',
   'assets/audio/phonemes/y.ogg',
   'assets/audio/phonemes/z.ogg',
+  'assets/fonts/andika-400.woff2',
+  'assets/fonts/andika-700.woff2',
+  'assets/fonts/fredoka-400700.woff2',
+  'assets/fonts/nunito-400900.woff2',
   'content/audio-manifest.json',
   'content/phonics.json',
   'content/praise.json',
   'content/sounds.json',
   'content/standards.json',
-  'games/princess-quest/try-it.js',
+  'games/princess-quest/meadow.js',
   'games/registry.js',
   'icon-192.png',
   'icon-512.png',
@@ -54,8 +58,10 @@ const ASSETS = [
   'shared/adaptive.js',
   'shared/audio.js',
   'shared/audiostore.js',
+  'shared/characters.js',
   'shared/content.js',
   'shared/economy.js',
+  'shared/encounter.js',
   'shared/session.js',
   'shared/speech.js',
   'shared/theme.css',

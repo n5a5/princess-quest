@@ -29,6 +29,8 @@ export function defaultSave() {
     missed: {},
     vocab: {},
     kingdom: { placed: [], gifts: [] },
+    companion: { stars: 0 },
+    squishies: { rescued: [] },
     quest: null,
     questHistory: [],
     settings: { muted: false, rate: 0.9, voiceName: '', modulesOff: [] },
@@ -52,6 +54,16 @@ export function migrate(raw) {
 
 export function starsFromRatio(r) { return r >= 0.85 ? 3 : r >= 0.6 ? 2 : 1; }
 export function starRankFromPromotions(n) { return Math.min(5, 1 + Math.floor(n / 3)); }
+
+// Companion growth: stars only ever accumulate. Levels at 12 / 38 / 63 stars (horn glow, wings, crown).
+export const COMPANION_LEVELS = [12, 38, 63];
+export function companionLevel(stars) { return COMPANION_LEVELS.filter(t => stars >= t).length; }
+export function companionProgress(stars) {
+  const lvl = companionLevel(stars);
+  const lo = lvl === 0 ? 0 : COMPANION_LEVELS[lvl - 1];
+  const hi = COMPANION_LEVELS[lvl] ?? (lo + 30);
+  return { level: lvl, fraction: Math.min(1, (stars - lo) / (hi - lo)), next: hi };
+}
 
 export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date() } = {}) {
   let save = load();
@@ -89,12 +101,34 @@ export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date() 
       for (const id of subskillIds) promos += (save.subskills[id] && save.subskills[id].promotions) || 0;
       return starRankFromPromotions(promos);
     },
-    logResult({ subskill, ok, firstTry = true }) {
-      save.log.push({ day: today(), subskill, ok: !!ok, firstTry: !!firstTry });
+    logResult({ subskill, ok, firstTry = true, outcome = null, review = false, stage = null }) {
+      const row = { day: today(), subskill, ok: !!ok, firstTry: !!firstTry };
+      if (outcome) row.outcome = outcome;
+      if (review) row.review = true;
+      if (stage !== null) row.stage = stage;
+      save.log.push(row);
       trimLog();
       persist();
     },
     awardBadge(id) { if (save.badges.includes(id)) return false; save.badges.push(id); persist(); return true; },
+    // Adds round stars to the companion meter. Returns { stars, level, leveledUp }.
+    addCompanionStars(n) {
+      const before = companionLevel(save.companion.stars);
+      save.companion.stars += n;
+      const level = companionLevel(save.companion.stars);
+      persist();
+      return { stars: save.companion.stars, level, leveledUp: level > before };
+    },
+    companion() { return { stars: save.companion.stars, ...companionProgress(save.companion.stars) }; },
+    // Rescues the next trapped Squishy at a place. Returns its id or null when all are free.
+    rescueSquishy(place, ids) {
+      const next = ids.find(id => !save.squishies.rescued.includes(id));
+      if (!next) return null;
+      save.squishies.rescued.push(next);
+      persist();
+      return next;
+    },
+    rescuedAt(place, ids) { return ids.filter(id => save.squishies.rescued.includes(id)); },
     exportJSON() { return JSON.stringify(save, null, 2); },
     importJSON(text) {
       try {

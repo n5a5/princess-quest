@@ -1,5 +1,5 @@
-// shell.js — boots services, renders home, lazy-loads cabinets, runs the session shaper.
-import { REGISTRY } from './games/registry.js';
+// shell.js — boots services, renders the Kingdom map, lazy-loads places, runs the session shaper.
+import { REGISTRY, SQUISHIES } from './games/registry.js';
 import { createEconomy } from './shared/economy.js';
 import { createAdaptive } from './shared/adaptive.js';
 import { createContentLoader } from './shared/content.js';
@@ -8,6 +8,8 @@ import { createSpeech } from './shared/speech.js';
 import { createAudioStore } from './shared/audiostore.js';
 import { createAudio, createWebAudioPlayer } from './shared/audio.js';
 import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick } from './shared/ui.js';
+import { lunaSVG, gemSVG, chestSVG, placeArtSVG, svgFrom, starFieldEl } from './shared/characters.js';
+import { flyGems } from './shared/encounter.js';
 
 const economy = createEconomy({ storage: localStorage });
 const adaptive = createAdaptive({ economy });
@@ -34,46 +36,66 @@ function renderHome() {
   const home = $('home');
   const name = economy.save.child.name;
   const quest = adaptive.todayQuest(readyIds());
-  const streak = economy.streak();
-  const rank = economy.starRank(adaptive.tier1Ids());
+  const comp = economy.companion();
   const req = REGISTRY.find(r => r.id === quest.requiredCabinet);
   const questDone = quest.requiredDone && quest.choiceDone;
   const questStars = (quest.requiredDone ? '⭐' : '☆') + (quest.choiceDone ? '⭐' : '☆');
+  const luna = svgFrom(lunaSVG({ state: 'idle', glow: comp.level }));
+  luna.addEventListener('click', () => { luna.className.baseVal = 'companion happy'; setTimeout(() => { luna.className.baseVal = 'companion idle'; }, 1400); audio.say(withName(pick(praise.greeting), name)); });
 
   home.replaceChildren(
-    el('div', { class: 'home-head' }, [
-      el('div', { class: 'hello', text: 'Hello, ' + name + '!' }),
-      el('div', { class: 'rank', text: '⭐'.repeat(rank) + '☆'.repeat(5 - rank) }),
-      el('div', { class: 'streak' }, [el('span', { text: '🔥' }), ...streak.last7.map(on => el('span', { class: 'dot' + (on ? ' on' : '') }))])
-    ]),
-    el('div', { class: 'quest' }, [
-      el('div', { class: 'icon', text: req ? req.icon : '🌟' }),
-      el('div', { class: 'text', text: quest.claimed ? 'Quest done! See you tomorrow.' : 'Play ' + (req ? req.name : 'a game') + ', then one you choose.' }),
-      quest.claimed ? el('div', { class: 'stars', text: '⭐⭐' })
-        : questDone ? el('button', { class: 'claim', type: 'button', text: 'Claim!', onclick: claimQuest })
-        : el('div', { class: 'stars', text: questStars })
-    ]),
-    el('div', { class: 'cabinets' }, available().map(r => {
-      const stars = economy.save.stars[r.id] || 0;
-      return el('button', { class: 'cabinet' + (r.ready ? '' : ' soon'), type: 'button', onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
-        el('div', { class: 'icon', text: r.ready ? r.icon : '🌱' }),
-        el('div', { class: 'name', text: r.name }),
-        el('div', { class: 'stars', text: r.ready ? '⭐'.repeat(stars) + '☆'.repeat(3 - stars) : '' })
-      ]);
-    }))
+    el('div', { class: 'map' }, [
+      el('div', { class: 'map-head' }, [
+        luna,
+        el('div', { class: 'greeting' }, [
+          el('div', { class: 'hello', text: 'Hello, ' + name + '!' }),
+          el('div', { class: 'sub', text: quest.claimed ? 'Quest done! Play anywhere you like.' : 'Luna is waiting at ' + (req ? req.name : 'the meadow') + '.' }),
+          el('div', { class: 'meter', 'aria-label': 'Luna glow' }, [el('span', { class: 'star', text: '⭐' }), el('div', { class: 'track' }, [el('div', { class: 'fill', style: 'width:' + Math.round(comp.fraction * 100) + '%' })])])
+        ])
+      ]),
+      el('div', { class: 'quest' }, [
+        el('div', { class: 'icon', text: quest.claimed ? '✅' : '🗺️' }),
+        el('div', { class: 'text', text: quest.claimed ? 'Today\'s quest is done!' : 'Today: ' + (req ? req.name : 'a place') + ', then one you choose.' }),
+        quest.claimed ? el('div', { class: 'stars', text: '⭐⭐' })
+          : questDone ? el('button', { class: 'claim', type: 'button', text: 'Open chest!', onclick: claimQuest })
+          : el('div', { class: 'stars', text: questStars })
+      ]),
+      el('div', { class: 'places' }, [
+        el('div', { class: 'path' }),
+        ...available().map(r => {
+          const rescued = economy.rescuedAt(r.place, SQUISHIES[r.place] || []);
+          const isToday = !quest.claimed && r.id === quest.requiredCabinet;
+          const btn = el('button', { class: 'place ' + r.place + (isToday ? ' today' : '') + (r.ready ? '' : ' soon'), type: 'button', 'aria-label': r.name, onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
+            el('div', { class: 'art', html: placeArtSVG(r.place) }),
+            el('div', {}, [el('div', { class: 'name', text: r.name }), el('div', { class: 'hint', text: r.ready ? r.hint : 'Coming soon' })]),
+            el('div', { class: 'side' }, [
+              el('div', { class: 'bubbles' }, (SQUISHIES[r.place] || []).map(id => el('span', { class: rescued.includes(id) ? 'free' : '', text: rescued.includes(id) ? '😊' : '' })))
+            ])
+          ]);
+          if (isToday) btn.appendChild(svgFrom(lunaSVG({ state: 'idle', glow: comp.level }), 'luna-here'));
+          return btn;
+        })
+      ])
+    ])
   );
   $('home').hidden = false; $('cabinet').hidden = true; $('back-btn').hidden = true;
-  $('title').textContent = '👑 Amelia\'s Arcade';
+  $('title').textContent = 'Princess Quest';
   updateBar();
 }
 
-function soon(r) { audio.say(r.name + ' is growing. Coming soon!'); toast('🌱 ' + r.name + ' is coming soon'); }
+function soon(r) { audio.say(r.name + ' is still growing. Coming soon!'); toast('🌱 ' + r.name + ' is coming soon'); }
 
 function claimQuest() {
   if (!adaptive.claimQuest()) return;
-  confetti(60);
+  const o = sheet([
+    svgFrom(chestSVG({ open: true })),
+    el('h2', { text: 'Quest complete!' }),
+    el('div', { class: 'sub', text: 'Ten gems for the kingdom' }),
+    bigButton('Hooray!', () => { o.remove(); renderHome(); }, 'gold')
+  ]);
+  confetti(80);
+  flyGems(10);
   audio.say('Quest complete! Ten gems for you, ' + economy.save.child.name + '!');
-  renderHome();
 }
 
 async function openCabinet(r) {
@@ -82,12 +104,12 @@ async function openCabinet(r) {
     const mod = await import(r.entry);
     current = { entry: r, module: mod };
     $('home').hidden = true; $('cabinet').hidden = false; $('back-btn').hidden = false;
-    $('title').textContent = r.icon + ' ' + r.name;
+    $('title').textContent = r.name;
     window.scrollTo(0, 0);
-    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, exit: closeCabinet, praise });
+    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, exit: closeCabinet, praise, place: r.place, cabinetId: r.id, refreshBar: updateBar });
   } catch (e) {
     console.error(e);
-    toast('This game needs one visit online first.');
+    toast('This place needs one visit online first.');
     closeCabinet();
   }
 }
@@ -103,13 +125,13 @@ function closeCabinet() {
 
 function showShaper() {
   const o = sheet([
-    el('div', { class: 'big-emoji', text: '🌟' }),
+    svgFrom(lunaSVG({ state: 'happy', glow: economy.companion().level })),
     el('h2', { text: 'Great job! One more, or all done?' }),
     bigButton('One more', () => o.remove(), 'soft'),
     bigButton('All done ✅', async () => {
       o.remove();
       confetti(80);
-      await audio.say('You did wonderful work today, ' + economy.save.child.name + '. Let\'s take three big breaths.');
+      await audio.say('You did wonderful work today, ' + economy.save.child.name + '. Let\'s take three big breaths with Luna.');
       await breathingBubble(audio);
       audio.say('All done. See you next time!');
       clock.reset();
@@ -153,6 +175,9 @@ async function loadAudioContent() {
 }
 
 async function boot() {
+  $('splash-stars').replaceWith(starFieldEl(40));
+  $('splash-hero').replaceChildren(svgFrom(lunaSVG({ state: 'idle', glow: economy.companion().level })));
+  $('gem-icon').innerHTML = gemSVG(22);
   try { praise = await content.load('praise'); } catch (e) { console.warn(e); }
   const audioReady = loadAudioContent();
   $('start-btn').addEventListener('click', async () => {
