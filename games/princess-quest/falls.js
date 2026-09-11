@@ -270,10 +270,11 @@ function buildRound(kind) {
 
 async function startRound(kind) {
   cancelled = false;
+  ctx.nav && ctx.nav.push(() => { cancelled = true; ctx.audio.stop(); showMenu(); });
   const result = await runEncounterRound({ host, ctx, place: 'falls', cabinetId: 'falls', items: buildRound(kind), review: new Set(ctx.adaptive.reviewSkills('falls')) });
   if (!result || cancelled) return;
   ctx.refreshBar && ctx.refreshBar();
-  celebrateRound(ctx, result, () => showMenu());
+  celebrateRound(ctx, result, () => { ctx.nav && ctx.nav.pop(); showMenu(); });
 }
 
 function showMenu() {

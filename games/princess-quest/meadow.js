@@ -336,10 +336,11 @@ function buildRound(kind) {
 
 async function startRound(kind) {
   cancelled = false;
+  ctx.nav && ctx.nav.push(() => { cancelled = true; ctx.audio.stop(); showMenu(); });
   const result = await runEncounterRound({ host, ctx, place: 'meadow', cabinetId: 'meadow', items: buildRound(kind), review: new Set(ctx.adaptive.reviewSkills('meadow')) });
   if (!result || cancelled) return;
   ctx.refreshBar && ctx.refreshBar();
-  celebrateRound(ctx, result, () => showMenu());
+  celebrateRound(ctx, result, () => { ctx.nav && ctx.nav.pop(); showMenu(); });
 }
 
 function showMenu() {

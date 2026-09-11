@@ -93,10 +93,11 @@ function buildReadRound() {
 
 async function startReadRound() {
   cancelled = false;
+  ctx.nav && ctx.nav.push(() => { cancelled = true; ctx.audio.stop(); showMenu(); });
   const result = await runEncounterRound({ host, ctx, place: 'castle', cabinetId: 'castle', items: buildReadRound() });
   if (!result || cancelled) return;
   ctx.refreshBar && ctx.refreshBar();
-  celebrateRound(ctx, result, () => showMenu());
+  celebrateRound(ctx, result, () => { ctx.nav && ctx.nav.pop(); showMenu(); });
 }
 
 // ---------- Calm Tower ----------
@@ -190,6 +191,7 @@ async function calmStory(story) {
 }
 
 function calmMenu() {
+  if (!calmMenu.pushed) { calmMenu.pushed = true; ctx.nav && ctx.nav.push(() => { calmMenu.pushed = false; ctx.audio.stop(); showMenu(); }); }
   const luna = svgFrom(lunaSVG({ state: 'happy', glow: ctx.economy.companion().level }));
   const modes = [
     { icon: '💜', name: 'How do I feel?', run: calmTower },
@@ -197,7 +199,7 @@ function calmMenu() {
     { icon: '🦄', name: 'Unicorn breath', run: () => breathe(CALM.breathing[2]) },
     { icon: '🧘', name: 'Squeeze and relax', run: bodyScan },
     { icon: '📖', name: 'Calm story', run: () => calmStory(pick(CALM.stories)) },
-    { icon: '🏰', name: 'Back to the castle', run: showMenu }
+    { icon: '🏰', name: 'Back to the castle', run: () => { calmMenu.pushed = false; ctx.nav && ctx.nav.pop(); showMenu(); } }
   ];
   host.replaceChildren(el('div', { class: 'scene castle' }, [
     el('div', { class: 'scene-head' }, [luna, el('div', {}, [el('div', { class: 'title', text: 'Calm Tower' }), el('div', { class: 'line', text: 'A quiet place at the top of the castle.' })])]),
@@ -208,6 +210,8 @@ function calmMenu() {
 // ---------- Uh-Oh Courtyard ----------
 async function courtyard() {
   const audio = ctx.audio;
+  let left = false;
+  ctx.nav && ctx.nav.push(() => { left = true; ctx.audio.stop(); showMenu(); });
   const s = ctx.economy.save; s.scenariosSeen = s.scenariosSeen || [];
   const fresh = SCEN.scenarios.filter(x => !s.scenariosSeen.includes(x.id));
   const set = shuffle(fresh.length >= 3 ? fresh : SCEN.scenarios).slice(0, 3);
@@ -225,12 +229,15 @@ async function courtyard() {
     grid.el.querySelectorAll('.choice').forEach((b, i) => b.addEventListener('click', () => { const c = sc.choices.find(x => x.text === items[i].id); if (c && c.quality !== 'best') setTimeout(() => audio.say(c.feedback), 100); }, { capture: true }));
     page.appendChild(grid.el);
     await grid.done;
+    if (left) return;
     s.scenariosSeen.push(sc.id); ctx.economy.persist();
     await wait(1200);
   }
+  if (left) return;
   ctx.economy.addCompanionStars(1); ctx.economy.addGems(3); ctx.refreshBar && ctx.refreshBar();
   confetti(40);
   await audio.say('Three kind choices. The courtyard is happy.');
+  ctx.nav && ctx.nav.pop();
   showMenu();
 }
 

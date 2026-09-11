@@ -22,6 +22,21 @@ const clock = createSessionClock();
 
 const $ = id => document.getElementById(id);
 let current = null;   // { entry, module }
+
+// Back-button navigation: every screen below the map pushes a history entry with a handler that
+// restores the screen above it. The phone's back button pops one level; from the map it exits.
+const nav = {
+  stack: [], ignore: 0,
+  push(handler) { nav.stack.push(handler); history.pushState({ depth: nav.stack.length }, ''); },
+  pop() { if (!nav.stack.length) return; nav.ignore++; history.back(); },
+  toMap() { if (nav.stack.length) history.go(-nav.stack.length); else closeCabinet(); }
+};
+window.addEventListener('popstate', e => {
+  const depth = (e.state && e.state.depth) || 0;
+  const silent = nav.ignore > 0;
+  while (nav.stack.length > depth) { const h = nav.stack.pop(); if (!silent) { try { h(); } catch (err) { console.warn(err); } } }
+  if (silent) nav.ignore--;
+});
 let praise = { praise: ['Great job!'], greeting: ['Hello, {name}!'], retry: [], reveal: [] };
 
 function available() { return REGISTRY.filter(r => !economy.save.settings.modulesOff.includes(r.id)); }
@@ -103,10 +118,11 @@ async function openCabinet(r) {
   try {
     const mod = await import(r.entry);
     current = { entry: r, module: mod };
+    nav.push(() => closeCabinet());
     $('home').hidden = true; $('cabinet').hidden = false; $('back-btn').hidden = false;
     $('title').textContent = r.name;
     window.scrollTo(0, 0);
-    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, exit: closeCabinet, praise, place: r.place, cabinetId: r.id, refreshBar: updateBar });
+    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, exit: () => nav.toMap(), praise, place: r.place, cabinetId: r.id, refreshBar: updateBar, nav: { push: nav.push, pop: nav.pop } });
   } catch (e) {
     console.error(e);
     toast('This place needs one visit online first.');
@@ -116,6 +132,7 @@ async function openCabinet(r) {
 
 function closeCabinet() {
   audio.stop();
+  document.querySelectorAll('.overlay').forEach(o => o.remove());
   if (current && current.module.unmount) { try { current.module.unmount(); } catch (e) { console.warn(e); } }
   current = null;
   $('cabinet').replaceChildren();
@@ -190,7 +207,7 @@ async function boot() {
     await audioReady;
     audio.say(withName(pick(praise.greeting), economy.save.child.name));
   });
-  $('back-btn').addEventListener('click', closeCabinet);
+  $('back-btn').addEventListener('click', () => nav.toMap());
   $('mute-btn').addEventListener('click', () => { speech.toggleMuted(); if (speech.muted) audio.stop(); updateBar(); });
   $('gear-btn').addEventListener('click', showPin);
   document.addEventListener('pointerdown', () => clock.touch(), { passive: true });

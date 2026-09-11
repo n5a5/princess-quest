@@ -152,10 +152,11 @@ function buildRound() {
 
 async function startRound() {
   cancelled = false;
+  ctx.nav && ctx.nav.push(() => { cancelled = true; ctx.audio.stop(); showMenu(); });
   const result = await runEncounterRound({ host, ctx, place: 'well', cabinetId: 'well', items: buildRound() });
   if (!result || cancelled) return;
   ctx.refreshBar && ctx.refreshBar();
-  celebrateRound(ctx, result, () => showMenu());
+  celebrateRound(ctx, result, () => { ctx.nav && ctx.nav.pop(); showMenu(); });
 }
 
 function showMenu() {
