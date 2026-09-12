@@ -221,8 +221,19 @@ export function createWebAudioPlayer() {
     }
     return buffers.get(k);
   }
+  // Every clip gets a short gain envelope (a few ms in, a dozen ms out) and an interrupted clip is
+  // faded, not chopped: a hard edge at sample level is the "click" laptop speakers reveal.
+  const FADE_IN = 0.006, FADE_OUT = 0.014, CUT = 0.012;
   function stopAll() {
-    for (const s of playing) { try { s.stop(); } catch {} }
+    const now = ctx ? ctx.currentTime : 0;
+    for (const { src, g } of playing) {
+      try {
+        g.gain.cancelScheduledValues(now);
+        g.gain.setValueAtTime(g.gain.value, now);
+        g.gain.linearRampToValueAtTime(0, now + CUT);
+        src.stop(now + CUT + 0.005);
+      } catch { try { src.stop(); } catch {} }
+    }
     playing = [];
     for (const t of timers) clearTimeout(t);
     timers = [];
@@ -243,11 +254,13 @@ export function createWebAudioPlayer() {
     src.buffer = buffer;
     src.connect(g); g.connect(c.destination);
     const end = at + buffer.duration;
-    g.gain.setValueAtTime(fadeIn ? 0 : 1, at);
-    if (fadeIn) g.gain.linearRampToValueAtTime(1, at + fadeIn);
-    if (fadeOut) { g.gain.setValueAtTime(1, Math.max(at, end - fadeOut)); g.gain.linearRampToValueAtTime(0, end); }
+    const fi = Math.max(fadeIn || 0, FADE_IN), fo = Math.max(fadeOut || 0, FADE_OUT);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(1, at + fi);
+    g.gain.setValueAtTime(1, Math.max(at + fi, end - fo));
+    g.gain.linearRampToValueAtTime(0, end);
     src.start(at);
-    playing.push(src);
+    playing.push({ src, g });
     return end;
   }
   return {
