@@ -331,3 +331,29 @@ button:focus-visible, .choice:focus-visible, .tile:focus-visible, .place:focus-v
   .gem-row { gap: 2px; }
   .gem-box { width: 64px; min-width: 64px; }
 }
+
+/* Second miss: the other wrong choices step aside (keep their space so nothing jumps) */
+.choice.gone { visibility: hidden; }
+
+/* Choice grids change size with the success-rate controller: two or four choices sit two by two */
+.choices.three:has(> .choice:nth-child(4)) { grid-template-columns: 1fr 1fr; }
+.choices.three:not(:has(> .choice:nth-child(3))) { grid-template-columns: 1fr 1fr; }
+
+/* Slide a finger across the letter stones without the page scrolling */
+.rune-row { touch-action: none; }
+
+/* Little Books */
+.book-page { background: var(--cream); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow-soft); display: flex; flex-direction: column; gap: 6px; }
+.book-page .sentence { box-shadow: none; }
+.book-num { text-align: right; }
+
+/* First-time demo hand and the Show me button */
+.demo-hand { position: fixed; z-index: 200; font-size: 54px; transform: translate(-30%, 0); pointer-events: none; opacity: 0; transition: left 0.6s ease, top 0.6s ease, opacity 0.3s; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.25)); }
+.demo-hand.show { opacity: 1; animation: tapdown 0.9s ease-in-out 0.55s; }
+@keyframes tapdown { 0%, 100% { transform: translate(-30%, 0) scale(1); } 50% { transform: translate(-30%, 6px) scale(0.9); } }
+.show-me { margin-left: auto; align-self: flex-start; min-width: 64px; min-height: 64px; border-radius: 50%; background: var(--cream); border: 3px solid var(--lavender-2); font-size: 30px; box-shadow: var(--shadow-soft); }
+.show-me[hidden] { display: none !important; }
+
+/* Gem Pouch take-away: the gems given away stay in their pockets, faded and crossed out */
+.ten-frame .cell.taken { position: relative; opacity: 0.45; }
+.ten-frame .cell.taken::after { content: '✕'; position: absolute; inset: 0; display: grid; place-items: center; color: #C0395B; font-weight: 800; font-size: 26px; }

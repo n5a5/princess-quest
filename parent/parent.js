@@ -14,7 +14,7 @@ import { createContentLoader } from '../shared/content.js';
 import { createSpeech } from '../shared/speech.js';
 import { createAudio, createWebAudioPlayer } from '../shared/audio.js';
 
-const economy = createEconomy({ storage: localStorage });
+const economy = createEconomy({ storage: localStorage, onSaveError: () => alert('This device could not store the save (storage full or blocked). Use Export now to keep a copy.') });
 const adaptive = createAdaptive({ economy });
 const store = createAudioStore();
 const content = createContentLoader({ base: '../content/' });
@@ -78,7 +78,7 @@ function sparkline(id) {
   const today = economy.today();
   const bars = [];
   for (let i = 13; i >= 0; i--) {
-    const rows = economy.save.log.filter(r => r.subskill === id && diffDays(r.day, today) === i);
+    const rows = economy.save.log.filter(r => r.subskill === id && !(r.choices < 2) && diffDays(r.day, today) === i); // introductions and self-checks are not answers
     bars.push(rows.length ? rows.filter(r => r.ok).length / rows.length : null);
   }
   const w = 140, h = 34, bw = w / 14;
@@ -161,6 +161,7 @@ function render() {
   const sw = SW ? Object.entries(s.sightWords).filter(([, v]) => v.introducedDay) : [];
   const mastered = sw.filter(([, v]) => v.box >= 5 && v.firstTryDays.length >= 3).length;
   app.replaceChildren(
+    weekSection(),
     el('section', {}, [
       el('h2', { text: 'Is it working?' }),
       el('div', { class: 'kpis' }, [
@@ -238,7 +239,7 @@ function render() {
         el('button', { type: 'button', text: 'Save', onclick: () => { const v = document.getElementById('name').value.trim(); if (v) { s.child.name = v; economy.persist(); render(); } } })
       ]),
       el('div', { class: 'row' }, [
-        el('label', { text: 'PIN ' }), el('input', { id: 'pin', value: s.child.pin, maxlength: '4', inputmode: 'numeric' }),
+        el('label', { text: 'PIN ' }), el('input', { id: 'pin', type: 'password', value: '', placeholder: 'new PIN', maxlength: '4', inputmode: 'numeric', autocomplete: 'off' }),
         el('button', { type: 'button', text: 'Save PIN', onclick: () => { const v = document.getElementById('pin').value.trim(); if (/^\d{4}$/.test(v)) { s.child.pin = v; economy.persist(); render(); } } })
       ]),
       el('div', { class: 'row' }, [
@@ -262,6 +263,35 @@ function render() {
     ])
   );
 }
+// This week on one screen: time, days, what she practised, what moved up, and what comes next.
+function weekSection() {
+  const today = economy.today();
+  const rows = economy.save.log.filter(r => !r.review && !(r.choices < 2));
+  const inWeek = (r, a, b) => { const d = diffDays(r.day, today); return d >= a && d < b; };
+  const week = rows.filter(r => inWeek(r, 0, 7)), prev = rows.filter(r => inWeek(r, 7, 14));
+  const rate = xs => xs.length ? Math.round(100 * xs.filter(r => r.ok).length / xs.length) + '%' : '—';
+  const days = new Set(economy.save.log.filter(r => diffDays(r.day, today) < 7).map(r => r.day)).size;
+  const minutes = Math.round(economy.save.log.filter(r => diffDays(r.day, today) < 7).length * 0.5);
+  const bySkill = SUBSKILLS.map(d => {
+    const w = week.filter(r => r.subskill === d.id);
+    const stages = economy.save.log.filter(r => r.subskill === d.id && diffDays(r.day, today) < 7 && typeof r.stage === 'number').map(r => r.stage);
+    const before = economy.save.log.filter(r => r.subskill === d.id && diffDays(r.day, today) >= 7 && typeof r.stage === 'number').map(r => r.stage);
+    const movedUp = stages.length && Math.max(...stages) > (before.length ? Math.max(...before) : Math.min(...stages));
+    return { d, n: w.length, rate: rate(w), movedUp };
+  }).filter(x => x.n > 0).sort((a, b) => b.n - a.n);
+  const moved = bySkill.filter(x => x.movedUp).map(x => x.d.name);
+  return el('section', {}, [
+    el('h2', { text: 'This week' }),
+    el('div', { class: 'kpis' }, [kpi('Days played', days), kpi('Minutes (est.)', minutes), kpi('First try, this week', rate(week)), kpi('First try, week before', rate(prev))]),
+    el('p', {}, [el('strong', { text: 'Moved up a level: ' }), moved.length ? moved.join(', ') : 'nothing yet this week (levels move after two good days)']),
+    bySkill.length ? el('table', {}, [
+      el('thead', {}, [el('tr', {}, ['Practised', 'Items', 'First try'].map(h => el('th', { text: h })))]),
+      el('tbody', {}, bySkill.map(x => el('tr', {}, [el('td', { text: x.d.name + (x.movedUp ? ' ⬆' : '') }), el('td', { text: String(x.n) }), el('td', { text: x.rate })])))
+    ]) : el('p', { class: 'muted', text: 'No practice yet this week.' }),
+    el('p', {}, [el('strong', { text: 'Next: ' }), nextFocus()]),
+    el('p', { class: 'muted', text: 'App practice data only. First try = answered right without a hint. Minutes are estimated at about 30 seconds per item.' })
+  ]);
+}
 function kpi(label, value) { return el('div', { class: 'kpi' }, [el('div', { class: 'v', text: String(value) }), el('div', { class: 'l', text: label })]); }
 
 // Voice audition: the same words, instructions and story in each shortlisted voice. Choosing Heart turns
@@ -270,16 +300,16 @@ function kpi(label, value) { return el('div', { class: 'kpi' }, [el('div', { cla
 function voiceSection() {
   const s = economy.save;
   const section = el('section', {}, [el('h2', { text: 'Voice' })]);
-  const now = s.settings.voice === 'luna' ? 'Story voice (Heart): words, letter sounds, stories, praise and fixed instructions all use one recorded voice. Lines with a changing word or number still use the device voice.' : 'Device voice: words and letter sounds use the recorded Heart voice; instructions and stories use this device\'s text-to-speech, which sounds different on a Chromebook, a phone and a PC.';
+  const now = s.settings.voice === 'luna' ? 'Story voice (Heart): words, letter sounds, stories, praise and fixed instructions all use one recorded voice. A line the story voice cannot build from its recordings uses the device voice for that whole line.' : 'Device voice: words and letter sounds use the recorded Heart voice; instructions and stories use this device\'s text-to-speech, which sounds different on a Chromebook, a phone and a PC.';
   section.appendChild(el('p', { text: 'Now: ' + now }));
   section.appendChild(el('div', { class: 'row' }, [
     el('button', { type: 'button', text: s.settings.voice === 'luna' ? '✓ Story voice on' : 'Use the story voice (Heart)', onclick: () => { s.settings.voice = 'luna'; s.settings.voicePick = 'af_heart'; economy.persist(); render(); } }),
     el('button', { type: 'button', text: s.settings.voice === 'luna' ? 'Back to the device voice' : '✓ Device voice on', onclick: () => { s.settings.voice = 'device'; economy.persist(); render(); } })
   ]));
   if (!AUDITION) return section;
-  section.appendChild(el('p', { class: 'muted', text: 'Listen and compare. Every voice below says the same ten words, ten instructions and a short story. All run offline once chosen. Pick the one you want Amelia to hear.' + (s.settings.voicePick ? ' Your pick: ' + (AUDITION.voices.find(v => v.id === s.settings.voicePick) || { label: s.settings.voicePick }).label + '.' : '') }));
+  section.appendChild(el('p', { class: 'muted', text: 'Listen and compare. Every voice below says the same ten words, ten instructions and a short story. All run offline once chosen. Pick the one you want Amelia to hear. The samples load from the internet the first time (they are not part of the offline install).' + (s.settings.voicePick ? ' Your pick: ' + (AUDITION.voices.find(v => v.id === s.settings.voicePick) || { label: s.settings.voicePick }).label + '.' : '') }));
   const grid = el('div', { class: 'audition' });
-  const play = async (vid, idx) => { audio.stop(); for (const n of idx) { const ok = await player.play('../assets/audio/audition/' + vid + '/' + n + '.ogg'); if (!ok) break; await new Promise(r => setTimeout(r, 250)); } };
+  const play = async (vid, idx) => { audio.stop(); for (const n of idx) { const ok = await player.play('../assets/audio/audition/' + vid + '/' + n + '.ogg'); if (ok !== true) break; await new Promise(r => setTimeout(r, 250)); } };
   const words = AUDITION.items.map((it, n) => it.kind === 'word' ? n : -1).filter(n => n >= 0);
   const lines = AUDITION.items.map((it, n) => it.kind === 'line' ? n : -1).filter(n => n >= 0);
   const story = AUDITION.items.map((it, n) => it.kind === 'story' ? n : -1).filter(n => n >= 0);
@@ -431,7 +461,7 @@ async function shareSave() {
 }
 function mergeSave(e) {
   const f = e.target.files[0]; if (!f) return;
-  f.text().then(t => { if (economy.mergeJSON(t)) { alert('Combined. This device now has the progress from both.'); render(); } else alert('That file is not a Princess Quest save.'); });
+  f.text().then(t => { const r = economy.mergeJSON(t); if (r === true) { alert('Combined. This device now has the progress from both.'); render(); } else if (r === 'full') alert('Combined, but this device could not store the result. Export a copy now.'); else alert('That file is not a Princess Quest save.'); });
 }
 function importSave(e) {
   const f = e.target.files[0]; if (!f) return;
@@ -446,7 +476,15 @@ async function start() {
   try { SW = await content.load('sight-words'); } catch (e) { console.warn(e); }
   await store.load();
   let unlocked = false;
-  try { unlocked = sessionStorage.getItem('arcade.parentOk') === '1'; } catch {}
+  // The PIN pad on the map leaves a one-time pass (a timestamp). It is used up here, so Back then Forward,
+  // or reopening the tab later, asks for the PIN again.
+  try {
+    const t = Number(sessionStorage.getItem('arcade.parentOk'));
+    sessionStorage.removeItem('arcade.parentOk');
+    unlocked = t > 0 && Date.now() - t < 15000;
+  } catch {}
   if (unlocked) render(); else pinGate();
 }
+// Restored from the back/forward cache: lock again.
+window.addEventListener('pageshow', e => { if (e.persisted) pinGate(); });
 start();

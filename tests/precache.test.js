@@ -6,7 +6,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './helpers.js';
 
-const SKIP = /^(docs\/|tests\/|\.claude\/|README\.md$|\.gitignore$|\.gitattributes$|sw\.js$|tools\/)/;
+// Not precached: development files, the Parent Corner voice audition (fetched on demand, never needed
+// offline by the child) and JSON used only by the build tools.
+const SKIP = /^(docs\/|tests\/|\.claude\/|README\.md$|\.gitignore$|\.gitattributes$|sw\.js$|tools\/|assets\/audio\/audition\/|content\/lines\.json$|content\/line-templates\.json$|content\/phoneme-stats\.json$)/;
 
 test('sw.js ASSETS matches tracked files', () => {
   const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');

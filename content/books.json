@@ -1,0 +1,85 @@
+{
+  "note": "Little Books: decodable mini-books for the Unicorn Meadow. stage = the highest phonics stage a word needs; every other word is a wish (heart) word from content/sight-words.json. Each page: one sentence and a picture shown after she reads it. One question at the end (three pictures, exactly one right). tests/content.test.js checks every word is decodable at the book's stage or a heart word.",
+  "books": [
+    {
+      "id": "cat-nap", "stage": "a", "title": "The Cat Nap", "cover": "🐱",
+      "pages": [
+        { "text": "The cat can nap.", "pic": "🐱😴" },
+        { "text": "A rat can see the cat.", "pic": "🐀👀🐱" },
+        { "text": "The cat is mad.", "pic": "🐱😠" },
+        { "text": "The rat ran!", "pic": "🐀💨" }
+      ],
+      "question": { "prompt": "What did the rat do?", "choices": [{ "pic": "🐀💨", "ok": true }, { "pic": "🐀😴", "ok": false }, { "pic": "🐱💨", "ok": false }] }
+    },
+    {
+      "id": "dad-van", "stage": "a", "title": "Dad and the Van", "cover": "🚐",
+      "pages": [
+        { "text": "Dad can see a van.", "pic": "👨🚐" },
+        { "text": "The van is big.", "pic": "🚐" },
+        { "text": "A ram is in the van!", "pic": "🐏🚐" },
+        { "text": "Dad and the ram nap.", "pic": "👨🐏😴" }
+      ],
+      "question": { "prompt": "Who was in the van?", "choices": [{ "pic": "🐏", "ok": true }, { "pic": "🐱", "ok": false }, { "pic": "🐷", "ok": false }] }
+    },
+    {
+      "id": "pig-bug", "stage": "b", "title": "The Pig and the Bug", "cover": "🐷",
+      "pages": [
+        { "text": "A pig can dig.", "pic": "🐷⛏️" },
+        { "text": "The pig can see a bug.", "pic": "🐷👀🐛" },
+        { "text": "The bug is on a log.", "pic": "🐛🪵" },
+        { "text": "The pig and the bug hug.", "pic": "🐷🤗🐛" }
+      ],
+      "question": { "prompt": "What did the pig and the bug do?", "choices": [{ "pic": "🐷🤗🐛", "ok": true }, { "pic": "🐷😴", "ok": false }, { "pic": "🐛💨", "ok": false }] }
+    },
+    {
+      "id": "fox-box", "stage": "b", "title": "Fox in a Box", "cover": "🦊",
+      "pages": [
+        { "text": "A fox is in a box.", "pic": "🦊📦" },
+        { "text": "The box is red.", "pic": "📦🔴" },
+        { "text": "A dog can see the fox.", "pic": "🐶👀🦊" },
+        { "text": "The fox and the dog run!", "pic": "🦊🐶💨" }
+      ],
+      "question": { "prompt": "Where was the fox?", "choices": [{ "pic": "📦", "ok": true }, { "pic": "🛁", "ok": false }, { "pic": "🛏️", "ok": false }] }
+    },
+    {
+      "id": "fish-wish", "stage": "c", "title": "The Fish Wish", "cover": "🐟",
+      "pages": [
+        { "text": "A fish is in a dish.", "pic": "🐟🍽️" },
+        { "text": "The fish can see a ship.", "pic": "🐟👀🚢" },
+        { "text": "\"I wish I can go on a ship,\" said the fish.", "pic": "🐟🌠🚢" },
+        { "text": "The ship is big!", "pic": "🚢" }
+      ],
+      "question": { "prompt": "What did the fish wish for?", "choices": [{ "pic": "🚢", "ok": true }, { "pic": "🍟", "ok": false }, { "pic": "🛁", "ok": false }] }
+    },
+    {
+      "id": "bath-time", "stage": "c", "title": "Bath Time", "cover": "🛀",
+      "pages": [
+        { "text": "The dog is in the bath.", "pic": "🐶🛀" },
+        { "text": "We wash the dog.", "pic": "🧼🐶" },
+        { "text": "Hush! The dog can nap.", "pic": "🤫🐶😴" },
+        { "text": "The dog is not sad.", "pic": "🐶😊" }
+      ],
+      "question": { "prompt": "Where was the dog?", "choices": [{ "pic": "🛀", "ok": true }, { "pic": "🚢", "ok": false }, { "pic": "🏕️", "ok": false }] }
+    },
+    {
+      "id": "camp", "stage": "d", "title": "Camp", "cover": "🏕️",
+      "pages": [
+        { "text": "We camp in a tent.", "pic": "🏕️" },
+        { "text": "The ant is on my hand.", "pic": "🐜✋" },
+        { "text": "We see a pond at dusk.", "pic": "🪷🌆" },
+        { "text": "We jump in the pond!", "pic": "🤸🪷" }
+      ],
+      "question": { "prompt": "Where did they camp?", "choices": [{ "pic": "🏕️", "ok": true }, { "pic": "🏠", "ok": false }, { "pic": "🚌", "ok": false }] }
+    },
+    {
+      "id": "the-gift", "stage": "d", "title": "The Gift", "cover": "🎁",
+      "pages": [
+        { "text": "A gift is on the desk.", "pic": "🎁🖥️" },
+        { "text": "It is a big red box.", "pic": "📦🔴" },
+        { "text": "Help me lift it!", "pic": "🙌📦" },
+        { "text": "It is a lamp!", "pic": "🪔" }
+      ],
+      "question": { "prompt": "What was in the gift?", "choices": [{ "pic": "🪔", "ok": true }, { "pic": "🥛", "ok": false }, { "pic": "🎭", "ok": false }] }
+    }
+  ]
+}

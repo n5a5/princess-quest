@@ -38,11 +38,13 @@ function tenFrame(filled, { tappable = false, onChange = null, fixedCount = 0, s
   }
   return { el: frame, count: () => state.filter(Boolean).length, cells };
 }
-function numeralChoices(answer, { min = 0, max = 10, n = 3 } = {}) {
+let choiceN = 3, shownNumerals = null; // set per item from the success-rate controller (see withCount)
+function numeralChoices(answer, { min = 0, max = 10, n = choiceN } = {}) {
   const set = new Set([answer]);
   const near = [answer - 1, answer + 1, answer - 2, answer + 2, answer + 3, answer - 3].filter(x => x >= min && x <= max);
   for (const v of near) { if (set.size >= n) break; set.add(v); }
   while (set.size < n) set.add(rand(min, max));
+  shownNumerals = set.size;
   return shuffle([...set]).map(v => ({ id: String(v), label: String(v), ok: v === answer, say: String(v), textOnly: true }));
 }
 function choiceRound(stage, audio, prompt, items, praiseLine, revealText, { three = false } = {}) {
@@ -65,10 +67,12 @@ const gemFrames = {
       stage.setPrompt(promptBar(audio, prompt));
       const vis = it.kind === 'small' ? gemCluster(it.n, { scattered: true }) : tenFrame(it.n).el;
       stage.setObject(el('div'));
-      stage.setBody(vis);
-      await audio.say(prompt);
-      await wait(it.kind === 'small' ? 900 : 1300);
+      // a real quick look: the question comes first with the gems hidden, then they flash (too short to count one by one)
       const hidden = el('div', { class: 'picture', text: '✨' });
+      stage.setBody(hidden);
+      await audio.say(prompt);
+      stage.setBody(vis);
+      await wait(it.kind === 'small' ? 1000 : 1500);
       stage.setBody(hidden);
       const peek = el('button', { class: 'speak-btn', type: 'button', 'aria-label': 'Peek again', text: '👀', onclick: async () => { stage.setBody(vis); await wait(900); stage.setBody(hidden, el('div', { class: 'row' }, [peek]), grid.el); } });
       const grid = choiceGrid({ audio, prompt: 'How many gems did you see?', items: numeralChoices(it.n, { min: 1, max: 10 }), praise: praiseLine(), revealText: 'There were ' + gems(it.n) + '.' });
@@ -121,17 +125,23 @@ const crystalBridge = {
     found.style.opacity = '0.35';
     const pouch = tenFrame(a);
     stage.setObject(el('div'));
-    const vis = el('div', { class: 'board' }, [pouch.el, el('div', { class: 'row' }, [el('span', { class: 'word-big', text: op === '+' ? '+' : '−' }), found])]);
+    const opRow = el('div', { class: 'row' }, [el('span', { class: 'word-big', text: op === '+' ? '+' : '−' }), found]);
+    const vis = el('div', { class: 'board' }, [pouch.el, opRow]);
     stage.setBody(vis);
     await audio.say(prompt);
-    // the pouch changes before she answers, so the quantity is always visible
-    if (op === '+') { for (let i = a; i < a + b; i++) { pouch.cells[i].classList.add('on'); pouch.cells[i].textContent = GEM; await wait(220); } found.style.opacity = '1'; }
-    else { for (let i = a - 1; i >= a - b; i--) { pouch.cells[i].classList.remove('on'); pouch.cells[i].textContent = ''; await wait(220); } found.style.opacity = '1'; found.style.filter = 'grayscale(1)'; }
-    // After a miss: count the gems in the pouch together, lighting each pocket (count-on modelling).
+    // The pouch changes before she answers, so the quantity is always visible, and only once: found gems fly
+    // into the pouch (the pile empties), given-away gems stay in their pockets crossed out.
+    const pile = [...found.children];
+    if (op === '+') { found.style.opacity = '1'; for (let i = a; i < a + b; i++) { const g = pile[i - a]; if (g) g.style.visibility = 'hidden'; pouch.cells[i].classList.add('on'); pouch.cells[i].textContent = GEM; await wait(220); } }
+    else { for (let i = a - 1; i >= a - b; i--) { pouch.cells[i].classList.remove('on'); pouch.cells[i].classList.add('taken'); await wait(220); } }
+    opRow.remove();
+    // After a miss: count the gems in the pouch together, lighting each pocket (count-on modelling). One
+    // sequence, so her next tap or the reveal ends it instead of being talked over.
     const countTogether = async () => {
-      await audio.say('Let us count the gems in the pouch.', { interrupt: false });
       const on = pouch.cells.filter(c => c.classList.contains('on'));
-      for (let i = 0; i < on.length; i++) { on[i].classList.add('now'); await audio.say(String(i + 1), { interrupt: false }); on[i].classList.remove('now'); }
+      await audio.sequence([{ say: 'Let us count the gems in the pouch.' }, ...on.map((c, i) => ({ say: String(i + 1), index: i }))],
+        { onStep: st => { on.forEach((c, k) => c.classList.toggle('now', k === st.index)); } });
+      on.forEach(c => c.classList.remove('now'));
     };
     const grid = choiceGrid({ audio, prompt: 'How many gems now?', items: numeralChoices(answer, { min: 0, max: 10 }), praise: praiseLine(), revealText: (op === '+' ? a + ' and ' + b + ' more is ' : a + ' take away ' + b + ' is ') + answer + '.', onMiss: countTogether });
     grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
@@ -187,9 +197,15 @@ const teenTower = {
       const line = el('div', { class: 'number-line' }, Array.from({ length: hi - lo + 1 }, (_, k) => {
         const v = lo + k;
         const b = el('button', { type: 'button', text: String(v), class: v === it.n ? 'on' : '', 'aria-label': String(v) });
+        if (v === target) b.dataset.answer = '1';
         b.addEventListener('click', async () => {
+          if (line.dataset.done) return;
           audio.stop();
-          if (v === target) { b.classList.add('on'); await audio.say(target + '! ' + praiseLine()); resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: hi - lo + 1, gpc: 'line' }); }
+          if (v === target) {
+            const outcome = misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed';
+            line.dataset.done = '1'; [...line.children].forEach(x => x.setAttribute('disabled', ''));
+            b.classList.add('on'); await audio.say(target + '! ' + praiseLine()); resolve({ outcome, choices: hi - lo + 1, gpc: 'line' });
+          }
           else { misses++; b.classList.add('wobble'); setTimeout(() => b.classList.remove('wobble'), 500); stage.luna('think', 900); if (misses === 1) { const right = [...line.children].find(x => x.textContent === String(target)); right.classList.add('glow'); await audio.say('Luna is on ' + it.n + '. ' + (it.after ? 'What comes next?' : 'What comes just before?')); } else { const right = [...line.children].find(x => x.textContent === String(target)); right.click(); } }
         });
         return b;
@@ -201,7 +217,7 @@ const teenTower = {
 };
 
 const caveCount = {
-  id: 'count', subskill: 'count-sequence', itemId: it => 'count:' + it.kind + ':' + it.start,
+  id: 'cavecount', subskill: 'count-sequence', itemId: it => 'count:' + it.kind + ':' + it.start,
   async play(stage, it, ctx, { praiseLine }) {
     const audio = ctx.audio;
     const seq = it.kind === 'tens' ? [0, 1, 2, 3].map(k => it.start + k * 10) : it.kind === 'backward' ? [0, 1, 2, 3].map(k => it.start - k) : [0, 1, 2, 3].map(k => it.start + k);
@@ -214,7 +230,8 @@ const caveCount = {
     stage.setObject(el('div'));
     const path = el('div', { class: 'number-line' }, [...shown.map(v => el('button', { type: 'button', class: 'on', text: String(v), disabled: '' })), el('button', { type: 'button', text: '?', disabled: '' })]);
     const max = it.kind === 'tens' ? 100 : 20;
-    const grid = choiceGrid({ audio, prompt, items: numeralChoices(answer, { min: 0, max, n: 3 }).map(c => it.kind === 'tens' ? { ...c } : c), praise: praiseLine(), revealText: 'It is ' + answer + '.' });
+    const tensChoices = () => { const set = new Set([answer]); for (const d of shuffle([10, -10, 20, -20])) if (set.size < 3 && answer + d >= 0 && answer + d <= 100) set.add(answer + d); return shuffle([...set]).map(v => ({ id: String(v), label: String(v), ok: v === answer, say: String(v), textOnly: true })); };
+    const grid = choiceGrid({ audio, prompt, items: it.kind === 'tens' ? tensChoices() : numeralChoices(answer, { min: 0, max, n: 3 }), praise: praiseLine(), revealText: 'It is ' + answer + '.' });
     grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
     stage.setBody(path, grid.el);
     await audio.say(prompt);
@@ -365,6 +382,8 @@ const gemTrail = {
 // taps where Luna lands and hears each number as Luna hops. Linear number board games like this build
 // number sense in 4–6 year olds (Siegler & Ramani 2008, 2009).
 const road = {
+  // a revealed hop is walked anyway, so the path never goes back to replay it
+  noRequeue: true,
   id: 'road', subskill: 'number-relations', itemId: it => 'road:' + it.from + '+' + it.hop,
   async play(stage, it, ctx, { praiseLine }) {
     const audio = ctx.audio;
@@ -380,6 +399,7 @@ const road = {
         const v = k + 1;
         const b = el('button', { type: 'button', class: v <= it.from ? 'on' : '', text: String(v), 'aria-label': String(v) });
         if (v === it.from) b.classList.add('luna');
+        if (v === it.from + it.hop) b.dataset.answer = '1';
         return b;
       });
       const hopAlong = async () => {
@@ -427,7 +447,7 @@ function gen(family, stageName) {
       if (stageName === 'compare') { const a = rand(2, 20); const b = Math.random() < 0.25 ? a : rand(2, 20); return { kind: 'compare', a, b }; }
       return { kind: 'numberline', n: rand(2, 18), after: Math.random() < 0.6 };
     }
-    case 'count': {
+    case 'cavecount': {
       if (stageName === 'ones') return { kind: 'ones', start: rand(1, 16) };
       if (stageName === 'tens') return { kind: 'tens', start: pick([10, 20, 30, 40, 50, 60]) };
       return { kind: 'backward', start: rand(6, 20) };
@@ -466,11 +486,22 @@ function gen(family, stageName) {
   }
 }
 const FAMILIES = { frames: gemFrames, trail: gemTrail, road, bridge: crystalBridge, teen: teenTower, count: caveCount, stories: numberStories };
+// Success-rate controller: every number-choice item uses the count the adaptive engine asks for, and
+// reports the count actually shown so the evidence is honest.
+for (const f of Object.values(FAMILIES)) {
+  const play = f.play;
+  f.play = async (stage, it, ctx, h) => {
+    choiceN = ctx.adaptive.choiceCount(f.subskill); shownNumerals = null;
+    const r = await play.call(f, stage, it, ctx, h);
+    return r && shownNumerals ? { ...r, choices: shownNumerals } : r;
+  };
+}
 
 function buildRound(kind) {
   const stageOf = f => ctx.adaptive.stage(f.subskill);
   const items = [];
-  const take = f => items.push({ family: f, item: gen(f, stageOf(f)) });
+  const ids = new Set();
+  const take = f => { let it = gen(f, stageOf(f)); for (let k = 0; k < 8 && ids.has(f.itemId(it)); k++) it = gen(f, stageOf(f)); ids.add(f.itemId(it)); items.push({ family: f, item: it }); };
   if (kind === 'road') {
     let from = 0;
     for (let i = 0; i < 6; i++) { const hop = Math.min(rand(1, 2), 10 - from) || 1; if (from + hop > 10) from = 0; items.push({ family: road, item: { from, hop } }); from += hop; if (from >= 10) from = 0; }

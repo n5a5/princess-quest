@@ -131,3 +131,26 @@ test('story-voice pieces still appear in the code, and every line key is well fo
   for (const k of Object.keys(lines)) assert.equal(k, k.toLowerCase().replace(/\s+/g, ' ').trim());
   assert.ok(Object.keys(lines).length > 500);
 });
+
+test('books.json: every word is decodable at the book stage or a heart word; one right answer per question', () => {
+  const { stages } = readJSON('content/phonics.json');
+  const sw = readJSON('content/sight-words.json');
+  const hearts = new Set([...sw.lists.prePrimer, ...sw.lists.primer]);
+  const { books } = readJSON('content/books.json');
+  assert.ok(books.length >= 8);
+  for (const b of books) {
+    const idx = stages.findIndex(st => st.id === b.stage);
+    assert.ok(idx >= 0, b.id);
+    const dec = new Set(stages.slice(0, idx + 1).flatMap(st => st.words.map(w => w.w)));
+    assert.ok(b.pages.length >= 3 && b.pages.length <= 5, b.id + ' pages');
+    for (const p of b.pages) {
+      assert.ok(p.pic, b.id);
+      for (const w of p.text.replace(/[^A-Za-z\s']/g, '').split(/\s+/).filter(Boolean)) {
+        assert.ok(dec.has(w.toLowerCase()) || hearts.has(w.toLowerCase()) || hearts.has(w), `${b.id}: "${w}" is not decodable at stage ${b.stage} nor a heart word`);
+      }
+    }
+    assert.equal(b.question.choices.length, 3, b.id);
+    assert.equal(b.question.choices.filter(c => c.ok).length, 1, b.id);
+    assert.equal(new Set(b.question.choices.map(c => c.pic)).size, 3, b.id);
+  }
+});

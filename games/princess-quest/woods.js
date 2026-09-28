@@ -20,7 +20,17 @@ let roundBusy = false;
 let host = null, ctx = null, phonics = null, sounds = null, PA = null, cancelled = false;
 
 // ---------- content helpers ----------
-const allWords = () => phonics.stages.flatMap(s => s.words);
+// Ears-only work needs pictures a 6-year-old names one way, and words whose sounds are coded truly:
+// - pictures most children call something else (🐕 wag → "dog", 🫙 jam → "jar", ✔️ tick → "check") or that
+//   print a word (🔙 back) flip the sound being tested;
+// - wash and bush are coded with the vowel of cash and hush, which they do not have;
+// - x is two sounds (/k/ /s/) and qu is /k/ /w/, but each is one letter stone, so counting and final sounds go wrong.
+const EAR_SKIP = new Set(['wag', 'ram', 'yak', 'yam', 'hen', 'fin', 'mop', 'hop', 'tub', 'cap', 'nut', 'jam', 'pot', 'log', 'shut',
+  'thud', 'chug', 'cash', 'rich', 'shop', 'tick', 'nap', 'chin', 'thin', 'back', 'wash', 'bush',
+  // later stages (the 'long' blend pool): ⚽ ball, 🦒 giraffe, 🐫 camel, 🖥️ computer, 🛗 elevator, 🥢 chopsticks, 🚛 truck, 🎯 target, 🌷 flower, 🟦 square
+  'kick', 'neck', 'hump', 'desk', 'lift', 'stick', 'dump', 'spot', 'stem', 'block', 'ink']);
+const earOk = w => !EAR_SKIP.has(w.w) && !w.u.some(u => u[0] === 'x' || u[0] === 'qu');
+const allWords = () => phonics.stages.flatMap(s => s.words).filter(earOk);
 const spokenUnits = w => unitsOf({ units: w.u }).map((u, i) => ({ g: u[0], p: u[1], i })).filter(u => u.p);
 const isVowel = id => sounds[id] && sounds[id].kind === 'vowel';
 const outcomeOf = r => r.revealed ? 'revealed' : r.misses ? 'scaffolded' : 'firstTry';
@@ -31,7 +41,9 @@ const vowelIndex = w => w.u.findIndex(u => isVowel(u[1]));
 const rimeOf = w => { const v = vowelIndex(w); return v < 0 ? null : w.u.slice(v).map(u => u[0]).join(''); };
 const onsetOf = w => { const v = vowelIndex(w); return v <= 0 ? [] : w.u.slice(0, v).filter(u => u[1]).map(u => u[1]); };
 // Words a beginner has heard many times: short ones first, longer ones once she is past the first stages.
-function pool(stageIdx) { return phonics.stages.slice(0, Math.max(2, stageIdx + 2)).flatMap(s => s.words); }
+function pool(stageIdx) { return phonics.stages.slice(0, Math.max(2, stageIdx + 2)).flatMap(s => s.words).filter(earOk); }
+// Blending and counting at the 'long' stage: words with blends (4 and 5 sounds), not only three-sound words.
+function blendPool(stageIdx) { return stageIdx ? phonics.stages.slice(0, 6).flatMap(s => s.words).filter(earOk) : pool(0); }
 
 // ---------- families ----------
 function paItem(kind, stageIdx, avoid) {
@@ -39,7 +51,7 @@ function paItem(kind, stageIdx, avoid) {
   const unitAt = w => { const u = spokenUnits(w); return kind === 'first' ? u[0] : kind === 'final' ? u[u.length - 1] : u.find(x => isVowel(x.p)); };
   const target = pick(words.filter(w => unitAt(w)));
   const tp = unitAt(target).p;
-  const foils = shuffle(words.filter(w => w.w !== target.w && w.p !== target.p && unitAt(w) && unitAt(w).p !== tp)).slice(0, 2);
+  const foils = shuffle(words.filter(w => w.w !== target.w && w.p !== target.p && unitAt(w) && unitAt(w).p !== tp)).slice(0, 3);
   return { kind, target, phoneme: tp, foils };
 }
 const soundSeeds = {
@@ -51,13 +63,14 @@ const soundSeeds = {
     stage.setObject(el('div', { class: 'picture', text: '👂' }));
     stage.setPrompt(promptBar(audio, prompt, { ears: true }));
     const why = x => { const p = soundAt(x, it.kind); return p ? x.w + ' ' + where + ' /' + p + '/.' : 'That is ' + x.w + '.'; };
-    const grid = choiceGrid({ audio, prompt, items: picChoices(it.target, it.foils, why), praise: praiseLine(), revealText: it.target.w + ' ' + where + ' /' + it.phoneme + '/.',
+    const n = ctx.adaptive.choiceCount('pa-sounds');
+    const grid = choiceGrid({ audio, prompt, items: picChoices(it.target, it.foils.slice(0, n - 1), why), praise: praiseLine(), revealText: it.target.w + ' ' + where + ' /' + it.phoneme + '/.',
       onMiss: async () => { await audio.say('We need /' + it.phoneme + '/.', { interrupt: false }); } });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
     await audio.say(prompt);
     const r = await grid.done;
-    return { outcome: outcomeOf(r), choices: 3, gpc: it.phoneme };
+    return { outcome: outcomeOf(r), choices: Math.min(n, it.foils.length + 1), gpc: it.phoneme };
   }
 };
 
@@ -66,7 +79,8 @@ const blendIt = {
   async play(stage, w, ctx, { praiseLine }) {
     const audio = ctx.audio;
     const sIdx = ctx.adaptive.stageIndex('pa-blend-segment');
-    const foils = shuffle(pool(sIdx).filter(x => x.w !== w.w && x.p !== w.p && x.u.length === w.u.length)).slice(0, 2);
+    const n = ctx.adaptive.choiceCount('pa-blend-segment');
+    const foils = shuffle(blendPool(sIdx).filter(x => x.w !== w.w && x.p !== w.p && x.u.length === w.u.length)).slice(0, n - 1);
     const units = spokenUnits(w);
     const soundsText = units.map(u => '/' + u.p + '/').join(' ');
     const prompt = 'Luna says a word in pieces: ' + soundsText + '. Put the sounds together. Which picture is it?';
@@ -74,14 +88,12 @@ const blendIt = {
     stage.setPrompt(promptBar(audio, prompt, { ears: true }));
     const replay = () => audio.sequence(units.flatMap((u, i) => i ? [{ gap: 500 }, { phoneme: u.p }] : [{ phoneme: u.p }]));
     const grid = choiceGrid({ audio, prompt, items: picChoices(w, foils, x => 'That is ' + x.w + '.'), praise: praiseLine(), revealText: soundsText + ' makes ' + w.w + '.',
-      onMiss: async () => { await audio.say('Listen again and push the sounds together.', { interrupt: false }); await replay(); } });
+      onMiss: async () => { await audio.sequence([{ say: 'Listen again and push the sounds together.' }, ...units.flatMap((u, i) => i ? [{ gap: 500 }, { phoneme: u.p }] : [{ phoneme: u.p }])]); } });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
-    await audio.say('Luna says a word in pieces. Put the sounds together.');
-    await audio.sequence(units.flatMap((u, i) => i ? [{ gap: 500 }, { phoneme: u.p }] : [{ phoneme: u.p }]));
-    await audio.say('Which picture is it?');
+    await audio.sequence([{ say: 'Luna says a word in pieces. Put the sounds together.' }, ...units.flatMap((u, i) => i ? [{ gap: 500 }, { phoneme: u.p }] : [{ phoneme: u.p }]), { gap: 300 }, { say: 'Which picture is it?' }]);
     const r = await grid.done;
-    return { outcome: outcomeOf(r), choices: 3 };
+    return { outcome: outcomeOf(r), choices: foils.length + 1 };
   }
 };
 
@@ -108,10 +120,11 @@ const countSounds = {
     let misses = 0;
     const counter = gemCounter(audio, 5, () => { audio.stop(); audio.word(w.w); });
     const check = bigButton('Done', () => {}, 'gold');
+    counter.boxes[n - 1].dataset.answer = '1'; check.dataset.done = '1';
     const result = await new Promise(resolve => {
       check.addEventListener('click', async () => {
         if (counter.count() === n) {
-          check.setAttribute('disabled', '');
+          check.setAttribute('disabled', ''); counter.boxes.forEach(x => { delete x.dataset.answer; x.setAttribute('disabled', ''); });
           await audio.sequence(units.flatMap((u, i) => i ? [{ gap: 400 }, { phoneme: u.p }] : [{ phoneme: u.p }]));
           await audio.say(praiseLine());
           resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4 });
@@ -147,7 +160,7 @@ const oralSwap = {
   async play(stage, pair, ctx, { praiseLine }) {
     const audio = ctx.audio;
     const { from, to, index } = pair;
-    const other = shuffle(allWords().filter(x => x.w !== to.w && x.w !== from.w && x.p !== to.p && x.p !== from.p && x.u.length === from.u.length)).slice(0, 1);
+    const other = shuffle(pool(ctx.adaptive.stageIndex('pa-blend-segment')).filter(x => x.w !== to.w && x.w !== from.w && x.p !== to.p && x.p !== from.p && x.u.length === from.u.length)).slice(0, 1);
     const prompt = 'Say ' + from.w + '. Now change /' + from.u[index][1] + '/ to /' + to.u[index][1] + '/. What word is it now?';
     stage.setObject(picture(from.p, () => { audio.stop(); audio.word(from.w); }));
     stage.setPrompt(promptBar(audio, 'Say this word. Now change /' + from.u[index][1] + '/ to /' + to.u[index][1] + '/. What word is it now?', { ears: true, speak: prompt }));
@@ -161,15 +174,18 @@ const oralSwap = {
 };
 
 // Deletion pairs: taking the first (or last) sound off one word leaves another word we have a picture for.
+// The sounds that are left must be the other word's sounds (pink without /k/ is "ping", not pin).
 function deletePairs(words) {
-  const byWord = Object.fromEntries(words.map(w => [w.w, w]));
+  const sounds = u => u.filter(x => x[1]).map(x => x[1]).join(' ');
+  const bySounds = {};
+  for (const w of words) (bySounds[sounds(w.u)] = bySounds[sounds(w.u)] || w);
   const out = [];
   for (const w of words) {
-    const rest = w.u.slice(1).map(u => u[0]).join('');
-    if (byWord[rest] && w.u[0][1] && byWord[rest].p !== w.p) out.push({ from: w, to: byWord[rest], where: 'first', phoneme: w.u[0][1] });
-    const head = w.u.slice(0, -1).map(u => u[0]).join('');
-    const last = w.u[w.u.length - 1];
-    if (byWord[head] && last[1] && byWord[head].p !== w.p) out.push({ from: w, to: byWord[head], where: 'last', phoneme: last[1] });
+    const first = w.u[0], last = w.u[w.u.length - 1];
+    const rest = bySounds[sounds(w.u.slice(1))];
+    if (rest && first[1] && rest.p !== w.p && rest.w !== w.w) out.push({ from: w, to: rest, where: 'first', phoneme: first[1] });
+    const head = bySounds[sounds(w.u.slice(0, -1))];
+    if (head && last[1] && head.p !== w.p && head.w !== w.w) out.push({ from: w, to: head, where: 'last', phoneme: last[1] });
   }
   return shuffle(out);
 }
@@ -178,7 +194,7 @@ const takeAway = {
   async play(stage, pair, ctx, { praiseLine }) {
     const audio = ctx.audio;
     const { from, to, phoneme, where } = pair;
-    const other = shuffle(allWords().filter(x => x.w !== to.w && x.w !== from.w && x.p !== to.p && x.p !== from.p && x.u.length === to.u.length)).slice(0, 1);
+    const other = shuffle(pool(ctx.adaptive.stageIndex('pa-blend-segment')).filter(x => x.w !== to.w && x.w !== from.w && x.p !== to.p && x.p !== from.p && x.u.length === to.u.length)).slice(0, 1);
     const prompt = 'Say ' + from.w + '. Now take away the ' + where + ' sound, /' + phoneme + '/. What word is left?';
     stage.setObject(picture(from.p, () => { audio.stop(); audio.word(from.w); }));
     stage.setPrompt(promptBar(audio, 'Say this word. Now take away the ' + where + ' sound, /' + phoneme + '/. What word is left?', { ears: true, speak: prompt }));
@@ -198,7 +214,7 @@ function rhymeItem(stageIdx, avoid) {
   for (const w of words) (groups[rimeOf(w)] = groups[rimeOf(w)] || []).push(w);
   const rime = pick(Object.keys(groups).filter(r => groups[r].length >= 2));
   const [target, answer] = shuffle(groups[rime]).slice(0, 2);
-  const foils = shuffle(words.filter(w => rimeOf(w) !== rime && w.p !== target.p && w.p !== answer.p)).slice(0, 2);
+  const foils = shuffle(words.filter(w => rimeOf(w) !== rime && w.p !== target.p && w.p !== answer.p)).slice(0, 3);
   return { target, answer, foils };
 }
 const rhymeIt = {
@@ -209,13 +225,14 @@ const rhymeIt = {
     const ask = 'Which one rhymes with ' + it.target.w + '?';
     stage.setObject(picture(it.target.p, () => { audio.stop(); audio.word(it.target.w); }));
     stage.setPrompt(promptBar(audio, 'Which one rhymes with this one?', { ears: true, speak: ask, replay: it.target.w }));
-    const grid = choiceGrid({ audio, prompt: ask, items: picChoices(it.answer, it.foils, x => x.w + ' and ' + it.target.w + ' do not sound the same at the end.'), praise: praiseLine(), revealText: it.target.w + ' and ' + it.answer.w + ' rhyme.' });
+    const rn = ctx.adaptive.choiceCount('pa-rhyme');
+    const grid = choiceGrid({ audio, prompt: ask, items: picChoices(it.answer, it.foils.slice(0, rn - 1), x => x.w + ' and ' + it.target.w + ' do not sound the same at the end.'), praise: praiseLine(), revealText: it.target.w + ' and ' + it.answer.w + ' rhyme.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
     await audio.say(ask);
     const r = await grid.done;
     void prompt;
-    return { outcome: outcomeOf(r), choices: 3, gpc: rimeOf(it.target) };
+    return { outcome: outcomeOf(r), choices: Math.min(rn, it.foils.length + 1), gpc: rimeOf(it.target) };
   }
 };
 
@@ -230,6 +247,7 @@ const beats = {
     let misses = 0;
     const counter = gemCounter(audio, 4, () => { audio.stop(); audio.word(it.word); });
     const check = bigButton('Done', () => {}, 'gold');
+    counter.boxes[it.n - 1].dataset.answer = '1'; check.dataset.done = '1';
     const result = await new Promise(resolve => {
       check.addEventListener('click', async () => {
         if (counter.count() === it.n) {
@@ -256,17 +274,15 @@ const onsetRime = {
     const audio = ctx.audio;
     const onset = onsetOf(w);
     const rime = w.u.slice(vowelIndex(w)).filter(u => u[1]).map(u => u[1]);
-    const foils = shuffle(allWords().filter(x => x.w !== w.w && x.p !== w.p && x.u.length === w.u.length && onsetOf(x)[0] === onset[0])).slice(0, 2);
-    const more = foils.length < 2 ? shuffle(allWords().filter(x => x.w !== w.w && x.p !== w.p && !foils.includes(x) && x.u.length === w.u.length)).slice(0, 2 - foils.length) : [];
-    const prompt = 'Luna says a word in two parts: ' + onset.map(p => '/' + p + '/').join(' ') + ' ... ' + rime.map(p => '/' + p + '/').join('') + '. Which picture is it?';
+    const foils = shuffle(pool(ctx.adaptive.stageIndex('pa-blend-segment')).filter(x => x.w !== w.w && x.p !== w.p && x.u.length === w.u.length && onsetOf(x)[0] === onset[0])).slice(0, 2);
+    const more = foils.length < 2 ? shuffle(pool(ctx.adaptive.stageIndex('pa-blend-segment')).filter(x => x.w !== w.w && x.p !== w.p && !foils.includes(x) && x.u.length === w.u.length)).slice(0, 2 - foils.length) : [];
+    const prompt = 'Luna says a word in two parts: ' + onset.map(p => '/' + p + '/').join(' ') + ' then ' + rime.map(p => '/' + p + '/').join(' ') + '. Which picture is it?';
     stage.setObject(el('div', { class: 'picture', text: '👂' }));
     stage.setPrompt(promptBar(audio, prompt, { ears: true }));
     const grid = choiceGrid({ audio, prompt, items: picChoices(w, [...foils, ...more], x => 'That is ' + x.w + '.'), praise: praiseLine(), revealText: 'It is ' + w.w + '.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
-    await audio.say('Luna says a word in two parts.');
-    await audio.sequence([...onset.map(p => ({ phoneme: p })), { gap: 600 }, { blend: rime }]);
-    await audio.say('Which picture is it?');
+    await audio.sequence([{ say: 'Luna says a word in two parts.' }, ...onset.map(p => ({ phoneme: p })), { gap: 600 }, { blend: rime }, { gap: 300 }, { say: 'Which picture is it?' }]);
     const r = await grid.done;
     return { outcome: outcomeOf(r), choices: 3 };
   }
@@ -277,12 +293,23 @@ function buildRound(kind) {
   const sIdx = Math.max(ctx.adaptive.stageIndex('pa-blend-segment'), 0);
   const items = [];
   const used = [];
-  const take = (family, item) => { if (!item) return; items.push({ family, item }); const w = item.w || (item.target && item.target.w) || item.word; if (w) used.push(w); };
+  const take = (family, item) => {
+    if (!item) return;
+    items.push({ family, item });
+    for (const w of [item.w, item.target && item.target.w, item.answer && item.answer.w, item.word, item.from && item.from.w, item.to && item.to.w]) if (w) used.push(w);
+  };
   const words = () => pool(sIdx).filter(w => !used.includes(w.w));
+  const fresh = pair => !used.includes(pair.from.w) && !used.includes(pair.to.w);
+  // at the 'long' stage two of every three blend/count words have four or five sounds
+  const blendWord = () => {
+    const ws = blendPool(sIdx).filter(w => !used.includes(w.w) && spokenUnits(w).length <= (sIdx ? 5 : 3));
+    const long = ws.filter(w => spokenUnits(w).length >= 4);
+    return pick(sIdx && long.length && Math.random() < 0.67 ? long : ws);
+  };
   const seed = () => take(soundSeeds, paItem(ctx.adaptive.stage('pa-sounds'), sIdx, used));
-  const blend = () => take(blendIt, pick(words().filter(w => spokenUnits(w).length <= (sIdx ? 5 : 3))));
-  const count = () => take(countSounds, pick(words().filter(w => spokenUnits(w).length <= (sIdx ? 5 : 3))));
-  const manip = () => { const st = ctx.adaptive.stage('pa-manipulate'); const d = st === 'delete' ? deletePairs(allWords())[0] : null; if (d) take(takeAway, d); else { const p = swapPairs(pool(sIdx), 1)[0]; if (p) take(oralSwap, p); else seed(); } };
+  const blend = () => take(blendIt, blendWord());
+  const count = () => take(countSounds, blendWord());
+  const manip = () => { const st = ctx.adaptive.stage('pa-manipulate'); const d = st === 'delete' ? deletePairs(allWords()).find(fresh) : null; if (d) take(takeAway, d); else { const p = swapPairs(pool(sIdx).filter(w => !used.includes(w.w)), 1).find(fresh); if (p) take(oralSwap, p); else seed(); } };
   const rhyme = () => { const st = ctx.adaptive.stage('pa-rhyme'); if (st === 'syllables') { const [word, n, pic] = pick(PA.syllables.filter(s => !used.includes(s[0]))); take(beats, { word, n, pic }); } else if (st === 'onset-rime') take(onsetRime, pick(words().filter(w => onsetOf(w).length >= 1))); else take(rhymeIt, rhymeItem(sIdx, used)); };
   const by = { seeds: seed, blend: () => (items.length % 2 ? blend : count)(), swap: manip, rhyme };
   if (by[kind]) { for (let i = 0; i < 6; i++) by[kind](); return items; }
@@ -330,4 +357,4 @@ export async function mount(h, c) {
   showMenu();
 }
 export function unmount() { cancelled = true; host = null; }
-export const __test = { paItem, rhymeItem, deletePairs, swapPairs, onsetOf, rimeOf, pool, init({ phonics: p, sounds: s, pa }) { phonics = p; sounds = s; PA = pa; } };
+export const __test = { paItem, rhymeItem, deletePairs, swapPairs, onsetOf, rimeOf, pool, blendPool, allWords, EAR_SKIP, init({ phonics: p, sounds: s, pa }) { phonics = p; sounds = s; PA = pa; } };

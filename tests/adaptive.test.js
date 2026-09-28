@@ -144,12 +144,43 @@ test('an old-shape quest from a previous version is replaced, not crashed on', (
   assert.equal(adaptive.questDone(), false);
 });
 
-test('review picks prefer mastered skills least recently practised', () => {
+test('review picks: only skills mastered at their last stage, never the day target, least recently practised first', () => {
+  const { adaptive, economy, clock } = setup();
+  const mastered = (id, stage, day) => { economy.save.subskills[id] = { stage, p: 0.9, firstTryDays: {}, lastPracticed: day, promotions: stage, gpc: {} }; };
+  mastered('pa-sounds', 2, '2026-09-01');
+  mastered('pa-rhyme', 2, '2026-09-05');
+  mastered('pa-manipulate', 0, '2026-09-01'); // still has a stage to earn: never review
+  const target = adaptive.targetFor('woods');
+  const got = adaptive.reviewSkills('woods');
+  assert.ok(!got.includes('pa-manipulate'));
+  assert.ok(!got.includes(target));
+  assert.deepEqual(got, ['pa-sounds', 'pa-rhyme'].filter(x => x !== target));
+});
+
+test('a child who only answers after the hint is never promoted', () => {
   const { adaptive, clock } = setup();
-  for (let i = 0; i < 8; i++) adaptive.record({ subskill: 'pa-sounds', outcome: 'firstTry', choices: 4 });
-  clock.advanceDays(3);
-  for (let i = 0; i < 8; i++) adaptive.record({ subskill: 'pa-rhyme', outcome: 'firstTry', choices: 4 });
-  assert.deepEqual(adaptive.reviewSkills('woods'), ['pa-sounds', 'pa-rhyme']);
+  for (let d = 0; d < 6; d++) {
+    for (let i = 0; i < 12; i++) adaptive.record({ subskill: 'phonics-gpc', outcome: 'scaffolded', choices: 3 });
+    clock.advanceDays(1);
+  }
+  assert.equal(adaptive.stageIndex('phonics-gpc'), 0);
+  assert.ok(adaptive.mastery('phonics-gpc') < 0.5);
+});
+
+test('a right answer straight after the answer was shown does not move the estimate', () => {
+  const { adaptive } = setup();
+  const before = adaptive.mastery('measure');
+  adaptive.record({ subskill: 'measure', outcome: 'firstTry', choices: 3, retry: true });
+  assert.equal(adaptive.mastery('measure'), before);
+});
+
+test('promotion needs recent unaided success at this stage, not only a high estimate', () => {
+  const { adaptive, economy, clock } = setup();
+  economy.save.subskills['measure'] = { stage: 0, p: 0.95, firstTryDays: { '2026-09-01': 4, '2026-09-02': 4 }, lastPracticed: null, promotions: 0, gpc: {} };
+  adaptive.record({ subskill: 'measure', outcome: 'firstTry', choices: 3 });
+  assert.equal(adaptive.stageIndex('measure'), 0, 'one recent item is not enough');
+  for (let i = 0; i < 7; i++) adaptive.record({ subskill: 'measure', outcome: 'firstTry', choices: 3 });
+  assert.equal(adaptive.stageIndex('measure'), 1);
 });
 
 test('quest completes when both stops are done, then claims once; extra rounds are counted', () => {
@@ -183,4 +214,38 @@ test('an introduction or self-check (one choice) is logged but never moves maste
   assert.equal(economy.save.log.length, 1, 'still logged for the parent corner');
   adaptive.record({ subskill: 'sight-words', outcome: 'firstTry', choices: 4 });
   assert.ok(adaptive.mastery('sight-words') > before, 'a real choice item still counts');
+});
+
+test('a child who only guesses is almost never promoted in a month (success-rate controller included)', () => {
+  let seed = 7; const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  let promoted = 0; const RUNS = 200;
+  for (let run = 0; run < RUNS; run++) {
+    const { adaptive, clock } = setup();
+    for (let day = 0; day < 30; day++) {
+      for (let i = 0; i < 6; i++) {
+        const c = adaptive.choiceCount('measure');
+        const first = rnd() < 1 / c, second = rnd() < 1 / (c - 1);
+        adaptive.record({ subskill: 'measure', outcome: first ? 'firstTry' : second ? 'scaffolded' : 'revealed', choices: c });
+      }
+      clock.advanceDays(1);
+    }
+    if (adaptive.stageIndex('measure') > 0) promoted++;
+  }
+  assert.ok(promoted / RUNS <= 0.05, `guessing child promoted in ${promoted} of ${RUNS} runs`);
+});
+
+test('a child who really knows it (about 90% unaided) moves up within two weeks', () => {
+  let seed = 11; const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const days = [];
+  for (let run = 0; run < 50; run++) {
+    const { adaptive, clock } = setup();
+    let d = 0;
+    for (; d < 30 && adaptive.stageIndex('measure') === 0; d++) {
+      for (let i = 0; i < 6; i++) adaptive.record({ subskill: 'measure', outcome: rnd() < 0.9 ? 'firstTry' : 'scaffolded', choices: adaptive.choiceCount('measure') });
+      clock.advanceDays(1);
+    }
+    days.push(d);
+  }
+  days.sort((a, b) => a - b);
+  assert.ok(days[25] <= 14, 'median days to promotion: ' + days[25]);
 });

@@ -150,12 +150,39 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const bundled = (kind, id) => (man[kind] || []).includes(id) ? base + kind + '/' + encodeURIComponent(id) + '.' + (man.ext || 'ogg') : null;
 
+  // Player results: true = played to the end, 'stopped' = interrupted by stop() or a newer clip (NOT a
+  // failure: never fall back to the device voice for it), false = the clip could not be loaded or played.
   async function fromStoreOrBundle(kind, id) {
     const rec = store && store.get(kind.slice(0, -1), id); // store kinds are singular: phoneme/letter/word
     if (rec) return player.play(rec);
     const url = bundled(kind, id);
     if (url) return player.play(url);
     return false;
+  }
+  // Says text, stopping as soon as live() turns false. Shared by say() and the {say} steps of sequence(),
+  // so a sequence's own say step never cancels the sequence (the heart-word bug).
+  async function speak(text, live) {
+    const parts = parseParts(String(text));
+    const clips = lineClips(parts);
+    if (clips) {
+      for (let i = 0; i < clips.length; i++) {
+        if (!live()) return;
+        if (i) await wait(clips[i].splice ? 15 : clips[i].sound || clips[i - 1].sound ? 60 : 110);
+        if (!live()) return;
+        const r = await player.play(clips[i].src);
+        if (r === 'stopped' || !live()) return;
+        if (r !== true) { // a clip failed to load: say the rest with the device voice
+          for (const c of clips.slice(i)) { if (!live()) return; if (c.sound) await api.phoneme(c.sound); else await speech.speakText(c.text); }
+          return;
+        }
+      }
+      return;
+    }
+    for (const part of parts) {
+      if (!live()) return;
+      if (part.sound) await api.phoneme(part.sound);
+      else await speech.speakText(part.text);
+    }
   }
 
   // Activity tracking for the idle nudge: is anything being said, and when did the last line end?
@@ -181,20 +208,26 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
 
     async phoneme(id) {
       if (api.muted) return false;
-      if (await fromStoreOrBundle('phonemes', id)) return true;
+      const r = await fromStoreOrBundle('phonemes', id);
+      if (r === true) return true;
+      if (r === 'stopped') return false;
       const s = soundMap[id];
       if (s && s.ttsSafe && s.tts) { await speech.speakText(s.tts, { rate: 0.8 }); return true; }
       return false; // never let TTS invent a schwa for a stop or glide
     },
     async letter(grapheme) {
       if (api.muted) return false;
-      if (await fromStoreOrBundle('letters', grapheme)) return true;
+      const r = await fromStoreOrBundle('letters', grapheme);
+      if (r === true) return true;
+      if (r === 'stopped') return false;
       await speech.speakText(letterName(grapheme), { rate: 0.85 });
       return true;
     },
     async word(text) {
       if (api.muted) return false;
-      if (await fromStoreOrBundle('words', text)) return true;
+      const r = await fromStoreOrBundle('words', text);
+      if (r === true) return true;
+      if (r === 'stopped') return false;
       await speech.speakText(text, { rate: 0.85 });
       return true;
     },
@@ -202,26 +235,7 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
       if (api.muted) return;
       if (interrupt) api.stop();
       const my = ++seq;
-      const parts = parseParts(String(text));
-      const clips = lineClips(parts);
-      if (clips) {
-        for (let i = 0; i < clips.length; i++) {
-          if (my !== seq) return;
-          if (i) await wait(clips[i].splice ? 15 : clips[i].sound || clips[i - 1].sound ? 60 : 110);
-          if (my !== seq) return;
-          const ok = await player.play(clips[i].src);
-          if (!ok && my === seq) { // a clip failed to load: say the rest with the device voice
-            for (const c of clips.slice(i)) { if (my !== seq) return; if (c.sound) await api.phoneme(c.sound); else await speech.speakText(c.text); }
-            return;
-          }
-        }
-        return;
-      }
-      for (const part of parts) {
-        if (my !== seq) return;
-        if (part.sound) await api.phoneme(part.sound);
-        else await speech.speakText(part.text);
-      }
+      await speak(text, () => my === seq);
     },
     // Source for one phoneme without playing it: a Blob (recording), a URL (bundled), or null.
     phonemeSrc(id) {
@@ -256,7 +270,7 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
         if (step.phoneme) await api.phoneme(step.phoneme);
         else if (step.letter) await api.letter(step.letter);
         else if (step.word) await api.word(step.word);
-        else if (step.say) await api.say(step.say, { interrupt: false });
+        else if (step.say) await speak(step.say, () => my === seq);
       }
       return my === seq;
     },
@@ -303,6 +317,7 @@ export function createWebAudioPlayer() {
   let timers = [];
   let waiters = [];          // resolvers of in-flight play()/chain() promises; settled false on stop
   let lastError = null;
+  let gen = 0;               // bumped by every stop, so a play() still loading knows it was overtaken
   const keyOf = src => (src instanceof Blob ? src : String(src));
   // Laptops and Chromebooks power their audio output down when nothing is playing; waking it takes
   // ~100–200 ms, which used to swallow short letter sounds. A silent source keeps the output awake for
@@ -343,6 +358,7 @@ export function createWebAudioPlayer() {
   // faded, not chopped: a hard edge at sample level is the "click" laptop speakers reveal.
   const FADE_IN = 0.006, FADE_OUT = 0.014, CUT = 0.012;
   function stopAll() {
+    gen++;
     const now = ctx ? ctx.currentTime : 0;
     for (const { src, g } of playing) {
       try {
@@ -356,7 +372,7 @@ export function createWebAudioPlayer() {
     for (const t of timers) clearTimeout(t);
     timers = [];
     const w = waiters; waiters = [];
-    for (const resolve of w) resolve(false); // BUG-01: never leave an awaiting caller hanging
+    for (const resolve of w) resolve('stopped'); // BUG-01: never leave an awaiting caller hanging
   }
   function settleLater(ms) {
     return new Promise(resolve => {
@@ -383,19 +399,27 @@ export function createWebAudioPlayer() {
   }
   return {
     async play(src) {
+      const g0 = gen;
       let buffer;
       try { buffer = await decode(src); } catch (e) { console.warn('audio missing', src, e); lastError = String(e && e.message || e); return false; }
+      if (gen !== g0) return 'stopped'; // stop() or a newer clip came while this one loaded
       stopAll();
+      const mine = gen;
       const c = await running();
+      if (gen !== mine) return 'stopped';
       const end = schedule(buffer, c.currentTime + 0.01, 0, 0.01);
       return settleLater((end - c.currentTime) * 1000);
     },
     // Plays clips back to back. gapMs adds silence; crossfadeMs overlaps the tail of one clip with the head of the next.
     async chain(srcs, { gapMs = 0, crossfadeMs = 60, onStart = () => {} } = {}) {
+      const g0 = gen;
       let bufs;
       try { bufs = await Promise.all(srcs.map(decode)); } catch (e) { console.warn('audio missing in chain', e); lastError = String(e && e.message || e); return false; }
+      if (gen !== g0) return 'stopped';
       stopAll();
+      const mine = gen;
       const c = await running();
+      if (gen !== mine) return 'stopped';
       const xf = crossfadeMs / 1000;
       let at = c.currentTime + 0.02;
       const t0 = c.currentTime;
@@ -424,7 +448,7 @@ export function createWebAudioPlayer() {
 
 // Browser player for URLs and Blobs with a small object-URL cache for bundled files.
 export function createHtmlPlayer() {
-  let current = null;
+  let current = null, gen = 0;
   const cache = new Map(); // url → Promise<objectURL>
   async function resolveSrc(src) {
     if (src instanceof Blob) return URL.createObjectURL(src);
@@ -435,8 +459,11 @@ export function createHtmlPlayer() {
   }
   return {
     async play(src) {
+      const g0 = ++gen;
+      if (current) { const c = current; current = null; try { c.el.pause(); } catch {} c.done('stopped'); }
       let url;
       try { url = await resolveSrc(src); } catch (e) { console.warn('audio missing', src, e); return false; }
+      if (gen !== g0) return 'stopped';
       return new Promise(resolve => {
         const a = new Audio(url);
         const done = ok => { if (src instanceof Blob) URL.revokeObjectURL(url); if (current && current.el === a) current = null; resolve(ok); };
@@ -446,7 +473,7 @@ export function createHtmlPlayer() {
         a.play().catch(() => done(false));
       });
     },
-    stop() { if (current) { const c = current; current = null; try { c.el.pause(); c.el.currentTime = 0; } catch {} c.done(false); } },
+    stop() { gen++; if (current) { const c = current; current = null; try { c.el.pause(); c.el.currentTime = 0; } catch {} c.done('stopped'); } },
     preload(urls) { urls.forEach(u => resolveSrc(u).catch(() => {})); },
     info() { return { engine: 'html-audio', state: 'n/a' }; },
     async probe(src) { try { await resolveSrc(src); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message || e) }; } }

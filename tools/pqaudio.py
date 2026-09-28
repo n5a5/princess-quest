@@ -64,17 +64,20 @@ VOICELESS = ('sh', 'ch', 'th', 'p', 't', 'k', 'c', 's', 'f', 'h', 'q', 'x')
 VOICED_STOPS = ('b', 'd', 'g', 'j')
 
 
-def trim_lead_murmur(x, word):
+def trim_lead_murmur(x, word, window_ms=None, max_ms=None):
     """Kokoro often starts an isolated word with 50–100 ms of voiced murmur (an "uh") before the first
     consonant. When the word starts with a consonant we can find acoustically, cut the audio just before
     it: the first noisy frame for a voiceless consonant, the closure silence for b, d, g, j.
     Words starting with a vowel, m, n, l, r, w, y, v or z are left alone (the murmur blends in).
+    window_ms: only look for the first vowel inside the first window_ms (a sentence: the first word only;
+    without it the loudest vowel of the whole line was used and "Good try, Amelia." lost "Good try").
+    max_ms: never cut more than this (the murmur is 50-100 ms; a longer cut means a misfire).
     Returns (audio, ms_trimmed)."""
     w = word.lower()
     kind = 'noise' if w.startswith(VOICELESS) else 'stop' if w.startswith(VOICED_STOPS) else None
     if not kind:
         return x, 0
-    fr = frames(x)
+    fr = frames(x if window_ms is None else x[: int(SR * window_ms / 1000)])
     e = np.array([f['e'] for f in fr]); z = np.array([f['z'] for f in fr]); top = e.max()
     s = next(i for i in range(len(fr)) if e[i] > top - 30)
     v0 = main_vowel_start(fr)
@@ -93,7 +96,10 @@ def trim_lead_murmur(x, word):
             cut = fr[i]['i']
     if cut is None or cut <= fr[s]['i'] or cut >= fr[v0]['i']:
         return x, 0
-    return x[cut:], round((cut - fr[s]['i']) / SR * 1000)
+    ms = round((cut - fr[s]['i']) / SR * 1000)
+    if max_ms is not None and ms > max_ms:
+        return x, 0
+    return x[cut:], ms
 
 
 def main_vowel_start(fr):

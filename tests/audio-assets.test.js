@@ -23,6 +23,7 @@ test('every word the app can speak from content has a bundled clip (TTS is only 
   for (const s of readJSON('content/pa.json').syllables) need.add(s[0]);
   for (const s of readJSON('content/sounds.json').sounds) if (s.word) need.add(s.word);
   for (const s of readJSON('content/sentences.json').sentences) for (const w of s.text.replace(/[^A-Za-z\s']/g, '').split(/\s+/)) if (/^[a-z]/.test(w)) need.add(w.toLowerCase());
+  for (const b of readJSON('content/books.json').books) for (const p of b.pages) for (const w of p.text.replace(/[^A-Za-z\s']/g, '').split(/\s+/)) if (/^[a-z]/i.test(w) && w !== 'I') need.add(w.toLowerCase());
   const missing = [...need].filter(w => !words.has(w) || !existsSync(`assets/audio/words/${w}.${man.ext}`));
   assert.deepEqual(missing, [], 'words without a clip');
 });
@@ -48,4 +49,12 @@ test('letter sounds are long enough to hear, loud enough, start softly, and stat
       assert.ok(st.active_ms >= 300, `/${s.id}/ is a sound you can hold; it needs at least 300 ms, has ${st.active_ms} ms`);
     }
   }
+});
+
+test('short i is the vowel of pig/kid/fish, not "ee": the clip F1 matches the word vowels and sits well above ee', () => {
+  const st = readJSON('content/phoneme-stats.json').i;
+  assert.equal(st.method, 'word_vowel');
+  assert.ok(st.ref_F1 > 0);
+  assert.ok(Math.abs(st.F1 - st.ref_F1) / st.ref_F1 < 0.3, `F1 ${st.F1} vs words ${st.ref_F1}`);
+  assert.ok(st.F1 > 450, '"ee" has F1 near 300 Hz; short i is higher: ' + st.F1);
 });

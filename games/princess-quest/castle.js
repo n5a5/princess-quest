@@ -31,6 +31,8 @@ const readStory = {
     const items = shuffle(q.choices).map(c => ({ id: c.label, pic: c.pic, label: c.label, ok: c.ok, say: c.label }));
     const grid = choiceGrid({ audio, prompt: q.prompt, items, praise: praiseLine(), revealText: 'It is ' + q.choices.find(c => c.ok).label + '.' });
     grid.el.classList.add('three');
+    // the page picture often IS the answer: during the question it becomes a thinking cloud
+    stage.setObject(el('div', { class: 'picture', text: '💭' }));
     stage.setBody(page, promptBar(audio, q.prompt), grid.el);
     await audio.say(q.prompt);
     const r = await grid.done;
@@ -44,7 +46,7 @@ const vocabRecall = {
     const audio = ctx.audio;
     const v = it.story.vocab;
     const prompt = 'Remember the word ' + v.word + '? ' + v.word + ' means ' + v.meaning + '. ' + v.question;
-    stage.setObject(el('div', { class: 'picture', text: v.pic }));
+    stage.setObject(el('div', { class: 'picture', text: '💭' })); // not v.pic: that is one of the answers
     stage.setPrompt(promptBar(audio, prompt));
     const items = shuffle(v.choices).map(c => ({ id: c.pic, pic: c.pic, ok: c.ok, say: c.ok ? v.word : 'not this one' }));
     const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'This one shows ' + v.word + '.' });
@@ -65,6 +67,7 @@ const readPoem = {
     stage.setPrompt(el('div', { class: 'story-title', text: it.title }));
     const page = el('div', { class: 'story-page' }, it.lines.map(l => tappableLine(audio, l)));
     stage.setBody(page);
+    // line by line (the choices appear only after the poem), so a tapped word stops just that line
     for (const l of it.lines) { await audio.say(l, { interrupt: false }); await wait(150); }
     const q = it.rhymeQuestion;
     const items = shuffle(q.choices).map(c => ({ id: c.label, pic: c.pic, label: c.label, ok: c.ok, say: c.label }));
@@ -176,7 +179,8 @@ async function calmStory(story) {
     host.replaceChildren(page);
     await audio.say(screen.text);
     if (screen.choice) {
-      const items = shuffle(screen.choice.options).map(o => ({ id: o.text, pic: o.pic, label: o.text, ok: o.quality === 'best', say: o.text, feedback: o.feedback }));
+      // a good-but-not-best choice hears its own warm feedback (choiceGrid says `why` before anything else)
+      const items = shuffle(screen.choice.options).map(o => ({ id: o.text, pic: o.pic, label: o.text, ok: o.quality === 'best', say: o.text, feedback: o.feedback, why: o.quality === 'best' ? null : o.feedback }));
       const grid = choiceGrid({ audio, prompt: screen.choice.prompt, items, praise: items.find(i => i.ok).feedback, revealText: items.find(i => i.ok).feedback });
       grid.el.classList.add('one-col');
       page.append(promptBar(audio, screen.choice.prompt), grid.el);
@@ -225,11 +229,10 @@ async function courtyard() {
     ]);
     host.replaceChildren(page);
     await audio.say(sc.text + ' What would you do?');
-    const items = shuffle(sc.choices).map(c => ({ id: c.text, pic: c.pic, label: c.text, ok: c.quality === 'best', say: c.text }));
+    // each choice's warm feedback is its `why`, so choiceGrid orders the lines and never talks over the reveal
+    const items = shuffle(sc.choices).map(c => ({ id: c.text, pic: c.pic, label: c.text, ok: c.quality === 'best', say: c.text, why: c.quality === 'best' ? null : c.feedback }));
     const grid = choiceGrid({ audio, prompt: 'What would you do?', items, praise: sc.choices.find(c => c.quality === 'best').feedback, revealText: sc.choices.find(c => c.quality === 'best').feedback });
     grid.el.classList.add('one-col');
-    // Every option speaks its own warm feedback when tapped, even the not-great ones.
-    grid.el.querySelectorAll('.choice').forEach((b, i) => b.addEventListener('click', () => { const c = sc.choices.find(x => x.text === items[i].id); if (c && c.quality !== 'best') setTimeout(() => audio.say(c.feedback), 100); }, { capture: true }));
     page.appendChild(grid.el);
     await grid.done;
     if (left) return;

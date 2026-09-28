@@ -19,6 +19,13 @@ function render() {
   const rescued = s.squishies.rescued;
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level }));
   const placed = s.kingdom.placed;
+  // combining two devices can leave a decoration off the grid or on a taken spot: move it to a free one
+  const used = new Set();
+  for (const p of placed) {
+    if (p.spot < SPOTS && !used.has(p.spot)) { used.add(p.spot); continue; }
+    const free = [...Array(SPOTS).keys()].find(i => !used.has(i) && !placed.some(q => q !== p && q.spot === i));
+    if (free !== undefined) { p.spot = free; used.add(free); ctx.economy.persist(); }
+  }
   const owned = new Set(placed.map(p => p.itemId));
   let placing = null;
 

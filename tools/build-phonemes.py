@@ -35,7 +35,9 @@ TMP = Path(tempfile.mkdtemp(prefix='pq-phon-'))
 
 # id: (method, source, target ms)
 PLAN = {
-    'a':  ('held', 'æːːː', 480),  'e':  ('held', 'ɛːːː', 480),  'i':  ('held', 'ɪːːː', 480),
+    # short i: Kokoro turns a held ɪ into "ee" (F1 ~280 Hz, like "see"), so the vowel is cut from real words
+    # and stretched; see word_vowel below
+    'a':  ('held', 'æːːː', 480),  'e':  ('held', 'ɛːːː', 480),  'i':  ('word_vowel', 'pig kid fish', 420),
     'o':  ('held', 'ɑːːː', 480),  'u':  ('held', 'ʌːːː', 480),
     'ae': ('held', 'eːːɪ', 520),  'ee': ('held', 'iːːː', 520),  'ie': ('held', 'aːːɪ', 520),
     'oe': ('held', 'oːːʊ', 520),  'ue': ('held', 'juːːː', 540),
@@ -247,6 +249,22 @@ def build_one(v, pid):
         return np.concatenate([a, np.zeros(int(SR * 0.004), dtype=np.float32), b]), {}
     method, src, target = PLAN[pid]
     info = {'method': method, 'source': src}
+    if method == 'word_vowel':
+        # the steady vowel of each source word; the longest one is stretched to the target length.
+        # ref_F1 = the vowel's F1 in those words, so a test can check the clip is the same vowel.
+        segs = []
+        for w in src.split():
+            seg = steady(v.say(w), 5, 30)
+            segs.append(seg[int(len(seg) * 0.12): int(len(seg) * 0.88)])
+        f1s = [formants(sg)[0] for sg in segs]
+        seg = max(segs, key=len)
+        y = envelope(stretch(seg, target, pid), 30, 90)
+        f1, f2 = formants(seg)
+        info['F1'], info['F2'] = round(f1), round(f2)
+        info['ref_F1'] = round(float(np.median(f1s)))
+        (lo1, hi1), (lo2, hi2) = FORMANTS[pid]
+        info['formants_in_range'] = bool(lo1 <= f1 <= hi1 and lo2 <= f2 <= hi2)
+        return y, info
     if method == 'held':
         x = v.say(src, phonemes=True)
         if pid in ('m', 'n', 'ng'):

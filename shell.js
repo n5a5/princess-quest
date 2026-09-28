@@ -12,7 +12,8 @@ import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick 
 import { lunaSVG, gemSVG, chestSVG, placeArtSVG, svgFrom, starFieldEl } from './shared/characters.js';
 import { flyGems } from './shared/encounter.js';
 
-const economy = createEconomy({ storage: localStorage });
+// If the browser refuses to store the save, say so once instead of losing progress silently.
+const economy = createEconomy({ storage: localStorage, onSaveError: () => toast('Progress could not be saved on this device. Ask a grown-up to check Parent Corner.', 6000) });
 const adaptive = createAdaptive({ economy });
 const content = createContentLoader();
 const speech = createSpeech({ settings: economy.save.settings, onChange: () => economy.persist() });
@@ -191,7 +192,7 @@ function showPin() {
       render();
       if (entry.length === 4) {
         if (entry === economy.save.child.pin) {
-          try { sessionStorage.setItem('arcade.parentOk', '1'); } catch {}
+          try { sessionStorage.setItem('arcade.parentOk', String(Date.now())); } catch {}
           location.href = 'parent/index.html';
         }
         else { entry = ''; render(); toast('Try again'); }
@@ -225,7 +226,9 @@ function onKey(e) {
   if (/^[1-9]$/.test(e.key)) {
     const list = keyTargets();
     const b = list[Number(e.key) - 1];
-    if (b) { e.preventDefault(); b.focus({ preventScroll: true }); b.click(); }
+    // press without leaving focus on the button, so a later Space or Enter replays or presses Done
+    // instead of pressing this button again
+    if (b) { e.preventDefault(); b.click(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); }
     return;
   }
   if (e.key === 'r' || e.key === 'R' || (e.key === ' ' && (!t || t === document.body))) {

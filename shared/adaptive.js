@@ -7,7 +7,7 @@
 //
 // Outcome types recorded per item:
 //   firstTry    correct on the first attempt                  → full evidence of knowing
-//   scaffolded  correct after the glow hint (second attempt)  → half evidence
+//   scaffolded  correct after the glow hint (second attempt)  → no evidence of knowing (the hint did the work)
 //   revealed    answer shown after two misses                 → evidence of not knowing
 //   abandoned   left the encounter mid-item                   → ignored for mastery, logged
 // Items with fewer than 3 choices move the estimate very little (p_guess = 1/choices).
@@ -47,8 +47,10 @@ export const SUBSKILLS = [
 // unless nothing else is available.
 export const GROUPS = { reading: ['meadow', 'woods', 'well'], math: ['caverns', 'falls'] };
 
-export const BKT = { pInit: 0.25, pTransit: 0.15, pSlip: 0.10 };
-export const PROMOTE = { minP: 0.85, minFirstTry: 6, minDays: 2 };
+// pTransit was 0.15: with half credit for hinted answers that promoted a child who never answered unaided.
+export const BKT = { pInit: 0.25, pTransit: 0.05, pSlip: 0.10 };
+// recent: of the last `of` scored items at this stage, at least `need` must be unaided first tries.
+export const PROMOTE = { minP: 0.85, minFirstTry: 6, minDays: 2, recent: { need: 7, of: 8 } };
 export const RETEACH_P = 0.4;
 export const QUEST_GEMS = 10;
 const TIER_WEIGHT = { 1: 3, 2: 1.6, 3: 0.7 };
@@ -108,19 +110,22 @@ export function createAdaptive({ economy }) {
     gpcMastery(id, gpc) { const e = entry(id); return (e.gpc[gpc] && e.gpc[gpc].p) ?? BKT.pInit; },
 
     // Records one item. Returns { promoted, reteach }.
-    record({ subskill, outcome, choices = 3, review = false, itemId = null, gpc = null }) {
+    record({ subskill, outcome, choices = 3, review = false, retry = false, itemId = null, gpc = null, fam = null }) {
       const e = entry(subskill);
       const day = economy.today();
       const ok = outcome === 'firstTry';
       e.lastPracticed = day;
-      economy.logResult({ subskill, ok, firstTry: ok, outcome, review, stage: e.stage });
+      economy.logResult({ subskill, ok, firstTry: ok, outcome, review: review || retry || choices < 2, stage: e.stage, choices, fam });
       if (outcome === 'revealed' && itemId) api.noteMiss(itemId);
       const result = { promoted: false, reteach: false };
       if (outcome === 'abandoned') { economy.persist(); return result; }
       // An introduction or a self-check has one "choice": it is exposure, not evidence. Log it, do not score it.
       if (choices < 2) { economy.persist(); return result; }
-      const evidence = outcome === 'firstTry' ? 1 : outcome === 'scaffolded' ? 0.5 : 0;
-      const pGuess = Math.min(0.5, 1 / Math.max(2, choices));
+      // A retry comes straight after the answer was shown: getting it right then says nothing new.
+      if (retry) { economy.persist(); return result; }
+      const evidence = outcome === 'firstTry' ? 1 : 0;
+      // children also guess by elimination, so a lucky guess is a little likelier than 1 in `choices`
+      const pGuess = Math.min(0.6, 1 / Math.max(2, choices) + 0.1);
       e.p = bktStep(e.p, evidence, pGuess);
       if (gpc) {
         const g = e.gpc[gpc] || (e.gpc[gpc] = { p: BKT.pInit, n: 0 });
@@ -130,7 +135,10 @@ export function createAdaptive({ economy }) {
       const firstTries = Object.values(e.firstTryDays).reduce((a, b) => a + b, 0);
       const days = Object.keys(e.firstTryDays).length;
       const maxStage = def(subskill).stages.length - 1;
-      if (e.p >= PROMOTE.minP && firstTries >= PROMOTE.minFirstTry && days >= PROMOTE.minDays && e.stage < maxStage) {
+      // two-choice items (the controller's easy mode) are half guessable: they never count toward promotion
+      const lately = save().log.filter(r => r.subskill === subskill && r.stage === e.stage && !r.review && r.choices >= 3).slice(-PROMOTE.recent.of);
+      const recentOk = lately.length >= PROMOTE.recent.of && lately.filter(r => r.ok).length >= PROMOTE.recent.need;
+      if (e.p >= PROMOTE.minP && recentOk && firstTries >= PROMOTE.minFirstTry && days >= PROMOTE.minDays && e.stage < maxStage) {
         e.stage++; e.promotions++; e.firstTryDays = {}; e.p = 0.5; e.gpc = {};
         result.promoted = true;
       }
@@ -139,15 +147,27 @@ export function createAdaptive({ economy }) {
       return result;
     },
 
+    // Success-rate controller (after GraphoGame): keep first-try success near 80% by changing how many
+    // choices an item offers. Struggling (under 60% on the last 8 real items) → one fewer look-alike;
+    // cruising (90%+ on 6 or more) → one more. The count is logged with each item so evidence stays honest.
+    choiceCount(id, base = 3) {
+      def(id);
+      const rows = save().log.filter(r => r.subskill === id && !r.review).slice(-8);
+      if (rows.length < 4) return base;
+      const rate = rows.filter(r => r.ok).length / rows.length;
+      if (rate < 0.6) return Math.max(2, base - 1);
+      if (rate >= 0.9 && rows.length >= 6) return base + 1;
+      return base;
+    },
     accuracy(id, n = 20) {
-      const rows = save().log.filter(r => r.subskill === id).slice(-n);
+      const rows = save().log.filter(r => r.subskill === id && !(r.choices < 2)).slice(-n);
       if (!rows.length) return null;
       return rows.filter(r => r.ok).length / rows.length;
     },
     // Trend over 14 days: first-try rate of the last 7 days minus the 7 before. null when too little data.
     trend(id) {
       const today = economy.today();
-      const rows = save().log.filter(r => r.subskill === id && diffDays(r.day, today) < 14);
+      const rows = save().log.filter(r => r.subskill === id && !(r.choices < 2) && diffDays(r.day, today) < 14);
       const recent = rows.filter(r => diffDays(r.day, today) < 7), earlier = rows.filter(r => diffDays(r.day, today) >= 7);
       if (recent.length < 5 || earlier.length < 5) return null;
       const rate = xs => xs.filter(r => r.ok).length / xs.length;
@@ -222,9 +242,12 @@ export function createAdaptive({ economy }) {
       }
       return stops;
     },
-    // Review picks: mastered-ish skills in this cabinet, least recently practised first.
+    // Review picks: skills in this cabinet already mastered at their last stage (nothing left to promote),
+    // never today's target, least recently practised first. Marking a skill still being taught as review
+    // would stop its first tries counting toward promotion.
     reviewSkills(cabinet, n = 2) {
-      return SUBSKILLS.filter(s => s.cabinet === cabinet && entry(s.id).p >= 0.6)
+      const target = api.targetFor(cabinet);
+      return SUBSKILLS.filter(s => s.cabinet === cabinet && s.id !== target && entry(s.id).p >= PROMOTE.minP && entry(s.id).stage >= s.stages.length - 1)
         .sort((a, b) => (api.daysSince(b.id) ?? 99) - (api.daysSince(a.id) ?? 99))
         .slice(0, n).map(s => s.id);
     },

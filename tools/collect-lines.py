@@ -62,6 +62,9 @@ def from_json(name):
     for k, pool in J('praise.json').items():
         for p in pool: lines += sentences(p.replace('{name}', name))
     for s in J('sentences.json')['sentences']: lines.append(s['text'])
+    for b in J('books.json')['books']:
+        lines.append(b['title'] + '.'); lines.append(b['question']['prompt'])
+        for p in b['pages']: lines += sentences(p['text'])
     return [(l, False) for l in lines]
 
 
@@ -76,6 +79,8 @@ def from_code():
         src = f.read_text(encoding='utf-8')
         for m in LIT.finditer(src):
             text = m.group(1).replace("\\'", "'")
+            if re.match(r'^(ELA|MA)\.[A-Z]', text):  # curriculum codes, never spoken
+                continue
             before = src[:m.start()].rstrip()[-1:] if src[:m.start()].rstrip() else ''
             after = src[m.end():].lstrip()[:1]
             glued_before, glued_after = before == '+', after == '+'
@@ -119,7 +124,7 @@ def gems(n): return f'{n} gem' if n == 1 else f'{n} gems'
 # Each piece must still appear in the code (tests/content.test.js), so a reworded prompt is caught.
 PIECES = [
     'Build the word', 'That picture is', 'The word says', 'This says', 'Say', 'slowly.', 'Which one rhymes with',
-    'That is still', 'Now it is', 'It is', 'That is', 'starts with', 'ends with', 'has', 'Which door says', 'That door says',
+    'That is still', 'Now it is', 'It is', 'That is', 'starts with', 'ends with', 'has', 'Which wish door says', 'That door says',
     'This door says', 'Spell the wish word', 'from memory.', 'Find the word', 'Look for', 'Luna has', 'gem.', 'gems.',
     'gem in her pouch.', 'gems in her pouch.', 'She finds', 'more.', 'She gives', 'to Rosie.', 'to Minty.', 'to Sunny.',
     'The crystal door needs', 'gems to open.', 'gems to share with Rosie.', 'Luna keeps', 'Luna finds', 'more gems.',
@@ -131,11 +136,23 @@ PIECES = [
     'What word is left?', 'What word is it now?', 'is', 'more is', 'take away', 'make', 'and one more is', 'and one less is',
     'Which one starts with', 'Which one ends with', 'Which one has', 'Which picture starts with', 'Which picture ends with',
     'do not sound the same at the end.', 'Which basket has the most?', 'Which basket has the fewest?',
+    'its sound?', 'The pattern goes', 'again and again.', 'comes next.', 'Now the path goes', 'Say it slowly:',
+    # reveal lines (the answer shown after a second miss)
+    'There were', 'gems long.', 'without', 'has the most.', 'has the fewest.', 'We can measure', 'how long it is.',
+    'how heavy it is.', 'how much it holds.', 'is longer.', 'is heavier.', 'is taller.', 'has more.', 'holds more.',
+    'They are the same length.', 'They weigh the same.', 'They are the same height.', 'They have the same.', 'They hold the same.',
 ]
+SQUISHY_TOWER_NAMES = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble']  # shared/characters.js SQUISHY_KINDS
 SLOT_WORDS = ['pink Squishy', 'green Squishy', 'yellow Squishy', 'tulip', 'blossom', 'daisy', 'caterpillar', 'bee', 'butterfly', 'apple',
               'strawberry', 'lemon', 'pink', 'green', 'yellow', 'flowers', 'bugs', 'fruit', 'circle', 'square', 'triangle', 'rectangle',
               'sphere', 'cube', 'cone', 'cylinder', 'Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud',
-              'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'gem', 'gems', 'more', 'less']
+              'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'gem', 'gems', 'more', 'less',
+              # Rainbow Path pattern names (falls.js PAT_NAME)
+              'heart', 'clover', 'star', 'moon', 'fire', 'purple', 'blue', 'orange',
+              # Measure the Falls things (falls.js OBJECTS, HEAVY, HOLDS) and the jars
+              'wand', 'ribbon', 'vine', 'scarf', 'ladder', 'A', 'An', 'rock', 'feather', 'pumpkin', 'leaf', 'book', 'balloon', 'apple',
+              'spoon', 'cup', 'bottle', 'jug', 'bucket', 'bathtub', 'pink jar', 'green jar', 'The']
+SLOT_WORDS += [n + "'s tower" for n in SQUISHY_TOWER_NAMES]
 # The code builds some pieces from parts ('gems' comes from gems(n), names from a list), so each check is
 # the part of the piece that is literally in the code.
 def _check(p):
@@ -146,6 +163,8 @@ def _check(p):
     m2 = re.match(r'^Which (one|picture) (starts|ends) with$|^Which one has$', p)
     if m2: return 'Which ' + (m2.group(1) or 'one') + ' '
     if p.startswith('Which basket has the '): return 'Which basket has the '
+    if p.startswith('They '): return p[5:-1]  # 'They ' + sameWord + '.', sameWord literal in falls.js
+    if p in ('has the most.', 'has the fewest.'): return ' has the '
     p = p.replace('Now take away the first sound,', 'Now take away the ').replace('Now take away the last sound,', 'Now take away the ')
     p = p.replace('and one more is', ' and one ').replace('and one less is', ' and one ')
     return p

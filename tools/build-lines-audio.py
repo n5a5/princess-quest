@@ -18,6 +18,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--model', required=True); ap.add_argument('--voices', required=True)
     ap.add_argument('--voice', default='af_heart'); ap.add_argument('--speed', type=float, default=0.9)
+    ap.add_argument('--retrim', action='store_true', help='re-render existing lines whose lead trim changes with the first-word window')
     args = ap.parse_args()
     lines = json.loads((ROOT / 'content' / 'lines.json').read_text(encoding='utf-8'))
     v = pa.Voice(args.model, args.voices, args.voice)
@@ -27,10 +28,17 @@ def main():
         fid = hashlib.sha1(f'{args.voice}|{args.speed}|{text}'.encode('utf-8')).hexdigest()[:12]
         index[key] = fid
         out = OUT / f'{fid}.ogg'
-        if out.exists():
+        first = text.split()[0].strip('"\'')
+        if out.exists() and not (args.retrim and first.lower().startswith(pa.VOICELESS + pa.VOICED_STOPS)):
             continue
-        x = pa.trim_silence(v.say(text, speed=args.speed), -45, 5)
-        x, _ = pa.trim_lead_murmur(x, text.split()[0].strip('"\''))
+        raw = pa.trim_silence(v.say(text, speed=args.speed), -45, 5)
+        # the murmur search stays inside the first word (about 450 ms) and never cuts more than 140 ms
+        x, ms = pa.trim_lead_murmur(raw, first, window_ms=450, max_ms=140)
+        if out.exists():
+            _, old = pa.trim_lead_murmur(raw, first)
+            if old == ms:
+                continue
+            print(f'retrim {text[:40]!r}: was {old} ms, now {ms} ms')
         x = pa.normalise_peak(pa.fade(pa.trim_silence(x, -45, 20), 5, 25))
         pa.encode_opus(x, out, 24)
         made += 1

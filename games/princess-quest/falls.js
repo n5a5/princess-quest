@@ -14,18 +14,27 @@ const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const outcomeOf = r => r.revealed ? 'revealed' : r.misses ? 'scaffolded' : 'firstTry';
 
 // Objects drawn as simple SVG bars so length differences are honest and scalable.
-function wandSVG(len, color, label) {
+function wandSVG(len, color, label, { exact = false } = {}) {
+  if (exact) { // gem measuring: exactly `len` gems long (26 px each), star inside the last gem's length
+    const w = len * 26, sx = 10 + w - 10;
+    return `<svg viewBox="0 0 ${w + 20} 44" width="${w + 20}" height="44" xmlns="http://www.w3.org/2000/svg" aria-label="${label}"><rect x="10" y="16" width="${w}" height="12" rx="6" fill="${color}"/><path d="M${sx} 6 l4 8 l8 2 l-6 6 l2 8 l-8 -4 l-8 4 l2 -8 l-6 -6 l8 -2 z" fill="#E9B949"/></svg>`;
+  }
   const w = 40 + len * 26;
   return `<svg viewBox="0 0 ${w + 20} 44" width="${Math.min(w + 20, 330)}" height="44" xmlns="http://www.w3.org/2000/svg" aria-label="${label}"><rect x="10" y="16" width="${w}" height="12" rx="6" fill="${color}"/><path d="M${w + 4} 6 l4 8 l8 2 l-6 6 l2 8 l-8 -4 l-8 4 l2 -8 l-6 -6 l8 -2 z" fill="#E9B949"/></svg>`;
 }
 const OBJECTS = [
   { name: 'wand', color: '#7C5CC4' }, { name: 'ribbon', color: '#E2688F' }, { name: 'vine', color: '#4DB6A4' }, { name: 'scarf', color: '#7CC7F0' }, { name: 'ladder', color: '#E9B949' }
 ];
-const HEAVY = [['a rock', '🪨', 3], ['a feather', '🪶', 1], ['a pumpkin', '🎃', 3], ['a leaf', '🍃', 1], ['a book', '📚', 2], ['a balloon', '🎈', 1], ['a gem', '💎', 2], ['a cloud', '☁️', 1]];
-const HOLDS = [['a bucket', '🪣', 3], ['a cup', '☕', 1], ['a bathtub', '🛁', 3], ['a spoon', '🥄', 1], ['a jug', '🫗', 2], ['a bottle', '🍼', 1]];
+// Weight classes (1 light, 2 middle, 3 heavy): only things from different classes are compared, so the answer
+// is plain to a child. A rock and a pumpkin are never put on the scale as "the same".
+const HEAVY = [['a rock', '🪨', 3], ['a feather', '🪶', 1], ['a pumpkin', '🎃', 3], ['a leaf', '🍃', 1], ['a book', '📚', 2], ['a balloon', '🎈', 1], ['an apple', '🍎', 2]];
+// Capacity ranks in real-world order; only pairs at least two ranks apart are compared (never cup vs bottle).
+const HOLDS = [['a spoon', '🥄', 1], ['a cup', '☕', 2], ['a bottle', '🍼', 3], ['a jug', '🫗', 4], ['a bucket', '🪣', 5], ['a bathtub', '🛁', 6]];
+const GAP = { heavy: 1, holds: 2 };
 // Balance scale: the heavier pan sits lower. left/right are emoji; tilt = -1 (left heavier), 1 (right heavier).
-function scaleSVG(left, right, tilt) {
-  const dy = tilt * 16;
+// The beam turns 9 degrees about its middle; each pan hangs from its end of the beam (80 px out).
+export function scaleSVG(left, right, tilt) {
+  const dy = -tilt * Math.round(80 * Math.sin(9 * Math.PI / 180)); // left pan offset: down when the left is heavier
   return `<svg viewBox="0 0 240 150" width="240" height="150" xmlns="http://www.w3.org/2000/svg" aria-label="balance scale">
     <rect x="112" y="40" width="16" height="90" rx="6" fill="#9A7FD6"/><rect x="70" y="126" width="100" height="12" rx="6" fill="#7C5CC4"/>
     <g transform="rotate(${tilt * 9} 120 44)"><rect x="20" y="40" width="200" height="8" rx="4" fill="#C9971F"/></g>
@@ -45,6 +54,8 @@ function towerSVG(blocks, color, label) {
   return `<svg viewBox="0 0 80 ${h}" width="80" height="${h}" xmlns="http://www.w3.org/2000/svg" aria-label="${label}">${rects}<ellipse cx="40" cy="${h - blocks * bh - 14}" rx="22" ry="14" fill="#FFF8EE" stroke="#D8CCEB" stroke-width="2"/><circle cx="33" cy="${h - blocks * bh - 16}" r="2.5" fill="#33254F"/><circle cx="47" cy="${h - blocks * bh - 16}" r="2.5" fill="#33254F"/><path d="M34 ${h - blocks * bh - 9} q6 5 12 0" stroke="#33254F" stroke-width="2" fill="none"/></svg>`;
 }
 
+// "a rock" -> "A rock"; "wand" -> "The wand" (never "The a rock")
+const theName = n => /^an? /.test(n) ? n[0].toUpperCase() + n.slice(1) : 'The ' + n;
 const measure = {
   id: 'measure', subskill: 'measure', itemId: it => 'measure:' + it.kind + ':' + it.key,
   async play(stage, it, ctx, { praiseLine }) {
@@ -80,7 +91,7 @@ const measure = {
         ...[a, b].map(x => ({ id: x.name, pic: x.svg ? { svg: x.svg } : x.pic, label: x.name, ok: !it.equal && x === (it.answerIsFirst ? a : b), say: x.name })),
         { id: 'same', pic: '', label: 'same', ok: !!it.equal, say: 'the same', textOnly: true }
       ];
-      const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: it.equal ? 'They ' + sameWord + '.' : 'The ' + (it.answerIsFirst ? a.name : b.name) + ' ' + word + '.' });
+      const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: it.equal ? 'They ' + sameWord + '.' : theName(it.answerIsFirst ? a.name : b.name) + ' ' + word + '.' });
       grid.el.classList.add(it.attr === 'long' ? 'one-col' : 'three');
       grid.el.querySelectorAll('.choice').forEach((c, i) => { if (items[i].textOnly) { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); } });
       stage.setBody(grid.el);
@@ -114,7 +125,7 @@ const measure = {
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div'));
     const gemsRow = el('div', { class: 'row', style: 'gap:0;font-size:28px;justify-content:flex-start;padding-left:10px' }, Array.from({ length: it.n }, () => el('span', { text: '💎', style: 'width:26px;text-align:center' })));
-    const vis = el('div', { class: 'board' }, [el('div', { html: wandSVG(it.n, '#7C5CC4', it.thing), style: 'padding-left:0' }), gemsRow]);
+    const vis = el('div', { class: 'board' }, [el('div', { html: wandSVG(it.n, '#7C5CC4', it.thing, { exact: true }), style: 'padding-left:0;line-height:0' }), gemsRow]);
     const set = new Set([it.n]); while (set.size < 3) set.add(Math.max(1, it.n + pick([-2, -1, 1, 2])));
     const items = shuffle([...set]).map(v => ({ id: String(v), pic: '', label: String(v), ok: v === it.n, say: String(v) }));
     const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'It is ' + it.n + ' gems long.' });
@@ -126,18 +137,19 @@ const measure = {
 };
 
 const SORT_SETS = [
-  { attr: 'color', bins: [['pink', '#F5A3BD'], ['green', '#8FDCCB'], ['yellow', '#F9D77B']] },
+  { attr: 'color', bins: [['pink', '#F5A3BD'], ['green', '#8FDCCB'], ['yellow', '#F9D77B']], marks: { pink: '🩷', green: '💚', yellow: '💛' } },
   // Each thing carries a spoken name: tapping it says "tulip", never the emoji (which devices read differently).
   { attr: 'kind', bins: [['flowers', [['🌷', 'tulip'], ['🌸', 'blossom'], ['🌼', 'daisy']]], ['bugs', [['🐛', 'caterpillar'], ['🐝', 'bee'], ['🦋', 'butterfly']]], ['fruit', [['🍎', 'apple'], ['🍓', 'strawberry'], ['🍋', 'lemon']]]] }
 ];
 const dataSort = {
-  id: 'sort', subskill: 'data-sort', itemId: it => 'sort:' + it.attr + ':' + it.items.length,
+  id: 'sort', subskill: 'data-sort', itemId: it => 'sort:' + it.attr + ':' + it.counts.join('') + ':' + it.ask + ':' + it.which,
   async play(stage, it, ctx, { praiseLine }) {
     const audio = ctx.audio;
     const prompt = it.attr === 'color' ? 'The Squishies got mixed up! Help Luna sort them by color. Tap a Squishy, then tap its basket.' : 'Help Luna tidy the garden. Tap a thing, then tap the basket where it belongs.';
     stage.setPrompt(promptBar(audio, prompt));
     stage.setObject(el('div'));
-    let misses = 0, picked = null, placed = 0;
+    let picked = null, placed = 0;
+    const slipped = new Set(); // objects that needed help; one slip each at most
     const result = await new Promise(resolve => {
       const bins = it.bins.map(b => ({ ...b, count: 0, el: null }));
       const tray = el('div', { class: 'row' });
@@ -149,10 +161,14 @@ const dataSort = {
         tray.appendChild(b); return b;
       });
       bins.forEach(bin => {
-        const cell = el('button', { class: 'choice', type: 'button', 'aria-label': bin.name + ' bin', style: 'min-height:96px;min-width:90px;flex-direction:column;justify-content:flex-end' }, [el('div', { class: 'stack', style: 'display:flex;flex-direction:column-reverse;gap:2px;min-height:60px' }), el('div', { class: 'label', text: bin.name })]);
+        // a basket shows what goes in it: its colour, or one of its things
+        const tint = bin.color ? `background:${bin.color}55;border-color:${bin.color}` : '';
+        const cell = el('button', { class: 'choice basket', type: 'button', 'aria-label': bin.name + ' basket', style: 'min-height:96px;min-width:90px;flex-direction:column;justify-content:flex-end;' + tint },
+          [el('div', { class: 'stack', style: 'display:flex;flex-direction:column-reverse;gap:2px;min-height:60px' }), el('div', { class: 'label', text: (bin.mark || bin.pic || '') + ' ' + bin.name })]);
         bin.el = cell;
         cell.addEventListener('click', async () => {
-          if (!picked) { audio.say('Tap something first, then tap a basket.'); return; }
+          if (cell.hasAttribute('disabled')) return;
+          if (!picked) { audio.say('The ' + bin.name + ' basket. Tap something first, then tap a basket.'); return; }
           const item = picked;
           if (item.bin === bin.name) {
             bin.count++;
@@ -161,15 +177,15 @@ const dataSort = {
             cell.querySelector('.stack').appendChild(chip);
             const ie = itemEls[it.items.indexOf(item)]; ie.setAttribute('disabled', ''); ie.classList.remove('picked'); ie.style.visibility = 'hidden'; picked = null; placed++;
             if (placed === it.items.length) {
-              await audio.say('All sorted! Look, the baskets make a chart. ' + it.question);
-              // bar chart from the bins + a 3-choice question
+              bins.forEach(b => b.el.setAttribute('disabled', ''));
+              // the filled baskets are the chart: one picture per thing, stacked, so she can count each column
               const max = Math.max(...bins.map(b => b.count));
-              const chart = el('div', { class: 'row', style: 'align-items:flex-end;gap:18px' }, bins.map(b => el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:4px' }, [el('div', { style: `width:44px;height:${20 + b.count * 22}px;border-radius:10px 10px 4px 4px;background:${b.color || '#C7B4F0'};border:2px solid #9A7FD6` }), el('div', { class: 'label', text: b.name, style: 'font-weight:700' })])));
+              const chart = binRow;
               const min = Math.min(...bins.map(x => x.count));
               let items, revealText;
               if (it.ask === 'most' || it.ask === 'fewest') {
                 const answerBin = it.ask === 'most' ? bins.find(b => b.count === max) : bins.find(b => b.count === min);
-                items = bins.map(b => ({ id: b.name, pic: b.pic || '', label: b.name, ok: b === answerBin, say: b.name }));
+                items = bins.map(b => ({ id: b.name, pic: b.mark || b.pic || '', label: b.name, ok: b === answerBin, say: 'The ' + b.name + ' basket.' }));
                 revealText = answerBin.name + ' has the ' + it.ask + '. ' + answerBin.count + '.';
               } else {
                 const answer = it.ask === 'howmany' ? bins[it.which].count : bins.find(b => b.count === max).count - bins.find(b => b.count === min).count;
@@ -181,14 +197,18 @@ const dataSort = {
               grid.el.classList.add('three');
               grid.el.querySelectorAll('.choice').forEach((c, i) => { if (items[i].textOnly) { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); } });
               stage.setBody(chart, grid.el);
+              stage.setPrompt(promptBar(audio, it.question));
+              await audio.say('All sorted! Look, the baskets make a chart. ' + it.question);
               const r = await grid.done;
-              resolve({ outcome: misses === 0 && !r.misses ? 'firstTry' : (misses <= 1 && !r.revealed) ? 'scaffolded' : 'revealed', choices: 3, gpc: 'sort-' + it.attr });
+              // scored on the question and on how many things went in first time (a slip or two is not a reveal)
+              const slips = slipped.size / it.items.length;
+              resolve({ outcome: r.revealed ? 'revealed' : !r.misses && slips === 0 ? 'firstTry' : slips > 0.5 ? 'revealed' : 'scaffolded', choices: 3, gpc: 'sort-' + it.attr });
             }
           } else {
-            misses++; cell.classList.add('wobble'); setTimeout(() => cell.classList.remove('wobble'), 500); stage.luna('think', 900);
+            cell.classList.add('wobble'); setTimeout(() => cell.classList.remove('wobble'), 500); stage.luna('think', 900);
             const right = bins.find(b => b.name === item.bin).el;
-            if (misses === 1) { right.classList.add('glow'); setTimeout(() => right.classList.remove('glow'), 2500); await audio.say(item.name + ' goes in the ' + item.bin + ' basket.'); }
-            else right.click();
+            if (!slipped.has(item)) { slipped.add(item); right.classList.add('glow'); setTimeout(() => right.classList.remove('glow'), 2500); await audio.say(item.name + ' goes in the ' + item.bin + ' basket.'); }
+            else right.click(); // the same thing missed twice: Luna puts it in
           }
         });
         binRow.appendChild(cell);
@@ -203,6 +223,9 @@ const dataSort = {
 // Four elements per set: a unit uses two or three, so "find the odd one" can always drop in a gem that is
 // clearly foreign to the pattern instead of a neighbour's colour (which would make two gems look wrong).
 const PATTERN_SETS = [['🩷', '💙', '💛', '💚'], ['🌷', '🌼', '🌸', '🍀'], ['💎', '⭐', '🌙', '🔥'], ['🟣', '🟢', '🟠', '🔵']];
+const PAT_NAME = { '🩷': 'pink heart', '💙': 'blue heart', '💛': 'yellow heart', '💚': 'green heart', '🌷': 'tulip', '🌼': 'daisy', '🌸': 'blossom', '🍀': 'clover',
+  '💎': 'gem', '⭐': 'star', '🌙': 'moon', '🔥': 'fire', '🟣': 'purple', '🟢': 'green', '🟠': 'orange', '🔵': 'blue' };
+const said = unit => unit.map(x => PAT_NAME[x] || x).join(', ');
 function patternFor(stageName) {
   const set = shuffle(pick(PATTERN_SETS));
   const unit = stageName === 'ab' ? [set[0], set[1]] : stageName === 'abb' ? [set[0], set[1], set[1]] : [set[0], set[1], set[2]];
@@ -211,7 +234,7 @@ function patternFor(stageName) {
   return { set, unit, seq };
 }
 const patterns = {
-  id: 'patterns', subskill: 'patterns', itemId: it => 'pattern:' + it.kind + ':' + it.unit.join(''),
+  id: 'patterns', subskill: 'patterns', itemId: it => 'pattern:' + it.kind + ':' + it.unit.join('') + (it.kind === 'fix' ? ':' + it.wrongAt : ''),
   async play(stage, it, ctx, { praiseLine }) {
     const audio = ctx.audio;
     if (it.kind === 'next') {
@@ -222,8 +245,8 @@ const patterns = {
       const row = el('div', { class: 'pattern-row' }, [...shown.map(p => el('div', { class: 'pat', text: p })), el('div', { class: 'pat hole', text: '?' })]);
       const answer = it.seq[it.seq.length - 1];
       const options = [answer, ...it.set.filter(x => x !== answer)].slice(0, 3);
-      const items = shuffle(options).map(p => ({ id: p, pic: p, ok: p === answer, say: p === answer ? 'this one' : 'not this one' }));
-      const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'The pattern goes ' + it.unit.join(', ') + ', again and again. This comes next.' });
+      const items = shuffle(options).map(p => ({ id: p, pic: p, ok: p === answer, say: PAT_NAME[p] || p }));
+      const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'The pattern goes ' + said(it.unit) + ', again and again. ' + (PAT_NAME[answer] || '') + ' comes next.' });
       grid.el.classList.add('three');
       stage.setBody(row, grid.el);
       await audio.say(prompt);
@@ -240,17 +263,18 @@ const patterns = {
       const row = el('div', { class: 'pattern-row' });
       const buttons = it.seq.map((p, i) => {
         const b = el('button', { class: 'pat', type: 'button', text: i === it.wrongAt ? it.wrongPic : p, 'aria-label': 'gem ' + (i + 1) });
+        if (i === it.wrongAt) b.dataset.answer = '1';
         b.addEventListener('click', async () => {
           if (b.hasAttribute('disabled')) return;
           audio.stop();
           if (i === it.wrongAt) {
             buttons.forEach(x => x.setAttribute('disabled', ''));
             b.textContent = p; b.classList.add('glow');
-            await audio.say('That one! Now the path goes ' + it.unit.join(', ') + ', again and again. ' + praiseLine());
+            await audio.say('That one! Now the path goes ' + said(it.unit) + ', again and again. ' + praiseLine());
             resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: it.seq.length, gpc: 'fix' });
           } else {
             misses++; b.classList.add('wobble'); setTimeout(() => b.classList.remove('wobble'), 500); stage.luna('think', 900);
-            if (misses === 1) { buttons[it.wrongAt].classList.add('glow'); await audio.say('Say it slowly: ' + it.unit.join(', ') + '. Which gem breaks the pattern?'); }
+            if (misses === 1) { buttons[it.wrongAt].classList.add('glow'); await audio.say('Say it slowly: ' + said(it.unit) + '. Which gem breaks the pattern?'); }
             else buttons[it.wrongAt].click();
           }
         });
@@ -292,7 +316,7 @@ const shapes = {
       const prompt = 'Luna is looking for a ' + it.name + '. Which one is it?';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
-      const items = shuffle([it.name, ...it.foils]).map(n => { const s = SHAPES3D.find(x => x[0] === n); return { id: n, pic: s[1], label: n, ok: n === it.name, say: n }; });
+      const items = shuffle([it.name, ...it.foils]).map(n => { const s = SHAPES3D.find(x => x[0] === n); return { id: n, pic: s[1], ok: n === it.name, say: n }; });
       const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'This is the ' + it.name + '.' });
       grid.el.classList.add('three');
       stage.setBody(grid.el);
@@ -332,23 +356,23 @@ function gen(family, stageName) {
       if (attr === 'tall') {
         const [o1, o2] = shuffle(OBJECTS).slice(0, 2); const h1 = rand(2, 6); let h2 = rand(2, 6); if (h2 === h1) h2 = h1 + (h1 < 6 ? 1 : -1);
         const [k1, k2] = shuffle(SQUISHY_KINDS).slice(0, 2);
-        if (Math.random() < 0.2) h2 = h1;
+        if (Math.random() < 0.3) h2 = h1;
         return { kind: 'compare', attr, key: 'tower' + h1 + h2, values: [h1, h2], equal: h1 === h2, pair: [{ name: k1.name + '\'s tower', svg: towerSVG(h1, k1.color, k1.name + '\'s tower') }, { name: k2.name + '\'s tower', svg: towerSVG(h2, k2.color, k2.name + '\'s tower') }], answerIsFirst: h1 > h2 };
       }
       if (attr === 'fill') {
         const f1 = pick([0.25, 0.45, 0.65, 0.9]); let f2 = pick([0.25, 0.45, 0.65, 0.9]); if (f2 === f1) f2 = f1 < 0.9 ? f1 + 0.25 : 0.25;
-        if (Math.random() < 0.2) f2 = f1;
+        if (Math.random() < 0.3) f2 = f1;
         return { kind: 'compare', attr, key: 'jar' + f1 + f2, values: [f1, f2], equal: f1 === f2, pair: [{ name: 'pink jar', svg: jarSVG(f1, '#F5A3BD', 'pink jar') }, { name: 'green jar', svg: jarSVG(f2, '#8FDCCB', 'green jar') }], answerIsFirst: f1 > f2 };
       }
       if (attr === 'long') {
         const [o1, o2] = shuffle(OBJECTS).slice(0, 2); const l1 = rand(2, 6); let l2 = rand(2, 6); if (l2 === l1) l2 = l1 + (l1 < 6 ? 1 : -1);
-        if (Math.random() < 0.2) l2 = l1;
+        if (Math.random() < 0.3) l2 = l1;
         return { kind: 'compare', attr, key: o1.name + o2.name, values: [l1, l2], equal: l1 === l2, pair: [{ name: o1.name, svg: wandSVG(l1, o1.color, o1.name) }, { name: o2.name, svg: wandSVG(l2, o2.color, o2.name) }], answerIsFirst: l1 > l2 };
       }
       const pool = attr === 'heavy' ? HEAVY : HOLDS;
-      let [x, y] = shuffle(pool).slice(0, 2);
-      if (Math.random() < 0.2) { const twin = pool.find(p => p !== x && p[2] === x[2]); if (twin) y = twin; }
-      if (x[2] === y[2] && Math.random() >= 0.2) y = pool.find(p => p[2] !== x[2]);
+      // two different things are never "the same" weight or size here; the pair is always clearly apart
+      const x = pick(pool);
+      const y = pick(pool.filter(p => Math.abs(p[2] - x[2]) >= GAP[attr]));
       return { kind: 'compare', attr, key: x[0] + y[0], values: [x[2], y[2]], equal: x[2] === y[2], pair: [{ name: x[0], pic: x[1] }, { name: y[0], pic: y[1] }], answerIsFirst: x[2] > y[2] };
     }
     if (stageName === 'order') {
@@ -362,10 +386,10 @@ function gen(family, stageName) {
     const st = stageName; const set = st === 'two' ? SORT_SETS[0] : pick(SORT_SETS);
     const ask = st === 'chart' ? pick(['most', 'fewest', 'howmany', 'more']) : st === 'three' ? pick(['most', 'fewest', 'howmany']) : 'most';
     const binCount = st === 'two' ? 2 : 3;
-    const bins = set.bins.slice(0, binCount).map(([name, v]) => ({ name, color: typeof v === 'string' ? v : null, pic: Array.isArray(v) ? v[0][0] : '' }));
+    const bins = set.bins.slice(0, binCount).map(([name, v]) => ({ name, color: typeof v === 'string' ? v : null, pic: Array.isArray(v) ? v[0][0] : '', mark: set.marks ? set.marks[name] : '' }));
     const items = [];
     // Counts are made distinct BEFORE the objects are drawn, so "most" and "fewest" always have one answer.
-    const counts = binCount === 2 ? [rand(2, 4), rand(2, 4)] : shuffle([2, 3, 4]);
+    const counts = binCount === 2 ? [rand(2, 4), rand(2, 4)] : st === 'chart' ? shuffle([1, 2, 3, 4, 5, 6]).slice(0, 3) : shuffle([2, 3, 4]);
     if (binCount === 2 && counts[0] === counts[1]) counts[1] = counts[1] === 4 ? 3 : counts[1] + 1;
     bins.forEach((b, i) => { const v = set.bins[i][1]; for (let k = 0; k < counts[i]; k++) items.push(typeof v === 'string' ? { name: b.name + ' Squishy', bin: b.name, pic: '', svg: squishySVG({ ...SQUISHY_KINDS[0], color: v, dark: '#33254F' }, { size: 44 }) } : { name: v[k % v.length][1], bin: b.name, pic: v[k % v.length][0] }); });
     const which = rand(0, bins.length - 1);
@@ -385,19 +409,30 @@ function gen(family, stageName) {
     if (stageName === '2d') { const names = SHAPES2D.map(s => s.name); const name = pick(names); return { kind: '2d', name, foils: shuffle(names.filter(n => n !== name)).slice(0, 2) }; }
     if (stageName === '3d') { const names = SHAPES3D.map(s => s[0]); const name = pick(names); return { kind: '3d', name, foils: shuffle(names.filter(n => n !== name)).slice(0, 2) }; }
     const tri = c => `<path d="M0 60 L60 60 L60 0 Z" fill="${c}"/>`;
-    const options = [
+    const sq = (x, c) => `<rect x="${x}" y="16" width="48" height="48" rx="4" fill="${c}"/>`;
+    const circ = (x, c) => `<circle cx="${x}" cy="40" r="28" fill="${c}"/>`;
+    if (Math.random() < 0.5) return { kind: 'compose', name: 'square', options: [
       { label: 'two triangles', ok: true, svg: `<g transform="translate(10,10)">${tri('#E2688F')}</g><g transform="translate(90,10) rotate(180 30 30)">${tri('#7CC7F0')}</g>` },
-      { label: 'two circles', ok: false, svg: `<circle cx="40" cy="40" r="28" fill="#4DB6A4"/><circle cx="120" cy="40" r="28" fill="#E9B949"/>` },
-      { label: 'a circle and a triangle', ok: false, svg: `<circle cx="40" cy="40" r="28" fill="#4DB6A4"/><g transform="translate(90,10)">${tri('#E2688F')}</g>` }
-    ];
-    return { kind: 'compose', name: 'square', options };
+      { label: 'two circles', ok: false, svg: circ(40, '#4DB6A4') + circ(120, '#E9B949') },
+      { label: 'a triangle and a circle', ok: false, svg: `<g transform="translate(10,10)">${tri('#E2688F')}</g>` + circ(120, '#4DB6A4') }
+    ] };
+    return { kind: 'compose', name: 'rectangle', options: [
+      { label: 'two squares', ok: true, svg: sq(14, '#E2688F') + sq(96, '#7CC7F0') },
+      { label: 'two circles', ok: false, svg: circ(40, '#4DB6A4') + circ(120, '#E9B949') },
+      { label: 'a square and a circle', ok: false, svg: sq(14, '#E2688F') + circ(120, '#4DB6A4') }
+    ] };
   }
 }
 const FAMILIES = { measure, sort: dataSort, patterns, shapes };
 
 function buildRound(kind) {
   const items = [];
-  const take = f => items.push({ family: f, item: gen(f, ctx.adaptive.stage(f.subskill)) });
+  const ids = new Set();
+  const take = f => {
+    let item = gen(f, ctx.adaptive.stage(f.subskill));
+    for (let k = 0; k < 8 && ids.has(f.itemId(item)); k++) item = gen(f, ctx.adaptive.stage(f.subskill));
+    ids.add(f.itemId(item)); items.push({ family: f, item });
+  };
   if (FAMILIES[kind]) { for (let i = 0; i < 6; i++) take(FAMILIES[kind]); return items; }
   // Today's rainbow: the planner's target twice, measuring and sorting always, one pattern, shapes only as a treat.
   const target = ctx.adaptive.targetFor('falls');
@@ -438,4 +473,4 @@ function showMenu() {
 export async function mount(h, c) { host = h; ctx = c; showMenu(); }
 export function unmount() { cancelled = true; host = null; }
 // Generators exposed for the stress tests in tests/generators.test.js (no DOM needed to generate).
-export const __test = { gen, FAMILIES, patternFor };
+export const __test = { gen, FAMILIES, patternFor, scaleSVG };

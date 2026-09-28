@@ -59,6 +59,70 @@ function idleNudge(stage, audio) {
   return stop;
 }
 
+// ---------- First-time demo and "show me" ----------
+// The first time an activity appears, Luna's pointing hand shows one practice item, unscored (after
+// onecourse's demo-first design). A 👆 button then stays beside Luna: it points at the answer, and an
+// item answered after pointing counts as "not known yet". Families opt in by marking the answer with
+// data-answer (and data-order on tiles, data-done on a Done button); the marker is never shown.
+const DEMO_FAMILIES = new Set(['gpc', 'spell', 'read', 'swap', 'scroll', 'seeds', 'blend', 'count', 'cavecount', 'oralswap', 'takeaway', 'rhyme', 'beats',
+  'onsetrime', 'heartap', 'spellheart', 'note', 'frames', 'trail', 'road', 'bridge', 'teen', 'stories', 'measure', 'patterns', 'shapes']);
+function answerTarget(root) {
+  if (root.querySelector('.tile.picked')) return root.querySelector('.slot:not(.filled)');
+  const tile = [...root.querySelectorAll('.tile[data-order]:not([disabled]):not(.used)')].sort((a, b) => a.dataset.order - b.dataset.order)[0];
+  if (tile) return tile;
+  const ans = [...root.querySelectorAll('[data-answer]')].find(x => !x.disabled && !x.dataset.answerDone && !x.classList.contains('gone'));
+  if (ans) return ans;
+  return [...root.querySelectorAll('[data-done]')].find(x => !x.disabled) || null;
+}
+function handAt(hand, target) {
+  const r = target.getBoundingClientRect();
+  hand.style.left = (r.left + r.width / 2) + 'px';
+  hand.style.top = (r.top + r.height * 0.55) + 'px';
+  hand.classList.add('show');
+}
+async function runDemo(stage, ctx, playing) {
+  let finished = false;
+  playing.then(() => { finished = true; }, () => { finished = true; });
+  const hand = el('div', { class: 'demo-hand', text: '👆', 'aria-hidden': 'true' });
+  document.body.appendChild(hand);
+  const quiet = async () => { for (let i = 0; i < 50 && ctx.audio.isBusy() && !finished && stage.root.isConnected; i++) await wait(200); };
+  await quiet();
+  // An activity with nothing to point at (no answer marker) gets no demo, and Luna does not promise one.
+  let first = null;
+  for (let k = 0; k < 8 && !first && !finished && stage.root.isConnected; k++) { first = answerTarget(stage.root); if (!first) await wait(400); }
+  if (!first) { hand.remove(); return false; }
+  if (!finished && stage.root.isConnected) await ctx.audio.say('Watch. Luna will show you how.');
+  let found = 0;
+  for (let step = 0; step < 16 && !finished && stage.root.isConnected; step++) {
+    await quiet();
+    const t = answerTarget(stage.root);
+    if (!t) { if (step > 5 && !found) break; await wait(500); continue; }
+    if (!stage.root.isConnected) break;
+    found++;
+    handAt(hand, t);
+    await wait(900);
+    t.dataset.answerDone = '1';
+    t.click();
+    await wait(450);
+  }
+  hand.remove();
+  return found > 0;
+}
+function showMeButton(stage) {
+  const b = el('button', { class: 'show-me', type: 'button', 'aria-label': 'Show me', text: '👆' });
+  b.addEventListener('click', async () => {
+    const t = answerTarget(stage.root);
+    if (!t) { const sp = stage.promptArea.querySelector('.speak-btn'); if (sp) sp.click(); return; }
+    // after the item is solved there is nothing to help with: the tap is not counted as help
+    if (!stage.root.querySelector('.choice.right, .sword.right')) stage.helpUsed = true;
+    const hand = el('div', { class: 'demo-hand', text: '👆', 'aria-hidden': 'true' });
+    document.body.appendChild(hand);
+    handAt(hand, t);
+    setTimeout(() => hand.remove(), 2200);
+  });
+  return b;
+}
+
 // Runs a round. items: [{ family, item }] pairs. Returns { stars, ratio, rescued, companion }.
 export async function runEncounterRound({ host, ctx, place, cabinetId, items, review = new Set() }) {
   const stage = createStage({ host, place, ctx });
@@ -68,31 +132,69 @@ export async function runEncounterRound({ host, ctx, place, cabinetId, items, re
   const retried = new Set();
   let firstTries = 0, total = 0, index = 0, cancelled = false, lastGood = null;
   stage.cancel = () => { cancelled = true; };
+  // Back to the menu or map replaces the stage: the round is over, nothing more is said or credited.
+  const gone = () => cancelled || !stage.root.isConnected;
 
-  while (queue.length && !cancelled) {
+  const demos = ctx.economy.save.demos || (ctx.economy.save.demos = {});
+  let demoCount = 0;
+  const showMe = showMeButton(stage);
+  stage.root.querySelector('.stage-row').appendChild(showMe);
+  while (queue.length && !gone()) {
     const { family, item } = queue.shift();
     const itemId = family.itemId ? family.itemId(item) : (family.id + ':' + (item.w || item.id || index));
     const isRetry = retried.has(itemId);
-    stage.setDots(items.length, Math.min(items.length, index));
+    stage.setDots(items.length - demoCount, Math.min(items.length - demoCount, index));
     stage.luna('idle');
-    let result;
-    const stopNudge = idleNudge(stage, ctx.audio);
-    try { result = await family.play(stage, item, ctx, { praiseLine: () => withName(pick(praise), name), isRetry }); }
-    catch (e) { console.error('encounter item failed', e); result = { outcome: 'abandoned', choices: 3 }; }
-    finally { stopNudge(); }
-    if (cancelled) return null;
+    stage.helpUsed = false;
+    const helpers = { praiseLine: () => withName(pick(praise), name), isRetry };
+    // First time this activity appears: a demo on this item, unscored; she practises it with Luna.
+    // Experience is counted per activity (rows carry the family id), so an activity that shares a skill
+    // with one she already knows still gets its own demo.
+    if (!demos[family.id] && ctx.economy.save.log.filter(r => r.fam === family.id).length >= 10) demos[family.id] = 'experienced';
+    let result = null;
+    if (!isRetry && DEMO_FAMILIES.has(family.id) && !demos[family.id]) {
+      showMe.hidden = true;
+      stage.helpUsed = true; // anything done during a demo is Luna's, never evidence
+      let playing;
+      try { playing = family.play(stage, item, ctx, helpers); } catch (e) { playing = Promise.resolve(null); }
+      const shown = await runDemo(stage, ctx, playing);
+      let res = null;
+      try { res = await playing; } catch {}
+      showMe.hidden = false;
+      if (gone()) return null;
+      if (shown) {
+        demos[family.id] = ctx.economy.today(); ctx.economy.persist(); await ctx.audio.say('Now you try!');
+        demoCount++;
+        continue; // the demo item is never scored
+      }
+      // nothing to point at: this activity has no demo; the item she just did is scored as usual
+      demos[family.id] = 'none'; ctx.economy.persist();
+      stage.helpUsed = false;
+      result = res || { outcome: 'abandoned', choices: 3 };
+    }
+    showMe.hidden = !DEMO_FAMILIES.has(family.id);
+    if (!result) {
+      const stopNudge = idleNudge(stage, ctx.audio);
+      try { result = await family.play(stage, item, ctx, helpers); }
+      catch (e) { console.error('encounter item failed', e); result = { outcome: 'abandoned', choices: 3 }; }
+      finally { stopNudge(); }
+    }
+    if (gone()) return null;
+    // Asking Luna to show the answer means it is not known yet (and it will come back later in the round).
+    if (stage.helpUsed && (result.outcome === 'firstTry' || result.outcome === 'scaffolded')) result = { ...result, outcome: 'revealed' };
     const outcome = result.outcome;
-    ctx.adaptive.record({ subskill: family.subskill, outcome, choices: result.choices || 3, review: isRetry || review.has(family.subskill), itemId, gpc: result.gpc || null });
+    const scored = (result.choices || 3) >= 2; // introductions and self-checks are exposure, not answers
+    ctx.adaptive.record({ subskill: family.subskill, outcome, choices: result.choices || 3, review: review.has(family.subskill), retry: isRetry, itemId, gpc: result.gpc || null, fam: family.id });
     if (outcome === 'firstTry') stage.luna('happy'); else if (outcome === 'revealed') stage.luna('think'); else stage.luna('happy', 900);
-    if (!isRetry) { total++; if (outcome === 'firstTry') firstTries++; index++; }
-    if (outcome === 'revealed' && !isRetry) {
+    if (!isRetry) { if (scored) { total++; if (outcome === 'firstTry') firstTries++; } index++; }
+    if (outcome === 'revealed' && !isRetry && !family.noRequeue) {
       retried.add(itemId);
       if (queue.length < 2 && lastGood) queue.push(lastGood); // BUG-13: never re-present immediately
       queue.splice(Math.min(2, queue.length), 0, { family, item });
-    } else if (outcome === 'firstTry' && !isRetry) lastGood = { family, item };
+    } else if (outcome === 'firstTry' && !isRetry && !family.noRequeue) lastGood = { family, item };
     await wait(350);
   }
-  if (cancelled) return null;
+  if (gone()) return null;
   const ratio = total ? firstTries / total : 1;
   const stars = ctx.economy.setStars(cabinetId, ratio);
   ctx.adaptive.noteRoundFinished(cabinetId);

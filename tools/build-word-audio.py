@@ -13,6 +13,10 @@ import pqaudio as pa
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'assets' / 'audio' / 'words'
+# Words Kokoro says too fast from plain text (bed came out at 257 ms with almost no final /d/): IPA input
+# with a lengthened vowel.
+PHONEMES = {'bed': 'bˈɛːd'}
+MIN_MS = 330  # shorter than this for a one-syllable word usually means a swallowed sound; the build warns
 
 
 def all_words():
@@ -26,6 +30,9 @@ def all_words():
     words += [s[0] for s in json.loads((ROOT / 'content' / 'pa.json').read_text(encoding='utf-8'))['syllables']]
     for s in json.loads((ROOT / 'content' / 'sentences.json').read_text(encoding='utf-8'))['sentences']:
         words += [w.lower() if w != 'I' else w for w in re.sub(r"[^A-Za-z\s']", '', s['text']).split()]
+    for b in json.loads((ROOT / 'content' / 'books.json').read_text(encoding='utf-8'))['books']:
+        for p in b['pages']:
+            words += [w.lower() if w != 'I' else w for w in re.sub(r"[^A-Za-z\s']", '', p['text']).split()]
     return sorted(set(w for w in words if re.fullmatch(r"[A-Za-z][a-z'-]*", w)))
 
 
@@ -43,14 +50,16 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     done, trimmed = [], 0
     for w in words:
-        x = v.say(w, speed=0.85)
+        x = v.say(PHONEMES[w], phonemes=True, speed=0.85) if w in PHONEMES else v.say(w, speed=0.85)
         x = pa.trim_silence(x, -45, 5)
-        x, cut = pa.trim_lead_murmur(x, w)
+        x, cut = pa.trim_lead_murmur(x, w, max_ms=140)
         if cut: trimmed += 1
         x = pa.normalise_peak(pa.fade(pa.trim_silence(x, -45, 10), 4, 15))
         pa.encode_opus(x, OUT / f'{w}.ogg', 32)
         done.append(w)
-        print(f'{w:12} {len(x) / pa.SR * 1000:5.0f} ms' + (f'  (trimmed {cut} ms of lead murmur)' if cut else ''))
+        ms = len(x) / pa.SR * 1000
+        short = '  WARNING: short, check by ear' if ms < MIN_MS and len(re.findall(r'[aeiouy]+', w)) <= 1 else ''
+        print(f'{w:12} {ms:5.0f} ms' + (f'  (trimmed {cut} ms of lead murmur)' if cut else '') + short)
     man_path = ROOT / 'content' / 'audio-manifest.json'
     man = json.loads(man_path.read_text(encoding='utf-8'))
     man['words'] = sorted(set(man.get('words', [])) | set(done))

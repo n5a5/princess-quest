@@ -111,14 +111,15 @@ test('meadow: letter-sound items — three distinct stones with distinct sounds,
   for (const st of stagesOf('phonics-gpc')) for (let i = 0; i < 500; i++) {
     const it = meadow.gpcItem(st, []);
     if (it.kind === 'hear') {
-      assert.equal(it.options.length, 3); assert.equal(new Set(it.options).size, 3);
+      // up to four stones (the success-rate controller shows 2 to 4 of them)
+      assert.ok(it.options.length >= 3 && it.options.length <= 4); assert.equal(new Set(it.options).size, it.options.length);
       assert.ok(it.options.includes(it.g));
       const ph = it.options.map(g => (g in sounds ? g : g === 'c' ? 'k' : g));
-      assert.equal(new Set(ph).size, 3, 'c and k must never both be stones for /k/: ' + it.options);
+      assert.equal(new Set(ph).size, it.options.length, 'c and k must never both be stones for /k/: ' + it.options);
     } else {
       assert.ok(it.target && it.target.p && it.target.w, 'target needs a picture ' + it.g);
-      assert.equal(it.foils.length, 2, 'two foils for ' + it.g);
-      assert.equal(new Set([it.target, ...it.foils].map(x => x.p)).size, 3, 'pictures must differ');
+      assert.ok(it.foils.length >= 2 && it.foils.length <= 3, 'two or three foils for ' + it.g);
+      assert.equal(new Set([it.target, ...it.foils].map(x => x.p)).size, it.foils.length + 1, 'pictures must differ');
     }
   }
 });
@@ -137,7 +138,7 @@ test('woods: PA items — foils never share the target sound, rhymes share the r
   const isVowel = id => sounds[id] && sounds[id].kind === 'vowel';
   for (const kind of ['first', 'final', 'medial']) for (let i = 0; i < 500; i++) {
     const it = woods.paItem(kind, 0, []);
-    assert.equal(it.foils.length, 2, kind);
+    assert.ok(it.foils.length >= 2 && it.foils.length <= 3, kind);
     const unitAt = w => { const u = w.u.filter(x => x[1]); return kind === 'first' ? u[0][1] : kind === 'final' ? u[u.length - 1][1] : u.find(x => isVowel(x[1]))[1]; };
     assert.equal(unitAt(it.target), it.phoneme);
     for (const f of it.foils) { assert.notEqual(unitAt(f), it.phoneme, kind + ' foil shares the sound: ' + f.w); assert.notEqual(f.p, it.target.p); }
@@ -146,7 +147,7 @@ test('woods: PA items — foils never share the target sound, rhymes share the r
     const it = woods.rhymeItem(1, []);
     assert.equal(woods.rimeOf(it.target), woods.rimeOf(it.answer));
     assert.notEqual(it.target.w, it.answer.w);
-    assert.equal(it.foils.length, 2);
+    assert.ok(it.foils.length >= 2 && it.foils.length <= 3);
     for (const f of it.foils) { assert.notEqual(woods.rimeOf(f), woods.rimeOf(it.target)); assert.notEqual(f.p, it.target.p); assert.notEqual(f.p, it.answer.p); }
   }
   const pairs = woods.deletePairs(phonics.stages.flatMap(s => s.words));
@@ -159,4 +160,74 @@ test('caverns: Rainbow Road hops stay on the 1–10 path', () => {
     const it = caverns.gen(caverns.FAMILIES.road, st);
     assert.ok(it.hop >= 1 && it.hop <= 3 && it.from >= 0 && it.from + it.hop <= 10, JSON.stringify(it));
   }
+});
+
+test('woods: ears-only pools skip ambiguous pictures, miscoded vowels and x/qu words', () => {
+  for (const idx of [0, 1, 2, 3]) for (const w of [...woods.pool(idx), ...woods.blendPool(idx), ...woods.allWords()]) {
+    assert.ok(!woods.EAR_SKIP.has(w.w), w.w);
+    assert.ok(!w.u.some(u => u[0] === 'x' || u[0] === 'qu'), w.w);
+    assert.notEqual(w.p, '🔙');
+  }
+  assert.ok(woods.blendPool(1).some(w => w.u.filter(u => u[1]).length >= 4), 'the long stage has 4-sound words');
+});
+
+test('woods: taking a sound away leaves exactly the sounds of the answer word (pink without /k/ is not pin)', () => {
+  const words = phonics.stages.flatMap(s => s.words);
+  const sounds = u => u.filter(x => x[1]).map(x => x[1]);
+  for (const p of woods.deletePairs(words)) {
+    const left = p.where === 'first' ? sounds(p.from.u).slice(1) : sounds(p.from.u).slice(0, -1);
+    assert.deepEqual(left, sounds(p.to.u), p.from.w + ' -> ' + p.to.w);
+  }
+});
+
+test('meadow: spare stones never repeat a sound of the word; swap rounds never reuse a word; Letter Stones foils keep the first letter when they can', () => {
+  const ph = g => (g in sounds ? g : g === 'c' || g === 'ck' ? 'k' : g);
+  const words = phonics.stages.flatMap(s => s.words);
+  for (let i = 0; i < 400; i++) {
+    const w = words[i % words.length];
+    const sounds_ = new Set(w.u.map(u => u[1]).filter(Boolean));
+    for (const g of meadow.distractorGraphemes(w, 3, 3)) assert.ok(!sounds_.has(ph(g)), w.w + ' got spare ' + g);
+  }
+  for (let i = 0; i < 200; i++) {
+    const pairs = meadow.swapPairs(phonics.stages.slice(0, 3).flatMap(s => s.words), 5);
+    const ws = pairs.flatMap(p => [p.from.w, p.to.w]);
+    assert.equal(new Set(ws).size, ws.length, 'no word twice in a swap round: ' + ws);
+  }
+  const cat = words.find(w => w.w === 'cat');
+  const foils = meadow.minimalPairs(cat, phonics.stages.slice(0, 3).flatMap(s => s.words)).slice(0, 2);
+  assert.ok(foils.every(f => f.u[0][0] === 'c'), 'cat gets foils like cap/cot: ' + foils.map(f => f.w));
+});
+
+test('falls: the heavier pan hangs lower; different things are never "the same" weight or capacity', () => {
+  const panY = (svg, x) => { const g = svg.split('<g transform="translate(0 ').slice(1).find(t => t.includes('x1="' + x + '"')); return Number(g.split(')')[0]); };
+  const leftHeavy = falls.scaleSVG('🪨', '🪶', -1), rightHeavy = falls.scaleSVG('🪶', '🪨', 1);
+  assert.ok(panY(leftHeavy, 40) > panY(leftHeavy, 200), 'left heavier: left pan lower (larger y)');
+  assert.ok(panY(rightHeavy, 200) > panY(rightHeavy, 40), 'right heavier: right pan lower');
+  for (let i = 0; i < 3000; i++) {
+    const it = falls.gen(falls.FAMILIES.measure, 'compare');
+    if (it.attr === 'heavy' || it.attr === 'holds') assert.equal(it.equal, false, it.pair.map(p => p.name).join(' / '));
+  }
+});
+
+test('falls: chart questions vary ("how many more" is not always 2) and sort item ids differ within a round', () => {
+  const diffs = new Set();
+  for (let i = 0; i < 500; i++) { const it = falls.gen(falls.FAMILIES.sort, 'chart'); diffs.add(Math.max(...it.counts) - Math.min(...it.counts)); }
+  assert.ok(diffs.size >= 3, [...diffs].join(','));
+});
+
+test('meadow: every letter sound has a first-sound picture, and no answer picture has a second name with another sound', () => {
+  const names = new Map();
+  for (const w of phonics.stages.flatMap(s => s.words)) { if (!names.has(w.p)) names.set(w.p, new Set()); names.get(w.p).add(w.w); }
+  for (const id of ['s', 'a', 't', 'p', 'n', 'm', 'd', 'g', 'o', 'k', 'e', 'u', 'r', 'h', 'b', 'f', 'l', 'j', 'v', 'w', 'y', 'z', 'sh', 'ch']) {
+    const ts = meadow.startsWith(id);
+    assert.ok(ts.length >= 1, 'no picture starts with /' + id + '/');
+  }
+  assert.ok(!meadow.startsWith('b').some(w => w.p === '⚽'), 'ball/kick picture is not an answer for /b/');
+  // short i has no picture a child surely names with /i/ (🐛 is also "bug", 🖋️ is "pen"): only hear-it items
+  for (let k = 0; k < 300; k++) { const it = meadow.gpcItem('set1', ['s', 'a', 't', 'p', 'n']); if (it.g === 'i') assert.equal(it.kind, 'hear'); }
+});
+
+test('content: no picture prints a word (🔙 and similar)', () => {
+  const textEmoji = ['🔙', '🔚', '🔛', '🔜', '🔝', '🆗', '🆒', '🆕', '🆓', '🆙', '🆘', '🆚', '🔤', '🔠', '🔡', '💯'];
+  for (const w of phonics.stages.flatMap(s => s.words)) assert.ok(!textEmoji.includes(w.p), w.w + ' ' + w.p);
 });

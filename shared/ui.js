@@ -51,7 +51,7 @@ export function roundDots(total, done) {
 // Miss 2: reveal + speak the answer.
 export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revealText = null, onMiss = null }) {
   const grid = el('div', { class: 'choices' + (oneCol ? ' one-col' : '') });
-  let misses = 0, settled = false;
+  let misses = 0, settled = false, revealedAnswer = false, answered = false;
   const buttons = new Map();
   const done = new Promise(resolve => {
     const finish = (result) => {
@@ -65,11 +65,14 @@ export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revea
         it.label ? el('span', { class: 'label', text: it.label }) : null
       ]);
       buttons.set(it, b);
+      if (it.ok) b.dataset.answer = '1';
       b.addEventListener('click', async () => {
         if (settled) return;
         if (it.ok) {
+          answered = true; // a miss line still finishing must not re-ask the question after this
           buttons.forEach(x => x.setAttribute('disabled', '')); // BUG-03: no stray taps after a correct answer
           b.classList.add('right');
+          if (revealedAnswer) { await wait(400); finish({ firstTry: false, misses, revealed: true }); return; }
           confetti(24);
           if (audio.sfx) audio.sfx.sparkle();
           if (praise) await audio.say(praise); else await wait(700);
@@ -83,44 +86,50 @@ export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revea
         if (misses === 1) {
           buttons.get(correct).classList.add('glow');
           if (it.why) await audio.say(it.why);
-          if (settled) return;
+          if (settled || answered || revealedAnswer) return;
           if (onMiss) await onMiss(it, correct); else audio.say(prompt, { interrupt: !it.why });
         } else {
-          buttons.get(correct).classList.remove('glow');
-          buttons.get(correct).classList.add('right');
+          // Second miss: every other wrong choice goes away and the answer keeps glowing. She taps it
+          // herself (GraphoGame-style), which still counts as "not known yet" and comes back later.
+          revealedAnswer = true;
+          buttons.forEach((x, item) => { if (!item.ok) { x.classList.add('gone'); x.setAttribute('disabled', ''); } });
           await audio.say(revealText || ('It is ' + (correct.say || correct.label || 'this one') + '.'));
-          await wait(600);
-          finish({ firstTry: false, misses, revealed: true });
         }
       });
       grid.appendChild(b);
     }
   });
+  // Lay out by count: three across for three, two by two for two or four.
+  grid.classList.toggle('three', items.length === 3);
   return { el: grid, done };
 }
 
 // Tiles and slots for word building. Tap a tile then a slot (primary), or drag (pointer events).
 // tiles: [{ id, grapheme }]. slots: n. onFill(slotIndex, tile) / onClear(slotIndex).
-export function tileBoard({ audio, tiles, slotCount, onChange }) {
+export function tileBoard({ audio, tiles, slotCount, onChange, answer = null }) {
   const slotsEl = el('div', { class: 'row slots' });
   const trayEl = el('div', { class: 'row tray' });
   const slots = Array.from({ length: slotCount }, () => null); // tile ids
   const tileEls = new Map();
   let picked = null;
+  const hints = { slots: new Set(), tiles: new Set() }; // kept across re-renders until clearHints()
+  let locked = false; // survives re-renders (clearHints and highlight re-render the board)
 
   const render = () => {
     slotsEl.replaceChildren(...slots.map((tid, i) => {
       const t = tiles.find(x => x.id === tid);
-      const s = el('button', { class: 'slot' + (t ? ' filled' : ''), type: 'button', 'data-slot': i, text: t ? t.grapheme : '', 'aria-label': 'slot ' + (i + 1) });
+      const s = el('button', { class: 'slot' + (t ? ' filled' : '') + (hints.slots.has(i) && !t ? ' glow' : ''), type: 'button', 'data-slot': i, text: t ? t.grapheme : '', 'aria-label': 'slot ' + (i + 1) });
       s.addEventListener('click', () => {
         if (picked !== null) { place(picked, i); return; }
         if (t) { slots[i] = null; picked = null; render(); onChange(slots.slice()); audio.stop(); audio.phoneme(t.phoneme); }
       });
       return s;
     }));
+    if (locked) slotsEl.querySelectorAll('button').forEach(b => b.setAttribute('disabled', ''));
     trayEl.replaceChildren(...tiles.map(t => {
       const used = slots.includes(t.id);
-      const b = el('button', { class: 'tile' + (picked === t.id ? ' picked' : '') + (used ? ' used' : ''), type: 'button', 'data-tile': t.id, text: t.grapheme, 'aria-label': 'tile ' + t.grapheme, ...(used ? { disabled: '' } : {}) });
+      const b = el('button', { class: 'tile' + (picked === t.id ? ' picked' : '') + (used ? ' used' : '') + (hints.tiles.has(t.id) && !used ? ' glow' : ''), type: 'button', 'data-tile': t.id, text: t.grapheme, 'aria-label': 'tile ' + t.grapheme, ...(used || locked ? { disabled: '' } : {}) });
+      if (answer && answer.includes(t.id)) b.dataset.order = String(answer.indexOf(t.id));
       tileEls.set(t.id, b);
       b.addEventListener('click', () => {
         audio.stop(); audio.phoneme(t.phoneme);
@@ -175,10 +184,10 @@ export function tileBoard({ audio, tiles, slotCount, onChange }) {
     highlight(i) { slotsEl.querySelectorAll('.slot').forEach((s, k) => s.classList.toggle('now', k === i)); },
     clearHighlight() { slotsEl.querySelectorAll('.slot').forEach(s => s.classList.remove('now')); },
     setSlot(i, tileId) { place(tileId, i, true); },
-    lock() { slotsEl.querySelectorAll('button').forEach(b => b.setAttribute('disabled', '')); trayEl.querySelectorAll('button').forEach(b => b.setAttribute('disabled', '')); },
-    hintSlot(i) { const s = slotsEl.querySelectorAll('.slot')[i]; if (s) s.classList.add('glow'); },
-    hintTile(id) { const t = tileEls.get(id); if (t) t.classList.add('glow'); },
-    clearHints() { slotsEl.querySelectorAll('.glow').forEach(x => x.classList.remove('glow')); trayEl.querySelectorAll('.glow').forEach(x => x.classList.remove('glow')); }
+    lock() { locked = true; slotsEl.querySelectorAll('button').forEach(b => b.setAttribute('disabled', '')); trayEl.querySelectorAll('button').forEach(b => b.setAttribute('disabled', '')); },
+    hintSlot(i) { hints.slots.add(i); render(); },
+    hintTile(id) { hints.tiles.add(id); render(); },
+    clearHints() { hints.slots.clear(); hints.tiles.clear(); render(); }
   };
 }
 

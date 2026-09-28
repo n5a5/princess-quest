@@ -129,7 +129,7 @@ test('combining two devices keeps the further-along progress, never double count
   const bookText = book.exportJSON();
   assert.equal(phone.mergeJSON(bookText), true);
   const s = phone.save;
-  assert.equal(s.gems, 30);
+  assert.equal(s.gems, 42, 'gems earned on each device add up (12 + 30)');
   assert.equal(s.subskills['phonics-encode'].stage, 2, 'the further stage wins');
   assert.equal(s.subskills['phonics-encode'].lastPracticed, '2026-09-22');
   assert.equal(s.subskills.measure.stage, 1);
@@ -142,4 +142,76 @@ test('combining two devices keeps the further-along progress, never double count
   assert.equal(phone.mergeJSON(bookText), true);
   assert.equal(phone.save.log.length, 2, 'combining again adds nothing');
   assert.equal(phone.mergeJSON('{"hello":1}'), false);
+});
+
+test('syncing back and forth many times never grows the save (gifts, feelings, logs)', () => {
+  const clock = fixedClock();
+  const phone = createEconomy({ storage: memoryStorage(), now: clock.now });
+  const book = createEconomy({ storage: memoryStorage(), now: clock.now });
+  phone.addGems(20); book.addGems(20);
+  phone.save.kingdom.gifts.push({ id: 'flowers', day: '2026-09-20' }, { id: 'flowers', day: '2026-09-20' });
+  book.save.kingdom.gifts.push({ id: 'cake', day: '2026-09-21' });
+  phone.save.feelingsLog.push({ day: '2026-09-20', feeling: 'happy' });
+  book.logResult({ subskill: 'measure', ok: true });
+  for (let i = 0; i < 12; i++) { phone.mergeJSON(book.exportJSON()); book.mergeJSON(phone.exportJSON()); }
+  const once = phone.exportJSON();
+  phone.mergeJSON(book.exportJSON());
+  assert.equal(phone.exportJSON(), once, 'a further merge changes nothing');
+  assert.equal(phone.save.kingdom.gifts.length, 3, 'two flowers (bought twice) and one cake');
+  assert.equal(phone.save.feelingsLog.length, 1);
+  assert.deepEqual(JSON.parse(book.exportJSON()).kingdom.gifts.length, 3);
+});
+
+test('a save already swollen by the old gift bug is trimmed on load', () => {
+  const gifts = Array.from({ length: 4096 }, () => ({ id: 'flowers', day: '2026-09-20' }));
+  const s = migrate({ schemaVersion: 3, gems: 1, kingdom: { placed: [], gifts } });
+  assert.ok(s.kingdom.gifts.length <= 10);
+});
+
+test('feelings check-ins and seen courtyard scenarios survive a reload', () => {
+  const st = memoryStorage();
+  const eco = createEconomy({ storage: st });
+  eco.save.feelingsLog.push({ day: '2026-09-20', feeling: 'calm' });
+  eco.save.scenariosSeen.push('spill');
+  eco.persist();
+  const again = createEconomy({ storage: st });
+  assert.deepEqual(again.save.feelingsLog, [{ day: '2026-09-20', feeling: 'calm' }]);
+  assert.deepEqual(again.save.scenariosSeen, ['spill']);
+});
+
+test('gems spent on one device stay spent after combining; decorations from both devices are kept', () => {
+  const phone = createEconomy({ storage: memoryStorage() });
+  const book = createEconomy({ storage: memoryStorage() });
+  phone.addGems(10); book.mergeJSON(phone.exportJSON());
+  assert.equal(book.save.gems, 10);
+  assert.ok(book.spendGems(8)); book.save.kingdom.placed.push({ itemId: 'tree', spot: 0 });
+  phone.save.kingdom.placed.push({ itemId: 'fountain', spot: 0 });
+  phone.mergeJSON(book.exportJSON());
+  assert.equal(phone.save.gems, 2, 'the 8 gems spent on the Chromebook are not handed back');
+  const items = phone.save.kingdom.placed.map(p => p.itemId).sort();
+  assert.deepEqual(items, ['fountain', 'tree']);
+  assert.equal(new Set(phone.save.kingdom.placed.map(p => p.spot)).size, 2, 'no two decorations share a spot');
+});
+
+test('a full storage is reported instead of failing silently', () => {
+  const errors = [];
+  const full = { getItem: () => null, setItem: () => { throw new Error('QuotaExceededError'); } };
+  const eco = createEconomy({ storage: full, onSaveError: e => errors.push(e) });
+  assert.equal(eco.persist(), false);
+  eco.addGems(1); eco.addGems(1);
+  assert.equal(errors.length, 1, 'told once per run of failures');
+});
+
+test('two devices spending from the same gems: every gem spent anywhere stays spent', () => {
+  const phone = createEconomy({ storage: memoryStorage() });
+  const book = createEconomy({ storage: memoryStorage() });
+  phone.addGems(100); book.mergeJSON(phone.exportJSON());
+  assert.ok(phone.spendGems(60)); assert.ok(book.spendGems(30));
+  phone.mergeJSON(book.exportJSON()); book.mergeJSON(phone.exportJSON());
+  assert.equal(phone.save.gems, 10);
+  assert.equal(book.save.gems, 10);
+  book.addGems(5); phone.mergeJSON(book.exportJSON());
+  assert.equal(phone.save.gems, 15);
+  phone.mergeJSON(book.exportJSON());
+  assert.equal(phone.save.gems, 15, 'combining again changes nothing');
 });

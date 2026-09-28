@@ -174,3 +174,60 @@ test('story voice: a sentence with a changing word is spliced from a recorded pi
   await audio.say('Which door says zebra?');
   assert.deepEqual(log, ['tts:Which door says zebra?'], 'a word with no clip means the device voice says the whole line');
 });
+
+// A player whose clips last `ms` and resolve 'stopped' when stop() or a newer clip cuts them, like the real one.
+function timedPlayer(log, ms = 30) {
+  let cur = null;
+  return {
+    play: src => new Promise(resolve => {
+      if (cur) { const c = cur; cur = null; clearTimeout(c.t); c.resolve('stopped'); }
+      log.push(['play', src]);
+      const me = { resolve, t: setTimeout(() => { if (cur === me) cur = null; resolve(true); }, ms) };
+      cur = me;
+    }),
+    stop: () => { if (cur) { const c = cur; cur = null; clearTimeout(c.t); c.resolve('stopped'); } }
+  };
+}
+
+test('a clip cut short by a newer sound is not a failure: the device voice never repeats it', async () => {
+  const log = [];
+  const player = timedPlayer(log);
+  const speech = { speakText: async t => { log.push(['tts', t]); }, stop: () => {} };
+  const audio = createAudio({ speech, store: null, player, manifest: { ext: 'ogg', phonemes: ['m'], words: ['cat'] }, sounds: { m: { ttsSafe: true, tts: 'mmm' } }, settings: { muted: false, voice: 'luna' } });
+  audio.setLines({ ext: 'ogg', lines: { [keyOf('Great job!')]: 'aa' } });
+  const w = audio.word('cat');
+  await new Promise(r => setTimeout(r, 5));
+  audio.stop();
+  assert.equal(await w, false);
+  const p = audio.say('Great job!');
+  await new Promise(r => setTimeout(r, 5));
+  audio.phoneme('m'); // an intro that is not sequence-aware cuts the praise clip
+  await p;
+  await new Promise(r => setTimeout(r, 50));
+  assert.equal(log.filter(x => x[0] === 'tts').length, 0, 'no device-voice echo: ' + JSON.stringify(log));
+});
+
+test('sequence: a {say} step does not cancel the rest of the sequence (heart-word mapping)', async () => {
+  const log = [];
+  const player = { play: async src => { log.push(['play', src]); return true; }, stop: () => {} };
+  const speech = { speakText: async t => { log.push(['tts', t]); }, stop: () => {} };
+  const audio = createAudio({ speech, store: null, player, manifest: { ext: 'ogg', phonemes: ['d', 'n'], words: ['down'] }, sounds: {}, settings: { muted: false } });
+  const done = await audio.sequence([{ word: 'down' }, { phoneme: 'd' }, { say: 'heart part' }, { phoneme: 'n' }, { word: 'down' }]);
+  assert.equal(done, true);
+  assert.deepEqual(log.map(x => x[1]), ['./assets/audio/words/down.ogg', './assets/audio/phonemes/d.ogg', 'heart part', './assets/audio/phonemes/n.ogg', './assets/audio/words/down.ogg']);
+});
+
+test('an intro run as one sequence stops when she answers, and is not asked again', async () => {
+  const log = [];
+  const player = timedPlayer(log);
+  const speech = { speakText: t => new Promise(r => { log.push(['tts', t]); setTimeout(r, 30); }), stop: () => {} };
+  const audio = createAudio({ speech, store: null, player, manifest: { ext: 'ogg', phonemes: ['m'], words: [] }, sounds: {}, settings: { muted: false } });
+  const intro = audio.sequence([{ say: 'This stone says' }, { phoneme: 'm' }, { say: 'Which picture starts with /m/?' }]);
+  await new Promise(r => setTimeout(r, 10));
+  await audio.say('Great job!'); // she answered during the intro
+  await intro;
+  await new Promise(r => setTimeout(r, 80));
+  const said = log.map(x => x[1]);
+  assert.ok(!said.includes('Which picture starts with'), 'the question is not re-asked after the answer: ' + JSON.stringify(said));
+  assert.equal(said[said.length - 1], 'Great job!');
+});

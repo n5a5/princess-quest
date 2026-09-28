@@ -106,17 +106,18 @@
   "bytes": 2083
  },
  "i": {
-  "method": "held",
-  "source": "ɪːːː",
-  "F1": 278,
-  "F2": 805,
+  "method": "word_vowel",
+  "source": "pig kid fish",
+  "F1": 770,
+  "F2": 2301,
+  "ref_F1": 793,
   "formants_in_range": false,
-  "ms": 488,
-  "active_ms": 440,
+  "ms": 401,
+  "active_ms": 360,
   "active_rms_db": -18.0,
-  "peak_db": -9.3,
+  "peak_db": -8.2,
   "start_amp": 0.0,
-  "bytes": 3738
+  "bytes": 3126
  },
  "ie": {
   "method": "held",

@@ -21,6 +21,9 @@ export function defaultSave() {
     schemaVersion: SCHEMA_VERSION,
     child: { name: 'Amelia', pin: '1234' },
     gems: 0,
+    // Gems earned and spent, per device: { deviceId: { earned, spent } }. Combining two devices keeps each
+    // device's larger totals, so every gem spent on either device stays spent and none is counted twice.
+    wallet: {},
     stars: {},
     badges: [],
     streak: { days: [] },
@@ -28,11 +31,15 @@ export function defaultSave() {
     sightWords: {},
     missed: {},
     vocab: {},
+    books: {},      // Little Books read: { id: { reads, last } }
+    demos: {},      // activities whose first-time demo has been shown: { familyId: day }
     kingdom: { placed: [], gifts: [] },
     companion: { stars: 0 },
     squishies: { rescued: [] },
     quest: null,
     questHistory: [],
+    feelingsLog: [],    // Calm Tower check-ins: { day, feeling }
+    scenariosSeen: [],  // Uh-Oh Courtyard scenario ids already shown
     // voice: 'device' = the device's text-to-speech for instructions; 'luna' = the pre-recorded story voice
     // (the same voice as the words and letter sounds). Stays 'device' until the parent picks in Parent Corner.
     settings: { muted: false, rate: 0.9, voiceName: '', modulesOff: [], voice: 'device' },
@@ -77,9 +84,35 @@ export function migrate(raw) {
   if (!Array.isArray(out.squishies.rescued)) out.squishies.rescued = [];
   if (typeof out.companion.stars !== 'number') out.companion.stars = 0;
   if (!Array.isArray(out.kingdom.placed)) out.kingdom.placed = [];
+  out.kingdom.placed = out.kingdom.placed.filter(p => isObj(p) && typeof p.itemId === 'string' && Number.isInteger(p.spot));
+  out.kingdom.gifts = capGifts(Array.isArray(out.kingdom.gifts) ? out.kingdom.gifts : []);
+  out.feelingsLog = out.feelingsLog.filter(f => isObj(f) && typeof f.day === 'string');
+  out.scenariosSeen = out.scenariosSeen.filter(x => typeof x === 'string');
+  // saves from before the wallet: everything she has now counts as earned
+  if (!isObj(raw.wallet)) out.wallet = { legacy: { earned: out.gems, spent: 0 } };
+  for (const [id, w] of Object.entries(out.wallet)) if (!isObj(w) || typeof w.earned !== 'number' || typeof w.spent !== 'number') delete out.wallet[id];
   if (!Array.isArray(out.settings.modulesOff)) out.settings.modulesOff = [];
   if (!['device', 'luna'].includes(out.settings.voice)) out.settings.voice = 'device';
   out.schemaVersion = SCHEMA_VERSION;
+  return out;
+}
+
+// Gifts are { id, day }. Buying the same gift twice in a day is allowed, so rows can repeat; a repeat count
+// above GIFT_CAP for one gift on one day can only come from the old merge bug that doubled gifts on every sync.
+const GIFT_CAP = 10;
+function capGifts(gifts) {
+  const n = new Map();
+  return gifts.filter(g => {
+    if (!isObj(g) || typeof g.id !== 'string') return false;
+    const k = g.id + '|' + g.day; n.set(k, (n.get(k) || 0) + 1);
+    return n.get(k) <= GIFT_CAP;
+  });
+}
+// Multiset union keyed by JSON value: a row keeps the larger of its two counts, so merging is idempotent.
+function unionRows(a, b) {
+  const count = rows => rows.reduce((m, r) => { const k = JSON.stringify(r); m.set(k, (m.get(k) || 0) + 1); return m; }, new Map());
+  const ca = count(a), out = a.slice();
+  for (const [k, n] of count(b)) for (let i = ca.get(k) || 0; i < n; i++) out.push(JSON.parse(k));
   return out;
 }
 
@@ -96,15 +129,25 @@ export function companionProgress(stars) {
   return { level: lvl, fraction: Math.min(1, (stars - lo) / (hi - lo)), next: hi };
 }
 
-export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date() } = {}) {
+export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date(), onSaveError = null } = {}) {
   let save = load();
 
   function load() {
     try { return migrate(JSON.parse(storage.getItem(key) || 'null')); }
     catch { return defaultSave(); }
   }
-  function persist() { try { storage.setItem(key, JSON.stringify(save)); } catch (e) { console.warn('save failed', e); } }
+  // Returns false when the browser refused to store the save (storage full or blocked); onSaveError is told once per failure run.
+  let failing = false;
+  function persist() {
+    try { storage.setItem(key, JSON.stringify(save)); failing = false; return true; }
+    catch (e) { console.warn('save failed', e); if (!failing && onSaveError) onSaveError(e); failing = true; return false; }
+  }
   function today() { return localDay(now()); }
+  // This device's id for the wallet. Kept outside the save, so Replace or Combine never copies it.
+  let me = null;
+  try { me = storage.getItem(key + '.device'); } catch {}
+  if (!me) { me = 'd' + now().getTime().toString(36) + Math.random().toString(36).slice(2, 7); try { storage.setItem(key + '.device', me); } catch {} }
+  const mine = () => save.wallet[me] || (save.wallet[me] = { earned: 0, spent: 0 });
   function trimLog() {
     const cutoff = localDay(new Date(now().getTime() - LOG_DAYS * 864e5));
     save.log = save.log.filter(e => e.day >= cutoff);
@@ -114,8 +157,8 @@ export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date() 
     get save() { return save; },
     persist,
     today,
-    addGems(n) { save.gems += n; persist(); return save.gems; },
-    spendGems(n) { if (save.gems < n) return false; save.gems -= n; persist(); return true; },
+    addGems(n) { save.gems += n; mine().earned += n; persist(); return save.gems; },
+    spendGems(n) { if (save.gems < n) return false; save.gems -= n; mine().spent += n; persist(); return true; },
     markPlayedToday() {
       const d = today();
       if (!save.streak.days.includes(d)) { save.streak.days.push(d); persist(); }
@@ -132,12 +175,14 @@ export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date() 
       for (const id of subskillIds) promos += (save.subskills[id] && save.subskills[id].promotions) || 0;
       return starRankFromPromotions(promos);
     },
-    logResult({ subskill, ok, firstTry = true, outcome = null, review = false, stage = null }) {
+    logResult({ subskill, ok, firstTry = true, outcome = null, review = false, stage = null, choices = null, fam = null }) {
       // t: when it happened (ms). Makes each row unique so combining two devices' saves never double-counts.
       const row = { day: today(), t: now().getTime(), subskill, ok: !!ok, firstTry: !!firstTry };
       if (outcome) row.outcome = outcome;
       if (review) row.review = true;
       if (stage !== null) row.stage = stage;
+      if (choices !== null) row.choices = choices;
+      if (fam) row.fam = fam; // which activity (family) it came from: per-activity demos
       save.log.push(row);
       trimLog();
       persist();
@@ -193,24 +238,34 @@ export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date() 
       for (const [k, n] of Object.entries(b.missed)) a.missed[k] = Math.max(a.missed[k] || 0, n);
       for (const [k, v] of Object.entries(b.vocab)) if (!a.vocab[k] || (v.recalled && !a.vocab[k].recalled)) a.vocab[k] = v;
       for (const [k, n] of Object.entries(b.stars)) a.stars[k] = Math.max(a.stars[k] || 0, n);
-      a.gems = Math.max(a.gems, b.gems);
+      // gems: lifetime earned and spent each keep the larger total, so gems spent on one device stay spent
+      for (const [id, wb] of Object.entries(b.wallet)) {
+        const wa = a.wallet[id] || { earned: 0, spent: 0 };
+        a.wallet[id] = { earned: Math.max(wa.earned, wb.earned), spent: Math.max(wa.spent, wb.spent) };
+      }
+      const all = Object.values(a.wallet);
+      a.gems = Math.max(0, all.reduce((t, w) => t + w.earned, 0) - all.reduce((t, w) => t + w.spent, 0));
       a.companion.stars = Math.max(a.companion.stars, b.companion.stars);
       a.badges = [...new Set([...a.badges, ...b.badges])];
       a.streak.days = [...new Set([...a.streak.days, ...b.streak.days])].sort();
       a.squishies.rescued = [...new Set([...a.squishies.rescued, ...b.squishies.rescued])];
-      if ((b.kingdom.placed || []).length > (a.kingdom.placed || []).length) a.kingdom.placed = b.kingdom.placed;
-      a.kingdom.gifts = [...new Set([...(a.kingdom.gifts || []), ...(b.kingdom.gifts || [])])];
-      // logs: multiset union — a row keeps the larger of its two counts
-      const count = rows => rows.reduce((m, r) => { const k = JSON.stringify(r); m.set(k, (m.get(k) || 0) + 1); return m; }, new Map());
-      const ca = count(a.log), cb = count(b.log);
-      for (const [k, n] of cb) for (let i = ca.get(k) || 0; i < n; i++) a.log.push(JSON.parse(k));
+      // decorations: every item either device bought; one that lands on a taken spot moves to the first free spot
+      const taken = new Set(a.kingdom.placed.map(p => p.spot)), have = new Set(a.kingdom.placed.map(p => p.itemId));
+      for (const p of b.kingdom.placed) {
+        if (have.has(p.itemId)) continue;
+        let spot = p.spot; while (taken.has(spot)) spot = [...Array(taken.size + 1).keys()].find(i => !taken.has(i));
+        a.kingdom.placed.push({ itemId: p.itemId, spot }); taken.add(spot); have.add(p.itemId);
+      }
+      // gifts, logs, feelings: multiset union (a row keeps the larger of its two counts), so merging twice changes nothing
+      a.kingdom.gifts = capGifts(unionRows(a.kingdom.gifts, b.kingdom.gifts));
+      a.log = unionRows(a.log, b.log);
       a.log.sort((x, y) => (x.day < y.day ? -1 : x.day > y.day ? 1 : (x.t || 0) - (y.t || 0)));
-      const fa = a.feelingsLog || [], fb = other.feelingsLog || [];
-      const seen = new Set(fa.map(f => JSON.stringify(f)));
-      a.feelingsLog = [...fa, ...fb.filter(f => !seen.has(JSON.stringify(f)))];
+      a.feelingsLog = unionRows(a.feelingsLog, b.feelingsLog);
+      a.scenariosSeen = [...new Set([...a.scenariosSeen, ...b.scenariosSeen])];
+      for (const [k, v] of Object.entries(b.books)) if (!a.books[k] || (v.reads || 0) > (a.books[k].reads || 0)) a.books[k] = v;
+      for (const [k, v] of Object.entries(b.demos)) if (!a.demos[k]) a.demos[k] = v;
       trimLog();
-      persist();
-      return true;
+      return persist() ? true : 'full';
     },
     importJSON(text) {
       try {

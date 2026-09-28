@@ -40,23 +40,59 @@ function stageNeeded(word) {
   }
   return PH.stages.length;
 }
-const orderList = list => [...list].sort((a, b) => heartCount(a) - heartCount(b) || stageNeeded(a) - stageNeeded(b) || list.indexOf(a) - list.indexOf(b));
+// Heart words the first Spell Scroll sentences need (the, is, see, a, I ...) come first, so the scrolls and
+// wish notes open up early instead of after 30-odd other words.
+let EARLY = null;
+function earlyRank(w) {
+  if (!EARLY) {
+    const n = new Map();
+    for (const x of (SENT ? SENT.sentences : []).filter(x => x.stage === 'a')) for (const h of x.hearts) n.set(h, (n.get(h) || 0) + 1);
+    EARLY = new Map([...n].sort((a, b) => b[1] - a[1]).map(([h], i) => [h, i]));
+  }
+  return EARLY.has(w) ? EARLY.get(w) : 999;
+}
+const orderList = list => [...list].sort((a, b) => earlyRank(a) - earlyRank(b) || heartCount(a) - heartCount(b) || stageNeeded(a) - stageNeeded(b) || list.indexOf(a) - list.indexOf(b));
 const allWords = () => [...orderList(SW.lists.prePrimer), ...orderList(SW.lists.primer)];
 const introduced = () => allWords().filter(w => peek(w).introducedDay);
 const isMastered = w => peek(w).box >= 5 && peek(w).firstTryDays.length >= 3;
 function daysSince(day) { if (!day) return 99; const [y, m, d] = day.split('-').map(Number); const [y2, m2, d2] = ctx.economy.today().split('-').map(Number); return Math.round((new Date(y2, m2 - 1, d2) - new Date(y, m - 1, d)) / 864e5); }
+// Due words, most overdue (relative to their interval) first, so high boxes are not starved by low ones.
+const overdue = w => daysSince(peek(w).lastSeen) / Math.max(1, INTERVALS[Math.min(5, peek(w).box)]);
 function dueWords() {
-  return introduced().filter(w => daysSince(peek(w).lastSeen) >= INTERVALS[Math.min(5, peek(w).box)]).sort((a, b) => peek(a).box - peek(b).box || daysSince(peek(b).lastSeen) - daysSince(peek(a).lastSeen));
+  return introduced().filter(w => daysSince(peek(w).lastSeen) >= INTERVALS[Math.min(5, peek(w).box)]).sort((a, b) => overdue(b) - overdue(a) || peek(a).box - peek(b).box);
+}
+// Leitner step for a hear-it-tap-it answer. A word moves up a box only when it was due (spaced), so extra
+// practice on the same day cannot rush it to "mastered"; practice that was not due changes nothing, so it
+// does not push the next review back. A reveal always moves it down. Help from Luna (👆 or a demo) never moves it up.
+function applyTap(word, { misses = 0, revealed = false, helped = false } = {}) {
+  const st = state(word);
+  const wasDue = daysSince(st.lastSeen) >= INTERVALS[Math.min(5, st.box)];
+  if (revealed) { st.box = Math.max(1, st.box - 1); st.lastSeen = ctx.economy.today(); }
+  else if (wasDue) {
+    st.lastSeen = ctx.economy.today();
+    if (!misses && !helped) { st.box = Math.min(5, st.box + 1); if (!st.firstTryDays.includes(ctx.economy.today())) st.firstTryDays.push(ctx.economy.today()); }
+  }
+  ctx.economy.persist();
+}
+function introduce(word) {
+  const st = state(word);
+  st.introducedDay = st.introducedDay || ctx.economy.today(); st.lastSeen = st.lastSeen || ctx.economy.today(); st.box = Math.max(1, st.box);
+  ctx.economy.persist();
 }
 function nextNewWords(n) { return allWords().filter(w => !peek(w).introducedDay).slice(0, n); }
 export function masteredWords() { return SW ? allWords().filter(isMastered) : []; }
 
+// Words that sound the same can never be foils for each other: "Which door says two?" has no single answer
+// when the doors show to and two.
+const HOMOPHONES = [['to', 'two', 'too'], ['for', 'four'], ['no', 'know'], ['there', 'their'], ['here', 'hear'], ['one', 'won'],
+  ['be', 'bee'], ['see', 'sea'], ['by', 'buy'], ['new', 'knew'], ['right', 'write'], ['blue', 'blew'], ['our', 'hour'], ['eight', 'ate'], ['red', 'read'], ['I', 'eye']];
+export const soundsSame = (a, b) => a.toLowerCase() === b.toLowerCase() || HOMOPHONES.some(g => g.includes(a) && g.includes(b));
 function foilsFor(word, n = 3) {
-  const pool = introduced().filter(w => w !== word);
+  const pool = introduced().filter(w => !soundsSame(w, word));
   const score = w => (w[0] === word[0] ? 2 : 0) + (w.length === word.length ? 1 : 0) + (w.slice(-1) === word.slice(-1) ? 1 : 0);
   const ranked = shuffle(pool).sort((a, b) => score(b) - score(a));
   const out = ranked.slice(0, n);
-  const extra = allWords().filter(w => w !== word && !out.includes(w));
+  const extra = allWords().filter(w => !soundsSame(w, word) && !out.includes(w));
   while (out.length < n && extra.length) out.push(extra.splice(Math.floor(Math.random() * extra.length), 1)[0]);
   return out;
 }
@@ -77,7 +113,7 @@ async function mapWord(audio, word, boxes) {
   const units = SW.words[word];
   const steps = [{ word }, { gap: 300 }];
   units.forEach(([g, p, heart], i) => {
-    if (p) steps.push({ phoneme: p, index: i }); else if (heart) steps.push({ say: 'heart part', index: i }); else steps.push({ gap: 200, index: i });
+    if (p) steps.push({ phoneme: p, index: i }); else if (heart) steps.push({ say: 'Heart part.', index: i }); else steps.push({ gap: 200, index: i });
     steps.push({ gap: 250 });
   });
   steps.push({ word });
@@ -110,7 +146,7 @@ const heartIntro = {
     await clicked;
     await audio.word(word);
     const st = state(word);
-    st.introducedDay = st.introducedDay || ctx.economy.today(); st.lastSeen = ctx.economy.today(); st.box = Math.max(1, st.box);
+    introduce(word);
     ctx.economy.persist();
     await audio.say(praiseLine());
     return { outcome: 'firstTry', choices: 1, review: true };
@@ -121,23 +157,20 @@ const hearTap = {
   id: 'heartap', subskill: 'sight-words', itemId: w => 'heartap:' + w,
   async play(stage, word, ctx, { praiseLine }) {
     const audio = ctx.audio;
-    const foils = foilsFor(word, 3);
+    const doors = Math.min(4, ctx.adaptive.choiceCount('sight-words', 4)); // 2 to 4 doors
+    const foils = foilsFor(word, doors - 1);
     const items = shuffle([word, ...foils]).map(w => ({ id: w, pic: '', label: w, ok: w === word, say: w, textOnly: true, why: w === word ? null : 'That door says ' + w + '.' }));
-    const prompt = 'Four wish doors. Which door says ' + word + '? Tap it to open it.';
-    stage.setPrompt(promptBar(audio, 'Four wish doors. Which door says the word you hear? Tap it to open it.', { speak: prompt, replay: word }));
+    const prompt = 'Which wish door says ' + word + '? Tap it to open it.';
+    stage.setPrompt(promptBar(audio, 'Which wish door says the word you hear? Tap it to open it.', { speak: prompt, replay: word }));
     stage.setObject(el('div', { class: 'picture', text: '🚪' }));
     const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'This door says ' + word + '.' });
     grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only', 'door'); c.querySelector('.pic')?.remove(); });
     stage.setBody(grid.el);
     await audio.say(prompt);
     const r = await grid.done;
-    const st = state(word);
-    st.lastSeen = ctx.economy.today();
-    if (!r.misses) { st.box = Math.min(5, st.box + 1); if (!st.firstTryDays.includes(ctx.economy.today())) st.firstTryDays.push(ctx.economy.today()); }
-    else if (r.revealed) st.box = Math.max(1, st.box - 1);
-    ctx.economy.persist();
+    applyTap(word, { misses: r.misses, revealed: r.revealed, helped: stage.helpUsed });
     if (r.revealed) { const boxes = soundBoxes(audio, word); stage.setBody(boxes.row, grid.el); await mapWord(audio, word, boxes); }
-    return { outcome: r.revealed ? 'revealed' : r.misses ? 'scaffolded' : 'firstTry', choices: 4, gpc: word };
+    return { outcome: r.revealed ? 'revealed' : r.misses ? 'scaffolded' : 'firstTry', choices: doors, gpc: word };
   }
 };
 
@@ -157,7 +190,6 @@ const seeSay = {
     const picked = await new Promise(resolve => { yes.addEventListener('click', () => resolve('yes'), { once: true }); hmm.addEventListener('click', () => resolve('hmm'), { once: true }); });
     if (picked === 'hmm') { const boxes = soundBoxes(audio, word); stage.setBody(big, boxes.row); await mapWord(audio, word, boxes); }
     else { await audio.word(word); await audio.say(praiseLine()); }
-    state(word).lastSeen = ctx.economy.today(); ctx.economy.persist();
     return { outcome: 'firstTry', choices: 1, review: true }; // self-report never counts toward mastery
   }
 };
@@ -191,29 +223,32 @@ const wishNote = {
     stage.setObject(el('div', { class: 'picture', text: '💌' }));
     const sent = sentenceRow(audio, sentence.text);
     const targets = sent.buttons.filter(x => x.clean.toLowerCase() === word.toLowerCase());
-    let misses = 0;
+    targets.forEach(x => { x.b.dataset.answer = '1'; });
+    let misses = 0, settled = false;
     const result = await new Promise(resolve => {
       sent.buttons.forEach(({ b, clean }) => b.addEventListener('click', async () => {
-        if (b.classList.contains('right')) return;
+        // once the answer is found (or shown), later taps only read the word aloud
+        if (settled || b.classList.contains('right')) return;
         if (clean.toLowerCase() === word.toLowerCase()) {
+          settled = true; targets.forEach(x => delete x.b.dataset.answer);
+          const outcome = misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed';
           sent.buttons.forEach(x => x.b.classList.remove('glow'));
           b.classList.add('right', 'shimmer');
           if (audio.sfx) audio.sfx.sparkle();
           await audio.say(praiseLine());
           await wait(500);
-          resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed' });
+          resolve({ outcome });
           return;
         }
         misses++;
         b.classList.add('dim');
         stage.luna('think', 900);
         if (misses === 1) { targets.forEach(x => x.b.classList.add('glow')); await audio.say('Look for ' + word + '. It is glowing.'); }
-        else { const t = targets[0]; t.b.classList.add('right'); await audio.say('Here it is: ' + word + '.'); resolve({ outcome: 'revealed' }); }
+        else { settled = true; const t = targets[0]; t.b.classList.add('right'); await audio.say('Here it is: ' + word + '.'); resolve({ outcome: 'revealed' }); }
       }));
       stage.setBody(sent.row);
     });
     await audio.say('The note says: ' + sentence.text);
-    const st = state(word); st.lastSeen = ctx.economy.today(); ctx.economy.persist();
     return { outcome: result.outcome, choices: sent.buttons.length, gpc: word };
   }
 };
@@ -238,12 +273,11 @@ const spellHeart = {
       const boxes = soundBoxes(audio, word);
       stage.setBody(boxes.row);
       await mapWord(audio, word, boxes);
-      const st = state(word); st.lastSeen = ctx.economy.today(); ctx.economy.persist();
       if (outcome !== 'revealed') await audio.say(praiseLine());
       resolve({ outcome, choices: tiles.length, gpc: word });
     };
     const board = tileBoard({
-      audio, tiles, slotCount: units.length,
+      audio, tiles, slotCount: units.length, answer: units.map((u, i) => 'u' + i),
       onChange: async slots => {
         if (slots.some(x => x === null)) return;
         const wrong = board.graphemes().map((g, i) => g !== units[i][0] ? i : -1).filter(i => i >= 0);
@@ -267,25 +301,33 @@ const spellHeart = {
   }
 };
 
+const ROUND_MAX = 9;
 function buildRound() {
-  const items = [];
-  const fresh = introduced().length < 5 ? nextNewWords(5 - introduced().length) : nextNewWords(NEW_PER_SESSION);
-  fresh.forEach(w => items.push({ family: heartIntro, item: w }));
-  const due = dueWords().filter(w => !fresh.includes(w));
-  const practise = due.length >= 4 ? due.slice(0, 4) : [...due, ...shuffle(introduced().filter(w => !due.includes(w) && !fresh.includes(w))).slice(0, 4 - due.length)];
-  practise.forEach(w => items.push({ family: hearTap, item: w }));
-  fresh.forEach(w => items.push({ family: hearTap, item: w }));
+  // New words wait while many introduced words still sit in the first box (she is not holding them yet).
+  const shaky = introduced().filter(w => peek(w).box <= 1).length;
+  // and fewer new words on days with many reviews due, so reviews are never crowded out
+  const dueN = dueWords().length;
+  const fresh = introduced().length < 5 ? nextNewWords(5 - introduced().length) : shaky >= 5 || dueN >= 6 ? [] : nextNewWords(dueN >= 3 ? 1 : NEW_PER_SESSION);
   const strong = shuffle(introduced().filter(w => peek(w).box >= 3 && SW.words[w].length >= 2));
-  if (strong.length) items.push({ family: spellHeart, item: strong[0] });
-  // Two wish notes: known words found inside real sentences (connected text), when the hearts are known.
-  const usedNotes = [];
-  for (const w of shuffle(introduced()).slice(0, 8)) {
-    if (items.filter(i => i.family === wishNote).length >= (strong.length ? 1 : 2)) break;
-    const s = noteFor(w, usedNotes); if (s) { usedNotes.push(s.id); items.push({ family: wishNote, item: { word: w, sentence: s } }); }
+  const spell = strong.length ? [{ family: spellHeart, item: strong[0] }] : [];
+  // Wish notes: known words found inside real sentences (connected text), when the hearts are known.
+  const notes = [], usedNotes = [];
+  for (const w of shuffle(introduced())) { // every known word is a candidate, so a note is found whenever one exists
+    if (notes.length >= (strong.length ? 1 : 2)) break;
+    const s = noteFor(w, usedNotes); if (s) { usedNotes.push(s.id); notes.push({ family: wishNote, item: { word: w, sentence: s } }); }
   }
-  const say = pick(introduced().length ? introduced() : fresh);
-  if (say) items.push({ family: seeSay, item: say });
-  return items.slice(0, 9);
+  const sayWord = pick(introduced().length ? introduced() : fresh);
+  const say = sayWord ? [{ family: seeSay, item: sayWord }] : [];
+  // Notes, spelling and see-it-say-it have reserved places; practice taps fill what is left (up to 4).
+  const intros = fresh.map(w => ({ family: heartIntro, item: w }));
+  const freshTaps = fresh.map(w => ({ family: hearTap, item: w }));
+  const reserved = spell.length + notes.length + say.length;
+  // On the very first visits (five new words) some fresh taps give way to the reserved items.
+  while (freshTaps.length && intros.length + freshTaps.length + reserved > ROUND_MAX) freshTaps.pop();
+  const want = Math.min(4, Math.max(0, ROUND_MAX - intros.length - freshTaps.length - reserved));
+  const due = dueWords().filter(w => !fresh.includes(w));
+  const practise = due.length >= want ? due.slice(0, want) : [...due, ...shuffle(introduced().filter(w => !due.includes(w) && !fresh.includes(w))).slice(0, want - due.length)];
+  return [...intros, ...practise.map(w => ({ family: hearTap, item: w })), ...freshTaps, ...spell, ...notes, ...say].slice(0, ROUND_MAX);
 }
 
 async function startRound() {
@@ -323,3 +365,5 @@ export async function mount(h, c) {
   showMenu();
 }
 export function unmount() { cancelled = true; host = null; }
+// For tests: build rounds against a fake context.
+export const __test = { setup(c, sw, sent, ph) { ctx = c; SW = sw; SENT = sent; PH = ph; EARLY = null; }, buildRound, foilsFor, soundsSame, allWords, applyTap, introduce, masteredWords };
