@@ -5,7 +5,7 @@
 // Scheduling: Leitner boxes 1–5 with 1/2/4/7/15-day intervals; mastered = box 5 after first-try hits on 3 days.
 // Wish Notes: once a word's heart is known it turns up inside a short decodable sentence (content/sentences.json)
 // and she finds it there, so recognition transfers to connected text.
-import { el, wait, shuffle, pick, choiceGrid, promptBar, bigButton } from '../../shared/ui.js';
+import { el, wait, shuffle, pick, choiceGrid, promptBar, bigButton, tileBoard } from '../../shared/ui.js';
 import { runEncounterRound, celebrateRound } from '../../shared/encounter.js';
 import { lunaSVG, svgFrom } from '../../shared/characters.js';
 
@@ -122,7 +122,7 @@ const hearTap = {
   async play(stage, word, ctx, { praiseLine }) {
     const audio = ctx.audio;
     const foils = foilsFor(word, 3);
-    const items = shuffle([word, ...foils]).map(w => ({ id: w, pic: '', label: w, ok: w === word, say: w, textOnly: true }));
+    const items = shuffle([word, ...foils]).map(w => ({ id: w, pic: '', label: w, ok: w === word, say: w, textOnly: true, why: w === word ? null : 'That door says ' + w + '.' }));
     const prompt = 'Four wish doors. Which door says ' + word + '? Tap it to open it.';
     stage.setPrompt(promptBar(audio, 'Four wish doors. Which door says the word you hear? Tap it to open it.', { speak: prompt, replay: word }));
     stage.setObject(el('div', { class: 'picture', text: '🚪' }));
@@ -218,6 +218,55 @@ const wishNote = {
   }
 };
 
+// Spell it from memory: once a word is well known (box 3+), she builds it from its letters without seeing
+// it. Recall-by-spelling locks the spelling into memory (orthographic mapping) better than recognition alone.
+const spellHeart = {
+  id: 'spellheart', subskill: 'sight-words', itemId: w => 'spellheart:' + w,
+  async play(stage, word, ctx, { praiseLine }) {
+    const audio = ctx.audio;
+    const units = SW.words[word];
+    const letters = new Set(units.map(u => u[0]));
+    const foil = pick('abcdefghilmnoprstuwy'.split('').filter(c => !letters.has(c)));
+    const tiles = shuffle([...units.map((u, i) => ({ id: 'u' + i, grapheme: u[0], phoneme: u[1] || null })), { id: 'd0', grapheme: foil, phoneme: null }]);
+    const prompt = 'Spell the wish word ' + word + ' from memory. Put the letters in order.';
+    stage.setPrompt(promptBar(audio, 'Spell the wish word you hear from memory. Put the letters in order.', { speak: prompt, replay: word }));
+    stage.setObject(el('div', { class: 'picture', text: '💌' }));
+    let misses = 0, resolve;
+    const done = new Promise(r => { resolve = r; });
+    const finish = async outcome => {
+      board.lock();
+      const boxes = soundBoxes(audio, word);
+      stage.setBody(boxes.row);
+      await mapWord(audio, word, boxes);
+      const st = state(word); st.lastSeen = ctx.economy.today(); ctx.economy.persist();
+      if (outcome !== 'revealed') await audio.say(praiseLine());
+      resolve({ outcome, choices: tiles.length, gpc: word });
+    };
+    const board = tileBoard({
+      audio, tiles, slotCount: units.length,
+      onChange: async slots => {
+        if (slots.some(x => x === null)) return;
+        const wrong = board.graphemes().map((g, i) => g !== units[i][0] ? i : -1).filter(i => i >= 0);
+        if (!wrong.length) { finish(misses === 0 ? 'firstTry' : 'scaffolded'); return; }
+        misses++;
+        stage.luna('think', 900);
+        if (misses === 1) {
+          wrong.forEach(i => board.setSlot(i, null));
+          board.hintSlot(wrong[0]); board.hintTile('u' + wrong[0]);
+          await audio.say('Almost. Look at the glowing letter.');
+        } else {
+          board.clearHints(); units.forEach((u, i) => board.setSlot(i, 'u' + i));
+          await audio.say('Here it is: ' + word + '.');
+          finish('revealed');
+        }
+      }
+    });
+    stage.setBody(board.el);
+    await audio.say(prompt);
+    return done;
+  }
+};
+
 function buildRound() {
   const items = [];
   const fresh = introduced().length < 5 ? nextNewWords(5 - introduced().length) : nextNewWords(NEW_PER_SESSION);
@@ -226,15 +275,17 @@ function buildRound() {
   const practise = due.length >= 4 ? due.slice(0, 4) : [...due, ...shuffle(introduced().filter(w => !due.includes(w) && !fresh.includes(w))).slice(0, 4 - due.length)];
   practise.forEach(w => items.push({ family: hearTap, item: w }));
   fresh.forEach(w => items.push({ family: hearTap, item: w }));
+  const strong = shuffle(introduced().filter(w => peek(w).box >= 3 && SW.words[w].length >= 2));
+  if (strong.length) items.push({ family: spellHeart, item: strong[0] });
   // Two wish notes: known words found inside real sentences (connected text), when the hearts are known.
   const usedNotes = [];
   for (const w of shuffle(introduced()).slice(0, 8)) {
-    if (items.filter(i => i.family === wishNote).length >= 2) break;
+    if (items.filter(i => i.family === wishNote).length >= (strong.length ? 1 : 2)) break;
     const s = noteFor(w, usedNotes); if (s) { usedNotes.push(s.id); items.push({ family: wishNote, item: { word: w, sentence: s } }); }
   }
   const say = pick(introduced().length ? introduced() : fresh);
   if (say) items.push({ family: seeSay, item: say });
-  return items.slice(0, 8);
+  return items.slice(0, 9);
 }
 
 async function startRound() {

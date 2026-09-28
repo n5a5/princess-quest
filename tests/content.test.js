@@ -2,6 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readJSON } from './helpers.js';
+import { createRequire } from 'node:module';
+const require_ = createRequire(import.meta.url);
 
 test('standards.json has verified K benchmarks', () => {
   const s = readJSON('content/standards.json');
@@ -117,4 +119,15 @@ test('pa.json: syllable words have 1-3 beats and unique pictures', () => {
     assert.ok(pic && !pics.has(pic), w + ' picture'); pics.add(pic);
   }
   for (const n of [1, 2, 3]) assert.ok(syllables.filter(s => s[1] === n).length >= 8, n + '-beat words');
+});
+
+test('story-voice pieces still appear in the code, and every line key is well formed', () => {
+  const { readFileSync, readdirSync } = require_('fs');
+  const code = ['shell.js', ...readdirSync('shared').map(f => 'shared/' + f), ...readdirSync('games/princess-quest').map(f => 'games/princess-quest/' + f)]
+    .filter(f => f.endsWith('.js')).map(f => readFileSync(f, 'utf8')).join('\n');
+  const missing = readJSON('content/line-templates.json').filter(p => !code.includes(p.replace(/[.?!:,]$/, '')));
+  assert.deepEqual(missing, [], 'these recorded pieces are no longer said anywhere; re-run tools/collect-lines.py');
+  const lines = readJSON('content/lines.json');
+  for (const k of Object.keys(lines)) assert.equal(k, k.toLowerCase().replace(/\s+/g, ' ').trim());
+  assert.ok(Object.keys(lines).length > 500);
 });

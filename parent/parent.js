@@ -22,7 +22,7 @@ const speech = createSpeech({ settings: economy.save.settings, onChange: () => e
 const player = createWebAudioPlayer();
 const audio = createAudio({ speech, store, player, manifest: null, sounds: {}, settings: economy.save.settings, base: '../assets/audio/' });
 const app = document.getElementById('app');
-let SOUNDS = [], SW = null;
+let SOUNDS = [], SW = null, AUDITION = null;
 
 // Fall 2026 formal results, typed from the school reports (i-Ready Inform 1, Aug 18/20; Star, Aug 25 / Sep 1).
 // Strand → the app skills that practise it. 'read' is the plain-language interpretation used to set tiers.
@@ -113,6 +113,36 @@ function weakStrong() {
   return { weak: byP.slice(0, 3), strong: byP.slice(-3).reverse().filter(d => adaptive.mastery(d.id) >= 0.6) };
 }
 
+// Two-minute, screen-free games a parent can play tonight, one per skill. Adult involvement was the biggest
+// factor in the GraphoGame studies; this turns the dashboard into something to do, not just read.
+const TONIGHT = {
+  'phonics-gpc': 'Letter hunt: say a sound like /m/; she finds that letter on a cereal box or a book cover.',
+  'phonics-encode': 'Say a short word from today (cat, ship, jam). She spells it with magnets or on paper, one sound at a time.',
+  'phonics-decode': 'Write three short words. She slides a finger under each letter, says the sounds, then says the word.',
+  'decodable-reading': 'Write one short sentence (The cat is in the hat). She reads it, pointing to each word.',
+  'pa-sounds': 'I spy with sounds: "I spy something that starts with /m/." Take turns.',
+  'pa-blend-segment': 'Robot talk: say a word in pieces, /d/ /o/ /g/, and she says the word. Then she is the robot.',
+  'pa-manipulate': 'Silly swaps: "Say cat. Now change /k/ to /h/. What is it?" (hat). Take turns making up swaps.',
+  'pa-rhyme': 'Rhyme chain: cat, hat, bat, sat... keep going until someone gets stuck. Clap the beats in her name too.',
+  'sight-words': 'Hide three wish-word cards (the, said, was) around the room. She reads each one she finds.',
+  'subitize-tenframe': 'Quick peek: show fingers or dots for one second. She says how many without counting.',
+  'number-relations': 'Snack math: she counts out exactly 7 grapes. Then one more? Then one less?',
+  'teen-compare': 'Make 14 with a group of ten crayons and 4 more. Which is more, 14 or 17?',
+  'add-sub': 'Toy stories: 3 cars are in the garage and 2 drive in. How many now? Act it out.',
+  'decompose-stories': 'Hide some of 7 coins under a cup. She works out how many are hiding.',
+  'count-sequence': 'Count the stairs going up, then count back down. Start counting from 13 sometimes.',
+  'measure': 'Which is longer, a spoon or a fork? Line them up to check. Which is heavier, a shoe or a sock?',
+  'data-sort': 'Sort the socks by color, count each pile, and ask which pile has the most.',
+  'patterns': 'Make a pattern with spoons and forks (spoon, fork, spoon, fork). She says what comes next.',
+  'shapes': 'Shape hunt: find three circles and three rectangles in the kitchen.',
+  'comprehension': 'Read a picture book together. Ask who was in it, where it happened, and how someone felt.'
+};
+function tonightCard() {
+  const practised = SUBSKILLS.filter(d => adaptive.accuracy(d.id) !== null && d.tier <= 2);
+  const pool = practised.length ? practised : SUBSKILLS.filter(d => d.tier === 1);
+  const d = [...pool].sort((x, y) => adaptive.mastery(x.id) - adaptive.mastery(y.id))[0];
+  return d ? d.name + ': ' + TONIGHT[d.id] : 'Read a picture book together.';
+}
 function tonightLine() {
   const trouble = adaptive.troubleList(2).slice(0, 3);
   if (!trouble.length) return 'Nothing is stuck. Ask her to read you three wish words from the well.';
@@ -139,7 +169,8 @@ function render() {
       ]),
       el('p', {}, [el('strong', { text: 'Tomorrow\'s trail (planner): ' }), nextFocus()]),
       (() => { const { weak, strong } = weakStrong(); return weak.length ? el('p', {}, [el('strong', { text: 'Weakest in the app right now: ' }), weak.map(d => d.name).join(', '), el('span', { text: '. ' }), el('strong', { text: 'Strongest: ' }), strong.length ? strong.map(d => d.name).join(', ') : 'nothing above 60% yet', el('span', { text: '.' })]) : el('p', { class: 'muted', text: 'Weak and strong areas appear after a few days of play.' }); })(),
-      el('p', {}, [el('strong', { text: 'Do this with her tonight: ' }), tonightLine()]),
+      el('p', {}, [el('strong', { text: 'Tonight, two minutes, no screen: ' }), tonightCard()]),
+      el('p', {}, [el('strong', { text: 'Things she missed more than once: ' }), tonightLine()]),
       el('p', { class: 'muted', text: 'The evidence says adult participation is the biggest lever for app-based phonics (McTigue et al. 2020). Two minutes counts.' })
     ]),
     el('section', {}, [
@@ -186,7 +217,9 @@ function render() {
       ]),
       el('p', { class: 'muted', text: 'School growth targets: i-Ready reading 396 → 439 typical / 450 stretch; math 372 → 396 / 410; Star reading from Level 2 to Level 3 (benchmark near 800). App practice alone moves standardized scores modestly (d ≈ 0.2–0.3 in the literature); a daily ten minutes on the focus strands with you in the loop is the lever. The daily quest is a two-stop trail, one reading stop and one math stop, chosen from the weakest focus skills.' })
     ]),
+    voiceSection(),
     soundCheckSection(),
+    audioCheckSection(),
     el('section', {}, [
       el('h2', { text: 'Places' }),
       el('div', { class: 'row' }, REGISTRY.map(r => el('label', { class: 'toggle' }, [
@@ -219,15 +252,107 @@ function render() {
     el('section', {}, [
       el('h2', { text: 'Save data' }),
       el('div', { class: 'row' }, [
+        el('button', { type: 'button', text: 'Share progress to another device', onclick: shareSave }),
         el('button', { type: 'button', text: 'Export progress JSON', onclick: exportSave }),
-        el('label', { class: 'toggle' }, ['Import progress ', el('input', { type: 'file', accept: 'application/json', onchange: importSave })]),
+        el('label', { class: 'toggle' }, ['Combine progress from another device ', el('input', { type: 'file', accept: 'application/json,.json', onchange: mergeSave })]),
+        el('label', { class: 'toggle' }, ['Replace with a saved file ', el('input', { type: 'file', accept: 'application/json,.json', onchange: importSave })]),
         el('button', { type: 'button', class: 'danger', text: 'Reset all progress', onclick: () => { if (confirm('Reset ALL progress? This cannot be undone.')) { economy.reset(); render(); } } })
       ]),
-      el('p', { class: 'muted', text: 'Devices do not sync. Use export/import to move progress between phone, tablet, and PC. Recorded sounds have their own export in Sound Check.' })
+      el('p', { class: 'muted', text: 'Each device keeps its own progress. To play on both the phone and the Chromebook: on one device tap Share progress (or Export) and send the file to the other device, for example with Nearby Share, Google Drive or email to yourself. On the other device choose Combine progress and pick the file. Combining keeps the further-along progress for every skill and word, never double counts, and is safe to repeat; this device keeps its own name, PIN and settings. Replace overwrites everything on this device. Recorded sounds have their own export in Sound Check.' })
     ])
   );
 }
 function kpi(label, value) { return el('div', { class: 'kpi' }, [el('div', { class: 'v', text: String(value) }), el('div', { class: 'l', text: label })]); }
+
+// Voice audition: the same words, instructions and story in each shortlisted voice. Choosing Heart turns
+// on the story voice right away (it is the voice already recorded for every word, letter sound and fixed
+// line). Any other pick is saved and shown here; switching to it needs the app's audio re-rendered.
+function voiceSection() {
+  const s = economy.save;
+  const section = el('section', {}, [el('h2', { text: 'Voice' })]);
+  const now = s.settings.voice === 'luna' ? 'Story voice (Heart): words, letter sounds, stories, praise and fixed instructions all use one recorded voice. Lines with a changing word or number still use the device voice.' : 'Device voice: words and letter sounds use the recorded Heart voice; instructions and stories use this device\'s text-to-speech, which sounds different on a Chromebook, a phone and a PC.';
+  section.appendChild(el('p', { text: 'Now: ' + now }));
+  section.appendChild(el('div', { class: 'row' }, [
+    el('button', { type: 'button', text: s.settings.voice === 'luna' ? '✓ Story voice on' : 'Use the story voice (Heart)', onclick: () => { s.settings.voice = 'luna'; s.settings.voicePick = 'af_heart'; economy.persist(); render(); } }),
+    el('button', { type: 'button', text: s.settings.voice === 'luna' ? 'Back to the device voice' : '✓ Device voice on', onclick: () => { s.settings.voice = 'device'; economy.persist(); render(); } })
+  ]));
+  if (!AUDITION) return section;
+  section.appendChild(el('p', { class: 'muted', text: 'Listen and compare. Every voice below says the same ten words, ten instructions and a short story. All run offline once chosen. Pick the one you want Amelia to hear.' + (s.settings.voicePick ? ' Your pick: ' + (AUDITION.voices.find(v => v.id === s.settings.voicePick) || { label: s.settings.voicePick }).label + '.' : '') }));
+  const grid = el('div', { class: 'audition' });
+  const play = async (vid, idx) => { audio.stop(); for (const n of idx) { const ok = await player.play('../assets/audio/audition/' + vid + '/' + n + '.ogg'); if (!ok) break; await new Promise(r => setTimeout(r, 250)); } };
+  const words = AUDITION.items.map((it, n) => it.kind === 'word' ? n : -1).filter(n => n >= 0);
+  const lines = AUDITION.items.map((it, n) => it.kind === 'line' ? n : -1).filter(n => n >= 0);
+  const story = AUDITION.items.map((it, n) => it.kind === 'story' ? n : -1).filter(n => n >= 0);
+  for (const v of AUDITION.voices) {
+    const picked = s.settings.voicePick === v.id;
+    grid.appendChild(el('div', { class: 'voice' + (picked ? ' picked' : '') }, [
+      el('div', {}, [el('strong', { text: v.label }), el('span', { class: 'muted', text: ' · ' + v.license })]),
+      el('div', { class: 'muted', text: v.note }),
+      el('div', { class: 'row' }, [
+        el('button', { type: 'button', text: '▶ Words', onclick: () => play(v.id, words) }),
+        el('button', { type: 'button', text: '▶ Instructions', onclick: () => play(v.id, lines) }),
+        el('button', { type: 'button', text: '▶ Story', onclick: () => play(v.id, story) }),
+        el('button', { type: 'button', text: picked ? '✓ Picked' : 'Pick this voice', onclick: () => {
+          s.settings.voicePick = v.id;
+          if (v.id === 'af_heart') s.settings.voice = 'luna';
+          economy.persist(); render();
+          if (v.id !== 'af_heart') alert(v.label + ' is saved as your pick. The recorded audio is still in the Heart voice; switching every word, letter sound and line to ' + v.label + ' needs the audio rebuilt with tools/build-*.py --voice ' + v.id + '.');
+        } })
+      ])
+    ]));
+  }
+  grid.appendChild(el('div', { class: 'voice' }, [
+    el('div', {}, [el('strong', { text: 'This device\'s voice' }), el('span', { class: 'muted', text: ' · built in' })]),
+    el('div', { class: 'muted', text: 'What the app uses for instructions now. Different on every device.' }),
+    el('div', { class: 'row' }, [
+      el('button', { type: 'button', text: '▶ Instructions', onclick: async () => { audio.stop(); for (const n of lines) { await speech.speakText(AUDITION.items[n].text); } } }),
+      el('button', { type: 'button', text: '▶ Story', onclick: () => { audio.stop(); speech.speakText(AUDITION.items[story[0]].text); } })
+    ])
+  ]));
+  section.appendChild(grid);
+  section.appendChild(el('button', { type: 'button', text: '■ Stop', onclick: () => { audio.stop(); player.stop(); } }));
+  return section;
+}
+
+// Audio check: a troubleshooting report for a device where letter sounds are silent or click.
+// Plays every letter sound in turn and lists what the browser reports, so a parent can copy it and send it.
+function audioCheckSection() {
+  const out = el('pre', { class: 'muted', style: 'white-space:pre-wrap;font-size:12px;max-height:320px;overflow:auto' });
+  const run = async () => {
+    audio.stop();
+    const lines = [];
+    const log = t => { lines.push(t); out.textContent = lines.join(String.fromCharCode(10)); };
+    if (player.unlock) player.unlock();
+    await new Promise(r => setTimeout(r, 300));
+    const inf = player.info ? player.info() : {};
+    log('Device: ' + navigator.userAgent);
+    log('Audio engine: ' + JSON.stringify(inf));
+    log('Muted in app: ' + (economy.save.settings.muted ? 'yes (turn sound on to hear)' : 'no'));
+    let ok = 0;
+    for (const s of SOUNDS) {
+      const src = audio.phonemeSource(s.id);
+      const url = audio.phonemeSrc(s.id);
+      const probe = url && player.probe ? await player.probe(url) : { ok: false, error: 'no clip' };
+      if (probe.ok) ok++;
+      log(`/${s.id}/  source=${src}  ${probe.ok ? 'decoded ' + (probe.ms ?? '?') + ' ms' : 'FAILED ' + probe.error}`);
+      await audio.phoneme(s.id);
+      await new Promise(r => setTimeout(r, 250));
+    }
+    log(`${ok} of ${SOUNDS.length} letter sounds decoded.`);
+    const after = player.info ? player.info() : {};
+    log('Audio engine after: ' + JSON.stringify(after));
+  };
+  return el('section', {}, [
+    el('h2', { text: 'Audio check (troubleshooting)' }),
+    el('p', { class: 'muted', text: 'If letter sounds are silent or only click on this device, tap Run. Each letter sound plays in turn. Then tap Copy and send the report.' }),
+    el('div', { class: 'row' }, [
+      el('button', { type: 'button', text: '▶ Run audio check', onclick: run }),
+      el('button', { type: 'button', text: '■ Stop', onclick: () => audio.stop() }),
+      el('button', { type: 'button', text: 'Copy report', onclick: async () => { try { await navigator.clipboard.writeText(out.textContent); alert('Copied.'); } catch { alert('Select the text and copy it by hand.'); } } })
+    ]),
+    out
+  ]);
+}
 
 // Sound Check: every phoneme with its current source, play, optional recording, decode demos.
 function soundCheckSection() {
@@ -296,6 +421,18 @@ function exportSave() {
   const a = el('a', { href: URL.createObjectURL(blob), download: 'princess-quest-' + economy.today() + '.json' });
   document.body.appendChild(a); a.click(); a.remove();
 }
+async function shareSave() {
+  const name = 'princess-quest-' + economy.today() + '.json';
+  const file = new File([economy.exportJSON()], name, { type: 'application/json' });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Princess Quest progress' }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  exportSave();
+}
+function mergeSave(e) {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(t => { if (economy.mergeJSON(t)) { alert('Combined. This device now has the progress from both.'); render(); } else alert('That file is not a Princess Quest save.'); });
+}
 function importSave(e) {
   const f = e.target.files[0]; if (!f) return;
   f.text().then(t => { if (economy.importJSON(t)) { alert('Imported.'); render(); } else alert('That file is not a valid save.'); });
@@ -304,6 +441,8 @@ function importSave(e) {
 async function start() {
   try { SOUNDS = (await content.load('sounds')).sounds; audio.setSounds(Object.fromEntries(SOUNDS.map(s => [s.id, s]))); } catch (e) { console.warn(e); }
   try { audio.setManifest(await content.load('audio-manifest')); } catch (e) { console.warn('no manifest', e); }
+  try { audio.setLines(await content.load('lines-audio')); } catch (e) { console.warn('no lines', e); }
+  try { AUDITION = await content.load('audition'); } catch (e) { AUDITION = null; }
   try { SW = await content.load('sight-words'); } catch (e) { console.warn(e); }
   await store.load();
   let unlocked = false;

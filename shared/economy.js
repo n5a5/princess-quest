@@ -33,7 +33,9 @@ export function defaultSave() {
     squishies: { rescued: [] },
     quest: null,
     questHistory: [],
-    settings: { muted: false, rate: 0.9, voiceName: '', modulesOff: [] },
+    // voice: 'device' = the device's text-to-speech for instructions; 'luna' = the pre-recorded story voice
+    // (the same voice as the words and letter sounds). Stays 'device' until the parent picks in Parent Corner.
+    settings: { muted: false, rate: 0.9, voiceName: '', modulesOff: [], voice: 'device' },
     log: []
   };
 }
@@ -76,6 +78,7 @@ export function migrate(raw) {
   if (typeof out.companion.stars !== 'number') out.companion.stars = 0;
   if (!Array.isArray(out.kingdom.placed)) out.kingdom.placed = [];
   if (!Array.isArray(out.settings.modulesOff)) out.settings.modulesOff = [];
+  if (!['device', 'luna'].includes(out.settings.voice)) out.settings.voice = 'device';
   out.schemaVersion = SCHEMA_VERSION;
   return out;
 }
@@ -130,7 +133,8 @@ export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date() 
       return starRankFromPromotions(promos);
     },
     logResult({ subskill, ok, firstTry = true, outcome = null, review = false, stage = null }) {
-      const row = { day: today(), subskill, ok: !!ok, firstTry: !!firstTry };
+      // t: when it happened (ms). Makes each row unique so combining two devices' saves never double-counts.
+      const row = { day: today(), t: now().getTime(), subskill, ok: !!ok, firstTry: !!firstTry };
       if (outcome) row.outcome = outcome;
       if (review) row.review = true;
       if (stage !== null) row.stage = stage;
@@ -158,6 +162,56 @@ export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date() 
     },
     rescuedAt(place, ids) { return ids.filter(id => save.squishies.rescued.includes(id)); },
     exportJSON() { return JSON.stringify(save, null, 2); },
+    // Combine another device's progress into this one (phone + Chromebook). Nothing is lost and running it
+    // twice changes nothing: every skill keeps its further-along copy, wish words keep the higher box, logs are
+    // united (a row seen on both devices counts once), gems and stars keep the larger number. This device's
+    // settings, name, PIN and today's quest stay as they are. Returns false if the text is not a save.
+    mergeJSON(text) {
+      let other;
+      try { other = JSON.parse(text); } catch { return false; }
+      if (!isObj(other) || !('schemaVersion' in other) || !('gems' in other)) return false;
+      const b = migrate(other), a = save;
+      for (const [id, eb] of Object.entries(b.subskills)) {
+        const ea = a.subskills[id];
+        if (!ea) { a.subskills[id] = eb; continue; }
+        const further = (eb.stage || 0) > (ea.stage || 0) || ((eb.stage || 0) === (ea.stage || 0) && (eb.p || 0) > (ea.p || 0));
+        const keep = further ? { ...eb } : { ...ea };
+        keep.lastPracticed = [ea.lastPracticed, eb.lastPracticed].filter(Boolean).sort().pop() || null;
+        keep.promotions = Math.max(ea.promotions || 0, eb.promotions || 0);
+        a.subskills[id] = keep;
+      }
+      for (const [w, wb] of Object.entries(b.sightWords)) {
+        const wa = a.sightWords[w];
+        if (!wa) { a.sightWords[w] = wb; continue; }
+        a.sightWords[w] = {
+          box: Math.max(wa.box || 0, wb.box || 0),
+          firstTryDays: [...new Set([...(wa.firstTryDays || []), ...(wb.firstTryDays || [])])].sort(),
+          introducedDay: [wa.introducedDay, wb.introducedDay].filter(Boolean).sort()[0] || null,
+          lastSeen: [wa.lastSeen, wb.lastSeen].filter(Boolean).sort().pop() || null
+        };
+      }
+      for (const [k, n] of Object.entries(b.missed)) a.missed[k] = Math.max(a.missed[k] || 0, n);
+      for (const [k, v] of Object.entries(b.vocab)) if (!a.vocab[k] || (v.recalled && !a.vocab[k].recalled)) a.vocab[k] = v;
+      for (const [k, n] of Object.entries(b.stars)) a.stars[k] = Math.max(a.stars[k] || 0, n);
+      a.gems = Math.max(a.gems, b.gems);
+      a.companion.stars = Math.max(a.companion.stars, b.companion.stars);
+      a.badges = [...new Set([...a.badges, ...b.badges])];
+      a.streak.days = [...new Set([...a.streak.days, ...b.streak.days])].sort();
+      a.squishies.rescued = [...new Set([...a.squishies.rescued, ...b.squishies.rescued])];
+      if ((b.kingdom.placed || []).length > (a.kingdom.placed || []).length) a.kingdom.placed = b.kingdom.placed;
+      a.kingdom.gifts = [...new Set([...(a.kingdom.gifts || []), ...(b.kingdom.gifts || [])])];
+      // logs: multiset union — a row keeps the larger of its two counts
+      const count = rows => rows.reduce((m, r) => { const k = JSON.stringify(r); m.set(k, (m.get(k) || 0) + 1); return m; }, new Map());
+      const ca = count(a.log), cb = count(b.log);
+      for (const [k, n] of cb) for (let i = ca.get(k) || 0; i < n; i++) a.log.push(JSON.parse(k));
+      a.log.sort((x, y) => (x.day < y.day ? -1 : x.day > y.day ? 1 : (x.t || 0) - (y.t || 0)));
+      const fa = a.feelingsLog || [], fb = other.feelingsLog || [];
+      const seen = new Set(fa.map(f => JSON.stringify(f)));
+      a.feelingsLog = [...fa, ...fb.filter(f => !seen.has(JSON.stringify(f)))];
+      trimLog();
+      persist();
+      return true;
+    },
     importJSON(text) {
       try {
         const parsed = JSON.parse(text);

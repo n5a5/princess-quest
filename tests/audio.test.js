@@ -1,7 +1,7 @@
 // tests/audio.test.js — resolution chain, decoding sequence, cancellation. All DOM-free via injected deps.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAudio, decodeSteps, swapSteps, parseParts, letterName, TIMING } from '../shared/audio.js';
+import { createAudio, decodeSteps, swapSteps, parseParts, letterName, TIMING, splitSentences, keyOf } from '../shared/audio.js';
 
 function harness({ recorded = [], bundled = { phonemes: [], letters: [], words: [] }, sounds = {}, muted = false } = {}) {
   const log = [];
@@ -119,4 +119,58 @@ test('muted audio plays nothing', async () => {
   const h = harness({ bundled: { phonemes: ['m'] }, muted: true });
   await h.audio.phoneme('m'); await h.audio.word('cat'); await h.audio.say('hi /m/');
   assert.deepEqual(h.log, []);
+});
+
+test('story voice: plays pre-rendered lines only when every sentence has one, else the device voice says it all', async () => {
+  const log = [];
+  const player = { play: async src => { log.push(['play', src]); return true; }, stop: () => {} };
+  const speech = { speakText: async t => { log.push(['tts', t]); }, stop: () => {} };
+  const settings = { muted: false, voice: 'luna' };
+  const audio = createAudio({ speech, store: null, player, manifest: { ext: 'ogg', phonemes: [], words: [] }, sounds: {}, settings });
+  audio.setLines({ ext: 'ogg', lines: { [keyOf('Great job!')]: 'aa', [keyOf('Which one is longer?')]: 'bb', [keyOf('The scroll says:')]: 'cc', [keyOf('The cat is in the hat.')]: 'dd' } });
+  await audio.say('Great job!  Which one is longer?');
+  assert.deepEqual(log, [['play', './assets/audio/lines/aa.ogg'], ['play', './assets/audio/lines/bb.ogg']]);
+  log.length = 0;
+  await audio.say('The scroll says: The cat is in the hat.');
+  assert.deepEqual(log.map(x => x[1]), ['./assets/audio/lines/cc.ogg', './assets/audio/lines/dd.ogg']);
+  log.length = 0;
+  await audio.say('Great job! Luna has 3 gems.');
+  assert.deepEqual(log, [['tts', 'Great job! Luna has 3 gems.']], 'a changing sentence means one device voice for the whole line');
+  log.length = 0;
+  settings.voice = 'device';
+  await audio.say('Great job!');
+  assert.deepEqual(log, [['tts', 'Great job!']], 'device voice until the parent chooses the story voice');
+  assert.deepEqual(splitSentences('Hi! You did it. Yes?'), ['Hi!', 'You did it.', 'Yes?']);
+  assert.equal(keyOf('  Luna\u2019s   Gem. '), "luna's gem.");
+});
+
+test('story voice: a sentence broken by a letter sound plays the recorded fragment and the recorded sound', async () => {
+  const log = [];
+  const player = { play: async src => { log.push(src); return true; }, stop: () => {} };
+  const speech = { speakText: async t => { log.push('tts:' + t); }, stop: () => {} };
+  const settings = { muted: false, voice: 'luna' };
+  const audio = createAudio({ speech, store: null, player, manifest: { ext: 'ogg', phonemes: ['m'], words: [] }, sounds: {}, settings });
+  audio.setLines({ ext: 'ogg', lines: { [keyOf('Listen.')]: 'l1', [keyOf('Which one starts with')]: 'w1' } });
+  await audio.say('Listen. Which one starts with /m/?');
+  assert.deepEqual(log, ['./assets/audio/lines/l1.ogg', './assets/audio/lines/w1.ogg', './assets/audio/phonemes/m.ogg']);
+  log.length = 0;
+  await audio.say('Which one starts with /s/?');
+  assert.deepEqual(log, ['tts:Which one starts with'], 'no recorded /s/: the device voice says it and the sound stays silent (never TTS for a stop)');
+});
+
+test('story voice: a sentence with a changing word is spliced from a recorded piece and the word clip', async () => {
+  const log = [];
+  const player = { play: async src => { log.push(src); return true; }, stop: () => {} };
+  const speech = { speakText: async t => { log.push('tts:' + t); }, stop: () => {} };
+  const settings = { muted: false, voice: 'luna' };
+  const audio = createAudio({ speech, store: null, player, manifest: { ext: 'ogg', phonemes: [], words: ['big'] }, sounds: {}, settings });
+  audio.setLines({ ext: 'ogg', lines: { [keyOf('Which door says')]: 'd1', [keyOf('Luna has')]: 'l1', [keyOf('gems in her pouch.')]: 'g1', '3': 'n3' } });
+  await audio.say('Which door says big?');
+  assert.deepEqual(log, ['./assets/audio/lines/d1.ogg', './assets/audio/words/big.ogg']);
+  log.length = 0;
+  await audio.say('Luna has 3 gems in her pouch.');
+  assert.deepEqual(log, ['./assets/audio/lines/l1.ogg', './assets/audio/lines/n3.ogg', './assets/audio/lines/g1.ogg']);
+  log.length = 0;
+  await audio.say('Which door says zebra?');
+  assert.deepEqual(log, ['tts:Which door says zebra?'], 'a word with no clip means the device voice says the whole line');
 });

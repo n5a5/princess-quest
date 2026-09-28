@@ -37,3 +37,7 @@ label.toggle { display: flex; align-items: center; gap: 8px; min-height: 40px; }
 tr.reteach td { background: #fff1f2; }
 td.up { color: #15803d; font-weight: 700; }
 td.down { color: #b91c1c; font-weight: 700; }
+
+.audition { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin: 10px 0; }
+.audition .voice { border: 2px solid #ede9fe; border-radius: 12px; padding: 10px; }
+.audition .voice.picked { border-color: #86efac; background: #f0fdf4; }

@@ -1,0 +1,125 @@
+{
+ "items": [
+  {
+   "kind": "word",
+   "text": "cat"
+  },
+  {
+   "kind": "word",
+   "text": "ship"
+  },
+  {
+   "kind": "word",
+   "text": "fish"
+  },
+  {
+   "kind": "word",
+   "text": "jump"
+  },
+  {
+   "kind": "word",
+   "text": "the"
+  },
+  {
+   "kind": "word",
+   "text": "rainbow"
+  },
+  {
+   "kind": "word",
+   "text": "unicorn"
+  },
+  {
+   "kind": "word",
+   "text": "seven"
+  },
+  {
+   "kind": "word",
+   "text": "frog"
+  },
+  {
+   "kind": "word",
+   "text": "said"
+  },
+  {
+   "kind": "line",
+   "text": "Welcome to Unicorn Meadow! Which magic today?"
+  },
+  {
+   "kind": "line",
+   "text": "Tap each letter stone to hear its sound. Read the word. Then tap its picture."
+  },
+  {
+   "kind": "line",
+   "text": "Build the word you hear. Put the letter stones in order."
+  },
+  {
+   "kind": "line",
+   "text": "Listen and put the sounds together. Which picture is it?"
+  },
+  {
+   "kind": "line",
+   "text": "Luna has three gems in her pouch. She finds two more. How many gems does she have now?"
+  },
+  {
+   "kind": "line",
+   "text": "Which one is heavier? Or are they the same?"
+  },
+  {
+   "kind": "line",
+   "text": "Amazing, Amelia! You did it!"
+  },
+  {
+   "kind": "line",
+   "text": "Almost! Look at the glowing one."
+  },
+  {
+   "kind": "line",
+   "text": "You freed a Squishy! Rosie says thank you!"
+  },
+  {
+   "kind": "line",
+   "text": "Great job! One more, or all done?"
+  },
+  {
+   "kind": "story",
+   "text": "Luna the unicorn had a gem. It was pink. It could glow. One day the gem was gone! Luna looked in the grass. She looked by the pond. A little Squishy popped up. \"I have it!\" said Rosie."
+  }
+ ],
+ "voices": [
+  {
+   "id": "af_heart",
+   "engine": "kokoro",
+   "label": "Heart (Kokoro)",
+   "note": "Warm US female. Already used for the words and letter sounds.",
+   "license": "Apache-2.0"
+  },
+  {
+   "id": "af_bella",
+   "engine": "kokoro",
+   "label": "Bella (Kokoro)",
+   "note": "Bright US female.",
+   "license": "Apache-2.0"
+  },
+  {
+   "id": "af_sarah",
+   "engine": "kokoro",
+   "label": "Sarah (Kokoro)",
+   "note": "Calm US female.",
+   "license": "Apache-2.0"
+  },
+  {
+   "id": "am_michael",
+   "engine": "kokoro",
+   "label": "Michael (Kokoro)",
+   "note": "Gentle US male.",
+   "license": "Apache-2.0"
+  },
+  {
+   "id": "kristin",
+   "engine": "piper",
+   "label": "Kristin (Piper)",
+   "note": "US female, public-domain voice. Lighter, more robotic.",
+   "license": "Public domain voice"
+  }
+ ]
+}

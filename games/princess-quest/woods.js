@@ -25,7 +25,8 @@ const spokenUnits = w => unitsOf({ units: w.u }).map((u, i) => ({ g: u[0], p: u[
 const isVowel = id => sounds[id] && sounds[id].kind === 'vowel';
 const outcomeOf = r => r.revealed ? 'revealed' : r.misses ? 'scaffolded' : 'firstTry';
 // Pictures only: no label, no printed word. `say` is what the picture speaks when tapped after reveal.
-const picChoices = (target, foils) => shuffle([target, ...foils]).map(x => ({ id: x.w, pic: x.p, ok: x === target, say: x.w }));
+const picChoices = (target, foils, why = null) => shuffle([target, ...foils]).map(x => ({ id: x.w, pic: x.p, ok: x === target, say: x.w, why: why && x !== target ? why(x) : null }));
+const soundAt = (w, kind) => { const u = spokenUnits(w); const x = kind === 'first' ? u[0] : kind === 'final' ? u[u.length - 1] : u.find(y => isVowel(y.p)); return x ? x.p : null; };
 const vowelIndex = w => w.u.findIndex(u => isVowel(u[1]));
 const rimeOf = w => { const v = vowelIndex(w); return v < 0 ? null : w.u.slice(v).map(u => u[0]).join(''); };
 const onsetOf = w => { const v = vowelIndex(w); return v <= 0 ? [] : w.u.slice(0, v).filter(u => u[1]).map(u => u[1]); };
@@ -49,7 +50,9 @@ const soundSeeds = {
     const prompt = it.kind === 'medial' ? 'Listen. Which one has /' + it.phoneme + '/ in the middle?' : 'Listen. Which one ' + where + ' /' + it.phoneme + '/?';
     stage.setObject(el('div', { class: 'picture', text: '👂' }));
     stage.setPrompt(promptBar(audio, prompt, { ears: true }));
-    const grid = choiceGrid({ audio, prompt, items: picChoices(it.target, it.foils), praise: praiseLine(), revealText: it.target.w + ' ' + where + ' /' + it.phoneme + '/.' });
+    const why = x => { const p = soundAt(x, it.kind); return p ? x.w + ' ' + where + ' /' + p + '/.' : 'That is ' + x.w + '.'; };
+    const grid = choiceGrid({ audio, prompt, items: picChoices(it.target, it.foils, why), praise: praiseLine(), revealText: it.target.w + ' ' + where + ' /' + it.phoneme + '/.',
+      onMiss: async () => { await audio.say('We need /' + it.phoneme + '/.', { interrupt: false }); } });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
     await audio.say(prompt);
@@ -69,7 +72,9 @@ const blendIt = {
     const prompt = 'Luna says a word in pieces: ' + soundsText + '. Put the sounds together. Which picture is it?';
     stage.setObject(el('div', { class: 'picture', text: '👂' }));
     stage.setPrompt(promptBar(audio, prompt, { ears: true }));
-    const grid = choiceGrid({ audio, prompt, items: picChoices(w, foils), praise: praiseLine(), revealText: soundsText + ' makes ' + w.w + '.' });
+    const replay = () => audio.sequence(units.flatMap((u, i) => i ? [{ gap: 500 }, { phoneme: u.p }] : [{ phoneme: u.p }]));
+    const grid = choiceGrid({ audio, prompt, items: picChoices(w, foils, x => 'That is ' + x.w + '.'), praise: praiseLine(), revealText: soundsText + ' makes ' + w.w + '.',
+      onMiss: async () => { await audio.say('Listen again and push the sounds together.', { interrupt: false }); await replay(); } });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
     await audio.say('Luna says a word in pieces. Put the sounds together.');
@@ -146,7 +151,7 @@ const oralSwap = {
     const prompt = 'Say ' + from.w + '. Now change /' + from.u[index][1] + '/ to /' + to.u[index][1] + '/. What word is it now?';
     stage.setObject(picture(from.p, () => { audio.stop(); audio.word(from.w); }));
     stage.setPrompt(promptBar(audio, 'Say this word. Now change /' + from.u[index][1] + '/ to /' + to.u[index][1] + '/. What word is it now?', { ears: true, speak: prompt }));
-    const grid = choiceGrid({ audio, prompt, items: picChoices(to, [from, ...other]), praise: praiseLine(), revealText: 'Now it is ' + to.w + '.' });
+    const grid = choiceGrid({ audio, prompt, items: picChoices(to, [from, ...other], x => x === from ? 'That is still ' + from.w + '. We need to change a sound.' : 'That is ' + x.w + '.'), praise: praiseLine(), revealText: 'Now it is ' + to.w + '.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
     await audio.say(prompt);
@@ -177,7 +182,7 @@ const takeAway = {
     const prompt = 'Say ' + from.w + '. Now take away the ' + where + ' sound, /' + phoneme + '/. What word is left?';
     stage.setObject(picture(from.p, () => { audio.stop(); audio.word(from.w); }));
     stage.setPrompt(promptBar(audio, 'Say this word. Now take away the ' + where + ' sound, /' + phoneme + '/. What word is left?', { ears: true, speak: prompt }));
-    const grid = choiceGrid({ audio, prompt, items: picChoices(to, [from, ...other]), praise: praiseLine(), revealText: from.w + ' without /' + phoneme + '/ is ' + to.w + '.' });
+    const grid = choiceGrid({ audio, prompt, items: picChoices(to, [from, ...other], x => x === from ? 'That is still ' + from.w + '. Take a sound away.' : 'That is ' + x.w + '.'), praise: praiseLine(), revealText: from.w + ' without /' + phoneme + '/ is ' + to.w + '.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
     await audio.say(prompt);
@@ -204,7 +209,7 @@ const rhymeIt = {
     const ask = 'Which one rhymes with ' + it.target.w + '?';
     stage.setObject(picture(it.target.p, () => { audio.stop(); audio.word(it.target.w); }));
     stage.setPrompt(promptBar(audio, 'Which one rhymes with this one?', { ears: true, speak: ask, replay: it.target.w }));
-    const grid = choiceGrid({ audio, prompt: ask, items: picChoices(it.answer, it.foils), praise: praiseLine(), revealText: it.target.w + ' and ' + it.answer.w + ' rhyme.' });
+    const grid = choiceGrid({ audio, prompt: ask, items: picChoices(it.answer, it.foils, x => x.w + ' and ' + it.target.w + ' do not sound the same at the end.'), praise: praiseLine(), revealText: it.target.w + ' and ' + it.answer.w + ' rhyme.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
     await audio.say(ask);
@@ -256,7 +261,7 @@ const onsetRime = {
     const prompt = 'Luna says a word in two parts: ' + onset.map(p => '/' + p + '/').join(' ') + ' ... ' + rime.map(p => '/' + p + '/').join('') + '. Which picture is it?';
     stage.setObject(el('div', { class: 'picture', text: '👂' }));
     stage.setPrompt(promptBar(audio, prompt, { ears: true }));
-    const grid = choiceGrid({ audio, prompt, items: picChoices(w, [...foils, ...more]), praise: praiseLine(), revealText: 'It is ' + w.w + '.' });
+    const grid = choiceGrid({ audio, prompt, items: picChoices(w, [...foils, ...more], x => 'That is ' + x.w + '.'), praise: praiseLine(), revealText: 'It is ' + w.w + '.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
     await audio.say('Luna says a word in two parts.');

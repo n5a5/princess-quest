@@ -127,7 +127,8 @@ const measure = {
 
 const SORT_SETS = [
   { attr: 'color', bins: [['pink', '#F5A3BD'], ['green', '#8FDCCB'], ['yellow', '#F9D77B']] },
-  { attr: 'kind', bins: [['flowers', ['🌷', '🌸', '🌼']], ['bugs', ['🐛', '🐝', '🦋']], ['fruit', ['🍎', '🍓', '🍋']]] }
+  // Each thing carries a spoken name: tapping it says "tulip", never the emoji (which devices read differently).
+  { attr: 'kind', bins: [['flowers', [['🌷', 'tulip'], ['🌸', 'blossom'], ['🌼', 'daisy']]], ['bugs', [['🐛', 'caterpillar'], ['🐝', 'bee'], ['🦋', 'butterfly']]], ['fruit', [['🍎', 'apple'], ['🍓', 'strawberry'], ['🍋', 'lemon']]]] }
 ];
 const dataSort = {
   id: 'sort', subskill: 'data-sort', itemId: it => 'sort:' + it.attr + ':' + it.items.length,
@@ -361,12 +362,12 @@ function gen(family, stageName) {
     const st = stageName; const set = st === 'two' ? SORT_SETS[0] : pick(SORT_SETS);
     const ask = st === 'chart' ? pick(['most', 'fewest', 'howmany', 'more']) : st === 'three' ? pick(['most', 'fewest', 'howmany']) : 'most';
     const binCount = st === 'two' ? 2 : 3;
-    const bins = set.bins.slice(0, binCount).map(([name, v]) => ({ name, color: typeof v === 'string' ? v : null, pic: Array.isArray(v) ? v[0] : '' }));
+    const bins = set.bins.slice(0, binCount).map(([name, v]) => ({ name, color: typeof v === 'string' ? v : null, pic: Array.isArray(v) ? v[0][0] : '' }));
     const items = [];
     // Counts are made distinct BEFORE the objects are drawn, so "most" and "fewest" always have one answer.
     const counts = binCount === 2 ? [rand(2, 4), rand(2, 4)] : shuffle([2, 3, 4]);
     if (binCount === 2 && counts[0] === counts[1]) counts[1] = counts[1] === 4 ? 3 : counts[1] + 1;
-    bins.forEach((b, i) => { const v = set.bins[i][1]; for (let k = 0; k < counts[i]; k++) items.push(typeof v === 'string' ? { name: b.name + ' Squishy', bin: b.name, pic: '', svg: squishySVG({ ...SQUISHY_KINDS[0], color: v, dark: '#33254F' }, { size: 44 }) } : { name: v[k % v.length], bin: b.name, pic: v[k % v.length] }); });
+    bins.forEach((b, i) => { const v = set.bins[i][1]; for (let k = 0; k < counts[i]; k++) items.push(typeof v === 'string' ? { name: b.name + ' Squishy', bin: b.name, pic: '', svg: squishySVG({ ...SQUISHY_KINDS[0], color: v, dark: '#33254F' }, { size: 44 }) } : { name: v[k % v.length][1], bin: b.name, pic: v[k % v.length][0] }); });
     const which = rand(0, bins.length - 1);
     const question = ask === 'howmany' ? 'How many are in the ' + bins[which].name + ' basket?' : ask === 'more' ? 'How many more are in the biggest basket than the smallest?' : 'Which basket has the ' + ask + '?';
     return { attr: set.attr, bins, counts, items: shuffle(items), ask, which, question };

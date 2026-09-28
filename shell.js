@@ -21,6 +21,8 @@ const player = createWebAudioPlayer();
 const audio = createAudio({ speech, store, player, manifest: null, sounds: {}, settings: economy.save.settings });
 audio.sfx = createSfx({ settings: economy.save.settings });
 const clock = createSessionClock();
+// Local testing only (?debug=1 or ?nosw=1): expose the services so a test driver can inspect them.
+if (/[?&](debug|nosw)=1/.test(location.search)) window.__pq = { audio, economy, adaptive };
 
 const $ = id => document.getElementById(id);
 let current = null;   // { entry, module }
@@ -198,6 +200,50 @@ function showPin() {
   const o = sheet([el('h2', { text: 'Parent corner' }), dots, el('div', { class: 'pin-grid' }, keys), bigButton('Cancel', () => o.remove(), 'soft')]);
 }
 
+// Keyboard play (Chromebooks and laptops): number keys pick the 1st, 2nd, 3rd… thing to tap on screen,
+// R or the space bar says the prompt again, Enter presses Done, Escape goes back. Tab and Enter also work
+// on every button, with a visible focus ring.
+const visible = b => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && !b.disabled && b.style.visibility !== 'hidden'; };
+function keyTargets() {
+  const overlay = document.querySelector('.overlay');
+  const scope = overlay || document;
+  const groups = overlay ? ['button'] : [
+    document.querySelector('.tile.picked') ? '.slot' : null,
+    '.choice', '.tile', '.pat', '.sword', '.gem-box', '.ten-frame .cell', '.number-line button', '.rune', '.encounter-btn', '.place', '.garden-spot'
+  ].filter(Boolean);
+  for (const sel of groups) {
+    const list = [...scope.querySelectorAll(sel)].filter(visible);
+    if (list.length) return list;
+  }
+  return [];
+}
+function onKey(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+  clock.touch();
+  if (/^[1-9]$/.test(e.key)) {
+    const list = keyTargets();
+    const b = list[Number(e.key) - 1];
+    if (b) { e.preventDefault(); b.focus({ preventScroll: true }); b.click(); }
+    return;
+  }
+  if (e.key === 'r' || e.key === 'R' || (e.key === ' ' && (!t || t === document.body))) {
+    const sp = document.querySelector('.prompt .speak-btn');
+    if (sp) { e.preventDefault(); sp.click(); }
+    return;
+  }
+  if (e.key === 'Enter' && (!t || t === document.body)) {
+    const done = [...document.querySelectorAll('.overlay .big-btn, .big-btn')].find(visible);
+    if (done) { e.preventDefault(); done.click(); }
+    return;
+  }
+  if (e.key === 'Escape') {
+    const back = $('back-btn');
+    if (!back.hidden && !document.querySelector('.overlay')) { e.preventDefault(); back.click(); }
+  }
+}
+
 async function loadAudioContent() {
   try {
     const { sounds } = await content.load('sounds');
@@ -206,6 +252,7 @@ async function loadAudioContent() {
   try {
     const manifest = await content.load('audio-manifest');
     audio.setManifest(manifest);
+    try { audio.setLines(await content.load('lines-audio')); } catch (e) { console.warn('no story-voice lines', e); }
     player.preload((manifest.phonemes || []).map(id => './assets/audio/phonemes/' + id + '.' + manifest.ext));
   } catch (e) { console.warn('no bundled audio manifest', e); }
   await store.load();
@@ -232,6 +279,7 @@ async function boot() {
   $('mute-btn').addEventListener('click', () => { speech.toggleMuted(); if (speech.muted) audio.stop(); updateBar(); });
   $('gear-btn').addEventListener('click', showPin);
   document.addEventListener('pointerdown', () => clock.touch(), { passive: true });
+  document.addEventListener('keydown', onKey);
   // ?nosw=1 skips the service worker (local testing only: no cache-first surprises while editing files).
   if ('serviceWorker' in navigator && !/[?&]nosw=1/.test(location.search)) navigator.serviceWorker.register('sw.js').catch(e => console.warn('sw', e));
 }

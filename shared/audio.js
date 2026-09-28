@@ -28,6 +28,14 @@ export function parseParts(text) {
   return parts;
 }
 
+// Sentence keys shared with tools/collect-lines.py: split on . ! ? :, straighten quotes, collapse spaces,
+// lower case. A pre-rendered line is found by its key.
+const SENTENCE = /[^.!?:]+[.!?:]+["”']?|[^.!?:]+$/g;
+export function splitSentences(text) { return (String(text).match(SENTENCE) || []).map(s => s.trim()).filter(Boolean); }
+export function keyOf(sentence) {
+  return String(sentence).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 const LETTER_NAMES = { a: 'A', b: 'B', c: 'C', d: 'D', e: 'E', f: 'F', g: 'G', h: 'H', i: 'I', j: 'J', k: 'K', l: 'L', m: 'M', n: 'N', o: 'O', p: 'P', q: 'Q', r: 'R', s: 'S', t: 'T', u: 'U', v: 'V', w: 'W', x: 'X', y: 'Y', z: 'Z' };
 export function letterName(grapheme) {
   return grapheme.split('').map(c => LETTER_NAMES[c.toLowerCase()] || c).join(' ');
@@ -79,6 +87,66 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
   let seq = 0;
   let soundMap = sounds || {};
   let man = manifest || { ext: 'ogg', phonemes: [], letters: [], words: [] };
+  let lines = null; // { voice, ext, lines: { key: id } } from content/lines-audio.json
+  // One voice per utterance: when the parent has chosen the story voice and EVERY sentence of what is
+  // about to be said has a pre-rendered clip, play the clips; otherwise the device voice says all of it.
+  const lineUrl = id => base + 'lines/' + id + '.' + (lines.ext || 'ogg');
+  // A sentence with a changing word ("Which door says big?") is spliced from recorded pieces: the fewest
+  // spans that are each a recorded line/fragment, a single bundled word, or a recorded number.
+  function wordSrc(w) {
+    if (!w) return null;
+    for (const c of [w, w.toLowerCase()]) {
+      const rec = store && store.get('word', c);
+      if (rec) return rec;
+      const url = bundled('words', c);
+      if (url) return url;
+    }
+    return null;
+  }
+  function segment(sentence) {
+    const words = String(sentence).trim().split(/\s+/);
+    const n = words.length;
+    const best = Array(n + 1).fill(null); best[0] = [];
+    for (let i = 0; i < n; i++) {
+      if (!best[i]) continue;
+      for (let j = n; j > i; j--) {
+        if (best[j] && best[j].length <= best[i].length + 1) continue;
+        const span = words.slice(i, j).join(' ');
+        let src = null;
+        const id = lines.lines[keyOf(span)];
+        if (id) src = lineUrl(id);
+        else if (j === i + 1) {
+          const bare = span.replace(/[^A-Za-z0-9']/g, '');
+          const rec = lines.lines[keyOf(bare)]; // numbers ("7") and recorded slot words ("circle", "Rosie")
+          src = rec ? lineUrl(rec) : wordSrc(bare);
+        }
+        if (src) best[j] = [...best[i], { src, text: span }];
+      }
+    }
+    return best[n];
+  }
+  function lineClips(parts) {
+    if (!lines || !settings || settings.voice !== 'luna') return null;
+    const out = [];
+    for (const part of parts) {
+      if (part.sound) {
+        // letter sounds inside a sentence ("Which one starts with /m/?") are recorded in the same voice
+        const src = api.phonemeSrc(part.sound);
+        if (!src) return null;
+        out.push({ src, sound: part.sound });
+        continue;
+      }
+      for (const sn of splitSentences(part.text)) {
+        const id = lines.lines[keyOf(sn)];
+        if (id) { out.push({ src: lineUrl(id), text: sn }); continue; }
+        const pieces = segment(sn);
+        if (!pieces) return null;
+        pieces.forEach((pc, k) => out.push({ ...pc, splice: k > 0 }));
+      }
+    }
+    return out.length ? out : null;
+  }
+
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const bundled = (kind, id) => (man[kind] || []).includes(id) ? base + kind + '/' + encodeURIComponent(id) + '.' + (man.ext || 'ogg') : null;
 
@@ -90,10 +158,18 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
     return false;
   }
 
+  // Activity tracking for the idle nudge: is anything being said, and when did the last line end?
+  let busy = 0, lastEnd = Date.now();
+  const track = fn => async (...a) => { busy++; try { return await fn(...a); } finally { busy--; lastEnd = Date.now(); } };
   const api = {
     get muted() { return !!(settings && settings.muted); },
+    isBusy: () => busy > 0,
+    quietFor: () => (busy > 0 ? 0 : Date.now() - lastEnd),
     setSounds(map) { soundMap = map || {}; },
     setManifest(m) { man = m; },
+    setLines(l) { lines = l && l.lines ? l : null; },
+    // For the parent corner: would this text play in the story voice right now?
+    usesStoryVoice(text) { return !!lineClips(parseParts(String(text))); },
     soundLabel: id => (soundMap[id] && soundMap[id].label) || id,
     // Which source will phoneme(id) use right now? For the parent's Sound Check page.
     phonemeSource(id) {
@@ -126,7 +202,22 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
       if (api.muted) return;
       if (interrupt) api.stop();
       const my = ++seq;
-      for (const part of parseParts(String(text))) {
+      const parts = parseParts(String(text));
+      const clips = lineClips(parts);
+      if (clips) {
+        for (let i = 0; i < clips.length; i++) {
+          if (my !== seq) return;
+          if (i) await wait(clips[i].splice ? 15 : clips[i].sound || clips[i - 1].sound ? 60 : 110);
+          if (my !== seq) return;
+          const ok = await player.play(clips[i].src);
+          if (!ok && my === seq) { // a clip failed to load: say the rest with the device voice
+            for (const c of clips.slice(i)) { if (my !== seq) return; if (c.sound) await api.phoneme(c.sound); else await speech.speakText(c.text); }
+            return;
+          }
+        }
+        return;
+      }
+      for (const part of parts) {
         if (my !== seq) return;
         if (part.sound) await api.phoneme(part.sound);
         else await speech.speakText(part.text);
@@ -196,6 +287,8 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
       return frag;
     }
   };
+  api.say = track(api.say);
+  api.sequence = track(api.sequence);
   return api;
 }
 
@@ -209,8 +302,33 @@ export function createWebAudioPlayer() {
   let playing = [];          // active source nodes
   let timers = [];
   let waiters = [];          // resolvers of in-flight play()/chain() promises; settled false on stop
+  let lastError = null;
   const keyOf = src => (src instanceof Blob ? src : String(src));
-  function context() { if (!ctx) ctx = new AC(); if (ctx.state === 'suspended') ctx.resume().catch(() => {}); return ctx; }
+  // Laptops and Chromebooks power their audio output down when nothing is playing; waking it takes
+  // ~100–200 ms, which used to swallow short letter sounds. A silent source keeps the output awake for
+  // as long as the page is open, and the context is resumed whenever the page comes back into view.
+  let keepAlive = null;
+  function context() {
+    if (!ctx) {
+      ctx = new AC({ latencyHint: 'interactive' });
+      try {
+        const g = ctx.createGain(); g.gain.value = 0; g.connect(ctx.destination);
+        const src = ctx.createConstantSource ? ctx.createConstantSource() : ctx.createOscillator();
+        src.connect(g); src.start(); keepAlive = src;
+      } catch { keepAlive = null; }
+      if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { if (!document.hidden && ctx.state !== 'running') ctx.resume().catch(() => {}); });
+    }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
+  }
+  // Wait (briefly) until the context is really running before scheduling, so a clip is not scheduled
+  // against a frozen clock and its promise does not settle before the sound has played.
+  async function running() {
+    const c = context();
+    if (c.state === 'running') return c;
+    try { await Promise.race([c.resume(), new Promise(r => setTimeout(r, 400))]); } catch {}
+    return c;
+  }
   function decode(src) {
     const k = keyOf(src);
     if (!buffers.has(k)) {
@@ -266,18 +384,18 @@ export function createWebAudioPlayer() {
   return {
     async play(src) {
       let buffer;
-      try { buffer = await decode(src); } catch (e) { console.warn('audio missing', src, e); return false; }
+      try { buffer = await decode(src); } catch (e) { console.warn('audio missing', src, e); lastError = String(e && e.message || e); return false; }
       stopAll();
-      const c = context();
+      const c = await running();
       const end = schedule(buffer, c.currentTime + 0.01, 0, 0.01);
       return settleLater((end - c.currentTime) * 1000);
     },
     // Plays clips back to back. gapMs adds silence; crossfadeMs overlaps the tail of one clip with the head of the next.
     async chain(srcs, { gapMs = 0, crossfadeMs = 60, onStart = () => {} } = {}) {
       let bufs;
-      try { bufs = await Promise.all(srcs.map(decode)); } catch (e) { console.warn('audio missing in chain', e); return false; }
+      try { bufs = await Promise.all(srcs.map(decode)); } catch (e) { console.warn('audio missing in chain', e); lastError = String(e && e.message || e); return false; }
       stopAll();
-      const c = context();
+      const c = await running();
       const xf = crossfadeMs / 1000;
       let at = c.currentTime + 0.02;
       const t0 = c.currentTime;
@@ -291,7 +409,16 @@ export function createWebAudioPlayer() {
     },
     stop() { stopAll(); },
     preload(srcs) { srcs.forEach(s => decode(s).catch(() => {})); },
-    unlock() { context(); }
+    unlock() { context(); },
+    // For the Parent Corner audio check.
+    info() {
+      const c = context();
+      return { engine: 'webaudio', state: c.state, sampleRate: c.sampleRate, baseLatency: c.baseLatency ?? null, outputLatency: c.outputLatency ?? null, keepAlive: !!keepAlive, lastError };
+    },
+    async probe(src) {
+      try { const b = await decode(src); return { ok: true, ms: Math.round(b.duration * 1000), sampleRate: b.sampleRate, channels: b.numberOfChannels }; }
+      catch (e) { return { ok: false, error: String(e && e.message || e) }; }
+    }
   };
 }
 
@@ -320,6 +447,8 @@ export function createHtmlPlayer() {
       });
     },
     stop() { if (current) { const c = current; current = null; try { c.el.pause(); c.el.currentTime = 0; } catch {} c.done(false); } },
-    preload(urls) { urls.forEach(u => resolveSrc(u).catch(() => {})); }
+    preload(urls) { urls.forEach(u => resolveSrc(u).catch(() => {})); },
+    info() { return { engine: 'html-audio', state: 'n/a' }; },
+    async probe(src) { try { await resolveSrc(src); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message || e) }; } }
   };
 }

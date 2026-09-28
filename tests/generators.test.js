@@ -60,7 +60,7 @@ test('falls: sort/data — counts distinct where a "most"/"fewest" question need
       if (it.ask === 'fewest') assert.equal(perBin.filter(c => c === min).length, 1, stage + ': fewest must be unique ' + perBin);
       if (it.ask === 'howmany') assert.ok(it.which >= 0 && it.which < it.bins.length);
       if (it.ask === 'more') assert.ok(max - min >= 1);
-      for (const x of it.items) { assert.ok(x.svg || x.pic, 'object without a picture'); assert.ok(it.bins.some(b => b.name === x.bin)); }
+      for (const x of it.items) { assert.ok(x.svg || x.pic, 'object without a picture'); assert.ok(it.bins.some(b => b.name === x.bin)); assert.match(x.name, /^[a-z ]+$/i, 'spoken name must be words, not an emoji: ' + x.name); }
       assert.ok(it.question.length > 8);
     }
   }
@@ -152,4 +152,11 @@ test('woods: PA items — foils never share the target sound, rhymes share the r
   const pairs = woods.deletePairs(phonics.stages.flatMap(s => s.words));
   assert.ok(pairs.length >= 10, 'enough deletion pairs: ' + pairs.length);
   for (const p of pairs) { assert.ok(p.to.p && p.from.p && p.to.p !== p.from.p); assert.ok(p.phoneme); }
+});
+
+test('caverns: Rainbow Road hops stay on the 1–10 path', () => {
+  for (const st of ['onemore', 'countout', 'order']) for (let i = 0; i < 1000; i++) {
+    const it = caverns.gen(caverns.FAMILIES.road, st);
+    assert.ok(it.hop >= 1 && it.hop <= 3 && it.from >= 0 && it.from + it.hop <= 10, JSON.stringify(it));
+  }
 });

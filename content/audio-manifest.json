@@ -1,7 +1,7 @@
 {
   "ext": "ogg",
-  "generated": "2026-09-11",
-  "source": "Bundled defaults synthesized with Windows SAPI (Microsoft Zira) via SSML IPA phoneme tags; see tools/build-phoneme-audio.ps1. Parent recordings override.",
+  "generated": "2026-09-27",
+  "source": "Letter sounds made with Kokoro-82M af_heart (Apache-2.0) via kokoro-onnx; see tools/build-phonemes.py. Parent recordings override.",
   "phonemes": [
     "s",
     "m",
@@ -131,11 +131,9 @@
     "duck",
     "dump",
     "dusk",
-    "dust",
     "eat",
     "egg",
     "elephant",
-    "fill",
     "fin",
     "find",
     "fish",
@@ -225,7 +223,6 @@
     "monkey",
     "moon",
     "mop",
-    "moss",
     "mule",
     "must",
     "my",
@@ -264,7 +261,6 @@
     "pretty",
     "princess",
     "puff",
-    "pump",
     "pumpkin",
     "queen",
     "raft",
@@ -291,17 +287,14 @@
     "she",
     "shed",
     "shell",
-    "shin",
     "ship",
     "shop",
     "shut",
     "sick",
     "sing",
-    "sink",
     "six",
     "sled",
     "slug",
-    "smell",
     "snap",
     "so",
     "sock",
@@ -385,5 +378,5 @@
     "zebra",
     "zip"
   ],
-  "wordsSource": "Kokoro-82M af_heart (Apache-2.0) via tools/build-word-audio.py; parent recordings override."
+  "wordsSource": "Kokoro-82M af_heart (Apache-2.0) via kokoro-onnx; see tools/build-word-audio.py. Parent recordings override."
 }

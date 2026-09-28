@@ -36,6 +36,29 @@ export function createStage({ host, place, ctx }) {
   return stage;
 }
 
+// Idle nudge: if she has not touched anything and nothing has been said for 15 s, Luna tilts her head and
+// the prompt plays again (at most twice per item). No timers are ever shown and nothing is scored.
+function idleNudge(stage, audio) {
+  let lastTouch = Date.now(), nudges = 0;
+  const touch = () => { lastTouch = Date.now(); };
+  document.addEventListener('pointerdown', touch, true);
+  document.addEventListener('keydown', touch, true);
+  let stop = null;
+  const iv = setInterval(() => {
+    if (!stage.root.isConnected) { stop(); return; } // she left the place mid-item: never talk over the map
+    if (document.hidden || document.querySelector('.overlay')) { lastTouch = Date.now(); return; }
+    const quiet = Math.min(Date.now() - lastTouch, audio.quietFor ? audio.quietFor() : Infinity);
+    if (quiet > 15000 && nudges < 2) {
+      nudges++; lastTouch = Date.now();
+      stage.luna('think', 1400);
+      const b = stage.promptArea.querySelector('.speak-btn');
+      if (b) b.click();
+    }
+  }, 1000);
+  stop = () => { clearInterval(iv); document.removeEventListener('pointerdown', touch, true); document.removeEventListener('keydown', touch, true); };
+  return stop;
+}
+
 // Runs a round. items: [{ family, item }] pairs. Returns { stars, ratio, rescued, companion }.
 export async function runEncounterRound({ host, ctx, place, cabinetId, items, review = new Set() }) {
   const stage = createStage({ host, place, ctx });
@@ -53,8 +76,10 @@ export async function runEncounterRound({ host, ctx, place, cabinetId, items, re
     stage.setDots(items.length, Math.min(items.length, index));
     stage.luna('idle');
     let result;
+    const stopNudge = idleNudge(stage, ctx.audio);
     try { result = await family.play(stage, item, ctx, { praiseLine: () => withName(pick(praise), name), isRetry }); }
     catch (e) { console.error('encounter item failed', e); result = { outcome: 'abandoned', choices: 3 }; }
+    finally { stopNudge(); }
     if (cancelled) return null;
     const outcome = result.outcome;
     ctx.adaptive.record({ subskill: family.subskill, outcome, choices: result.choices || 3, review: isRetry || review.has(family.subskill), itemId, gpc: result.gpc || null });

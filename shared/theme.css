@@ -193,6 +193,7 @@ main { padding: calc(var(--bar) + 12px) 12px 40px; max-width: 560px; margin: 0 a
 .ten-frame .cell { aspect-ratio: 1; min-height: 64px; border-radius: 14px; border: 3px dashed #C2B3EA; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; font-size: 30px; transition: transform 0.15s, background 0.2s; }
 .ten-frame .cell.on { border-style: solid; border-color: var(--violet); background: var(--tint-gold); }
 .ten-frame .cell.fixed { border-style: solid; border-color: var(--lavender-2); background: #fff; }
+.ten-frame .cell.now { transform: scale(1.12); box-shadow: var(--glow-gold); border-color: var(--gold); }
 .ten-frame .cell:active { transform: scale(0.94); }
 .ten-frame.five { max-width: 380px; }
 .choices.wide .pic { font-size: 40px; letter-spacing: 3px; }
@@ -202,6 +203,12 @@ main { padding: calc(var(--bar) + 12px) 12px 40px; max-width: 560px; margin: 0 a
 .number-line { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
 .number-line button { min-width: 64px; min-height: 64px; border-radius: 16px; background: var(--cream); border: 3px solid var(--lavender-2); font-family: var(--read); font-size: 26px; font-weight: 700; color: var(--ink); }
 .number-line button.on { background: var(--tint-gold); border-color: var(--gold); }
+.number-line.road { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; max-width: 420px; margin: 0 auto; }
+.number-line button.luna { background: linear-gradient(180deg, #FFE3EE, #F5A3BD); border-color: var(--rose); }
+.number-line button.luna::after { content: '🦄'; font-size: 18px; margin-left: 2px; }
+.number-line button.now { transform: scale(1.12); box-shadow: var(--glow-gold); border-color: var(--gold); }
+.number-line button.glow { border-color: var(--gold); animation: glow 1s ease-in-out infinite; }
+.number-line button.wobble { animation: wobble 0.5s ease-in-out; }
 
 /* ---------- Overlays ---------- */
 .overlay { position: fixed; inset: 0; z-index: 80; background: rgba(42, 30, 69, 0.6); display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -311,4 +318,16 @@ main { padding: calc(var(--bar) + 12px) 12px 40px; max-width: 560px; margin: 0 a
   .choices { gap: 16px; }
   .choice { min-height: 120px; font-size: 64px; }
   .tile, .slot, .rune { min-width: 84px; min-height: 92px; font-size: 48px; }
+}
+
+/* Keyboard play: a clear focus ring on anything reached with Tab or a number key */
+button:focus-visible, .choice:focus-visible, .tile:focus-visible, .place:focus-visible { outline: 4px solid var(--gold); outline-offset: 3px; }
+
+/* Smallest phones (360 px): spend less on padding so five ten-frame pockets and five sound gems each stay
+   at least 64 px wide (measured: 60 px and 52 px before). */
+@media (max-width: 420px) {
+  main { padding-left: 6px; padding-right: 6px; }
+  .scene { padding: 10px; }
+  .gem-row { gap: 2px; }
+  .gem-box { width: 64px; min-width: 64px; }
 }

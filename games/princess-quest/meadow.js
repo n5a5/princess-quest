@@ -99,7 +99,7 @@ const letterSound = {
       const prompt = 'Listen: /' + it.p + '/. Which letter stone makes that sound?';
       stage.setObject(el('div', { class: 'picture', text: '👂' }));
       stage.setPrompt(promptBar(audio, prompt, { ears: true }));
-      const items = it.options.map(g => ({ id: g, pic: '', label: g, ok: g === it.g, say: '/' + phonemeFor(g) + '/', textOnly: true }));
+      const items = it.options.map(g => ({ id: g, pic: '', label: g, ok: g === it.g, say: '/' + phonemeFor(g) + '/', textOnly: true, why: g === it.g ? null : 'That stone says /' + phonemeFor(g) + '/.' }));
       const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: 'This stone says /' + it.p + '/.' });
       grid.el.classList.add('three');
       grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
@@ -117,7 +117,7 @@ const letterSound = {
     stone.addEventListener('click', () => { audio.stop(); audio.phoneme(it.p); stone.classList.add('lit'); });
     stage.setObject(stone);
     stage.setPrompt(promptBar(audio, prompt));
-    const items = shuffle([it.target, ...it.foils]).map(x => ({ id: x.w, pic: x.p, ok: x === it.target, say: x.w }));
+    const items = shuffle([it.target, ...it.foils]).map(x => ({ id: x.w, pic: x.p, ok: x === it.target, say: x.w, why: x === it.target ? null : 'That is ' + x.w + '.' }));
     const grid = choiceGrid({ audio, prompt, items, praise: praiseLine(), revealText: it.g + ' says /' + it.p + '/. ' + it.target.w + ' ' + where + ' with /' + it.p + '/.' });
     grid.el.classList.add('three');
     stage.setBody(grid.el);
@@ -206,13 +206,15 @@ const readRune = {
     const audio = ctx.audio;
     const sIdx = ctx.adaptive.stageIndex('phonics-decode');
     const foils = shuffle(minimalPairs(w, wordsUpTo(sIdx))).slice(0, 2);
-    const choices = shuffle([w, ...foils]).map(x => ({ id: x.w, pic: x.p, ok: x === w, say: x.w }));
+    const choices = shuffle([w, ...foils]).map(x => ({ id: x.w, pic: x.p, ok: x === w, say: x.w, why: x === w ? null : 'That picture is ' + x.w + '.' }));
     const prompt = 'Tap each letter stone to hear its sound. Read the word. Then tap its picture.';
     const runes = runeRow(audio, w);
     stage.setObject(el('div'));
     stage.setPrompt(promptBar(audio, prompt));
     const wand = el('button', { class: 'speak-btn', type: 'button', 'aria-label': 'Blend it', text: '🪄', onclick: async () => { await audio.decode({ word: w.w, units: w.u }, { onStep: blendSteps(runes.highlight, runes.row) }); runes.clear(); } });
-    const grid = choiceGrid({ audio, prompt: 'Which picture matches the word?', items: choices, praise: praiseLine(), revealText: 'The word says ' + w.w + '.' });
+    // After a miss, Luna sounds the word out stone by stone and blends it (the correction teaches decoding).
+    const grid = choiceGrid({ audio, prompt: 'Which picture matches the word?', items: choices, praise: praiseLine(), revealText: 'The word says ' + w.w + '.',
+      onMiss: async () => { await audio.say('Let us read it together.', { interrupt: false }); await audio.decode({ word: w.w, units: w.u }, { onStep: blendSteps(runes.highlight, runes.row) }); runes.clear(); } });
     grid.el.classList.add('three');
     stage.setBody(el('div', { class: 'row' }, [runes.row, wand]), grid.el);
     await audio.say(prompt);

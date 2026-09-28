@@ -127,7 +127,13 @@ const crystalBridge = {
     // the pouch changes before she answers, so the quantity is always visible
     if (op === '+') { for (let i = a; i < a + b; i++) { pouch.cells[i].classList.add('on'); pouch.cells[i].textContent = GEM; await wait(220); } found.style.opacity = '1'; }
     else { for (let i = a - 1; i >= a - b; i--) { pouch.cells[i].classList.remove('on'); pouch.cells[i].textContent = ''; await wait(220); } found.style.opacity = '1'; found.style.filter = 'grayscale(1)'; }
-    const grid = choiceGrid({ audio, prompt: 'How many gems now?', items: numeralChoices(answer, { min: 0, max: 10 }), praise: praiseLine(), revealText: (op === '+' ? a + ' and ' + b + ' more is ' : a + ' take away ' + b + ' is ') + answer + '.' });
+    // After a miss: count the gems in the pouch together, lighting each pocket (count-on modelling).
+    const countTogether = async () => {
+      await audio.say('Let us count the gems in the pouch.', { interrupt: false });
+      const on = pouch.cells.filter(c => c.classList.contains('on'));
+      for (let i = 0; i < on.length; i++) { on[i].classList.add('now'); await audio.say(String(i + 1), { interrupt: false }); on[i].classList.remove('now'); }
+    };
+    const grid = choiceGrid({ audio, prompt: 'How many gems now?', items: numeralChoices(answer, { min: 0, max: 10 }), praise: praiseLine(), revealText: (op === '+' ? a + ' and ' + b + ' more is ' : a + ' take away ' + b + ' is ') + answer + '.', onMiss: countTogether });
     grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
     stage.setBody(vis, grid.el);
     const r = await grid.done;
@@ -141,7 +147,7 @@ const teenTower = {
     const audio = ctx.audio;
     if (it.kind === 'teens') {
       const ones = it.n - 10;
-      const prompt = 'This pouch is full. That is ten gems. Luna finds ' + gems(ones) + ' more. How many gems altogether?';
+      const prompt = 'This pouch is full. That is ten gems. Luna finds ' + (ones === 1 ? 'one more gem' : ones + ' more gems') + '. How many gems altogether?';
       stage.setPrompt(promptBar(audio, prompt));
       stage.setObject(el('div'));
       const vis = el('div', { class: 'board' }, [tenFrame(10).el, gemCluster(ones)]);
@@ -355,6 +361,54 @@ const gemTrail = {
   }
 };
 
+// Rainbow Road: a straight 1–10 number path. Luna rolls one or two gems and hops that many stones; she
+// taps where Luna lands and hears each number as Luna hops. Linear number board games like this build
+// number sense in 4–6 year olds (Siegler & Ramani 2008, 2009).
+const road = {
+  id: 'road', subskill: 'number-relations', itemId: it => 'road:' + it.from + '+' + it.hop,
+  async play(stage, it, ctx, { praiseLine }) {
+    const audio = ctx.audio;
+    const target = it.from + it.hop;
+    const hopWord = it.hop === 1 ? 'one stone' : it.hop === 2 ? 'two stones' : 'three stones';
+    const where = it.from === 0 ? 'Luna is at the start.' : 'Luna is on ' + it.from + '.';
+    const prompt = where + ' She rolls ' + gems(it.hop) + ' and hops ' + hopWord + '. Tap the stone where she lands.';
+    stage.setPrompt(promptBar(audio, prompt));
+    stage.setObject(el('div', { class: 'word-big', text: GEM.repeat(it.hop) }));
+    let misses = 0;
+    const result = await new Promise(resolve => {
+      const stones = Array.from({ length: 10 }, (_, k) => {
+        const v = k + 1;
+        const b = el('button', { type: 'button', class: v <= it.from ? 'on' : '', text: String(v), 'aria-label': String(v) });
+        if (v === it.from) b.classList.add('luna');
+        return b;
+      });
+      const hopAlong = async () => {
+        for (let v = it.from + 1; v <= target; v++) { stones[v - 1].classList.add('now'); await audio.say(String(v), { interrupt: false }); stones[v - 1].classList.remove('now'); }
+      };
+      stones.forEach((b, k) => b.addEventListener('click', async () => {
+        const v = k + 1;
+        if (b.hasAttribute('disabled')) return;
+        audio.stop();
+        if (v === target) {
+          stones.forEach(x => x.setAttribute('disabled', ''));
+          await hopAlong();
+          stones.forEach((x, j) => { x.classList.toggle('on', j < target); x.classList.toggle('luna', j === target - 1); });
+          await audio.say(target === 10 ? 'Luna reached ten! ' + praiseLine() : praiseLine());
+          resolve({ outcome: misses === 0 ? 'firstTry' : misses === 1 ? 'scaffolded' : 'revealed', choices: 4, gpc: 'road' });
+          return;
+        }
+        misses++;
+        b.classList.add('wobble'); setTimeout(() => b.classList.remove('wobble'), 500);
+        stage.luna('think', 900);
+        if (misses === 1) { await audio.say('Let us hop together.'); await hopAlong(); stones[target - 1].classList.add('glow'); }
+        else { stones[target - 1].classList.remove('glow'); stones[target - 1].click(); }
+      }));
+      stage.setBody(el('div', { class: 'number-line road' }, stones));
+    });
+    return result;
+  }
+};
+
 // ---------- item generators (stage-aware) ----------
 function gen(family, stageName) {
   switch (family.id) {
@@ -377,6 +431,10 @@ function gen(family, stageName) {
       if (stageName === 'ones') return { kind: 'ones', start: rand(1, 16) };
       if (stageName === 'tens') return { kind: 'tens', start: pick([10, 20, 30, 40, 50, 60]) };
       return { kind: 'backward', start: rand(6, 20) };
+    }
+    case 'road': {
+      const hop = rand(1, stageName === 'onemore' ? 2 : 3); const from = rand(0, 10 - hop);
+      return { from, hop };
     }
     case 'trail': {
       if (stageName === 'onemore') { const more = Math.random() < 0.55; const n = more ? rand(1, 9) : rand(2, 10); return { kind: 'onemore', n, more }; }
@@ -407,17 +465,22 @@ function gen(family, stageName) {
     }
   }
 }
-const FAMILIES = { frames: gemFrames, trail: gemTrail, bridge: crystalBridge, teen: teenTower, count: caveCount, stories: numberStories };
+const FAMILIES = { frames: gemFrames, trail: gemTrail, road, bridge: crystalBridge, teen: teenTower, count: caveCount, stories: numberStories };
 
 function buildRound(kind) {
   const stageOf = f => ctx.adaptive.stage(f.subskill);
   const items = [];
   const take = f => items.push({ family: f, item: gen(f, stageOf(f)) });
+  if (kind === 'road') {
+    let from = 0;
+    for (let i = 0; i < 6; i++) { const hop = Math.min(rand(1, 2), 10 - from) || 1; if (from + hop > 10) from = 0; items.push({ family: road, item: { from, hop } }); from += hop; if (from >= 10) from = 0; }
+    return items;
+  }
   if (FAMILIES[kind]) { for (let i = 0; i < 6; i++) take(FAMILIES[kind]); return items; }
   // Today's crystals: the planner's target twice, then one each of the other number-sense/operations families.
   const target = ctx.adaptive.targetFor('caverns');
   const tf = Object.values(FAMILIES).find(f => f.subskill === target) || crystalBridge;
-  const others = [gemFrames, gemTrail, crystalBridge, numberStories, teenTower].filter(f => f !== tf);
+  const others = [gemFrames, Math.random() < 0.5 ? gemTrail : road, crystalBridge, numberStories, teenTower].filter(f => f !== tf);
   take(tf); take(others[0]); take(others[1]); take(tf); take(others[2]); take(others[3]);
   return items.slice(0, 6);
 }
@@ -440,6 +503,7 @@ function showMenu() {
     { id: 'mix', icon: '💎', name: "Today's crystals", primary: true },
     { id: 'frames', icon: '👀', name: 'Quick Peek' },
     { id: 'trail', icon: '🐾', name: 'Gem Trail' },
+    { id: 'road', icon: '🌈', name: 'Rainbow Road' },
     { id: 'bridge', icon: '👝', name: 'Gem Pouch' },
     { id: 'teen', icon: '💎', name: 'Big Gem Piles' },
     { id: 'count', icon: '🪜', name: 'Cave Steps' },

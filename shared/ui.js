@@ -45,9 +45,11 @@ export function roundDots(total, done) {
   return el('div', { class: 'round-dots' }, Array.from({ length: total }, (_, i) => el('span', { class: i < done ? 'done' : '', text: '🌸' })));
 }
 
-// Scaffolded choice grid. items: [{ id, pic, label, ok, say? }]. Resolves { firstTry, misses, revealed }.
-// Miss 1: tapped choice dims, correct choice glows, prompt re-speaks. Miss 2: reveal + speak answer.
-export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revealText = null }) {
+// Scaffolded choice grid. items: [{ id, pic, label, ok, say?, why? }]. Resolves { firstTry, misses, revealed }.
+// Miss 1: the tapped choice dims and says WHY it is not the answer (item.why, e.g. "Fox starts with /f/."),
+// the right choice glows, then onMiss(picked, correct) models the skill or the prompt is said again.
+// Miss 2: reveal + speak the answer.
+export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revealText = null, onMiss = null }) {
   const grid = el('div', { class: 'choices' + (oneCol ? ' one-col' : '') });
   let misses = 0, settled = false;
   const buttons = new Map();
@@ -80,7 +82,9 @@ export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revea
         const correct = items.find(x => x.ok);
         if (misses === 1) {
           buttons.get(correct).classList.add('glow');
-          audio.say(prompt);
+          if (it.why) await audio.say(it.why);
+          if (settled) return;
+          if (onMiss) await onMiss(it, correct); else audio.say(prompt, { interrupt: !it.why });
         } else {
           buttons.get(correct).classList.remove('glow');
           buttons.get(correct).classList.add('right');
@@ -127,13 +131,16 @@ export function tileBoard({ audio, tiles, slotCount, onChange }) {
       return b;
     }));
   };
-  const place = (tileId, slotIndex) => {
-    const prev = slots.indexOf(tileId);
+  // silent: a placement made by the game itself (a reveal or a hint) does not ask the game to check the
+  // answer again. Without this a reveal re-triggered the check, which counted a miss and revealed again,
+  // forever (stack overflow; the round hung).
+  const place = (tileId, slotIndex, silent = false) => {
+    const prev = tileId === null ? -1 : slots.indexOf(tileId);
     if (prev >= 0) slots[prev] = null;
     slots[slotIndex] = tileId;
     picked = null;
     render();
-    onChange(slots.slice());
+    if (!silent) onChange(slots.slice());
   };
   function enableDrag(b, t) {
     let ghost = null, startX = 0, startY = 0, dragging = false;
@@ -167,7 +174,7 @@ export function tileBoard({ audio, tiles, slotCount, onChange }) {
     graphemes: () => slots.map(id => { const t = tiles.find(x => x.id === id); return t ? t.grapheme : null; }),
     highlight(i) { slotsEl.querySelectorAll('.slot').forEach((s, k) => s.classList.toggle('now', k === i)); },
     clearHighlight() { slotsEl.querySelectorAll('.slot').forEach(s => s.classList.remove('now')); },
-    setSlot(i, tileId) { place(tileId, i); },
+    setSlot(i, tileId) { place(tileId, i, true); },
     lock() { slotsEl.querySelectorAll('button').forEach(b => b.setAttribute('disabled', '')); trayEl.querySelectorAll('button').forEach(b => b.setAttribute('disabled', '')); },
     hintSlot(i) { const s = slotsEl.querySelectorAll('.slot')[i]; if (s) s.classList.add('glow'); },
     hintTile(id) { const t = tileEls.get(id); if (t) t.classList.add('glow'); },

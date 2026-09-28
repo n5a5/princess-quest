@@ -110,3 +110,36 @@ test('importJSON refuses files that are not a Princess Quest save', () => {
 test('localDay formats local date', () => {
   assert.equal(localDay(new Date(2026, 0, 5)), '2026-01-05');
 });
+
+test('combining two devices keeps the further-along progress, never double counts, and is repeatable', () => {
+  const clock = fixedClock();
+  const phone = createEconomy({ storage: memoryStorage(), now: clock.now });
+  const book = createEconomy({ storage: memoryStorage(), now: clock.now });
+  phone.addGems(12); book.addGems(30);
+  phone.save.subskills['phonics-encode'] = { stage: 2, p: 0.5, firstTryDays: {}, lastPracticed: '2026-09-20', promotions: 2, gpc: {} };
+  book.save.subskills['phonics-encode'] = { stage: 1, p: 0.9, firstTryDays: {}, lastPracticed: '2026-09-22', promotions: 1, gpc: {} };
+  book.save.subskills['measure'] = { stage: 1, p: 0.6, firstTryDays: {}, lastPracticed: '2026-09-22', promotions: 1, gpc: {} };
+  phone.save.sightWords.the = { box: 2, firstTryDays: ['2026-09-20'], introducedDay: '2026-09-18', lastSeen: '2026-09-20' };
+  book.save.sightWords.the = { box: 4, firstTryDays: ['2026-09-21'], introducedDay: '2026-09-19', lastSeen: '2026-09-21' };
+  phone.logResult({ subskill: 'measure', ok: true });
+  clock.advanceDays(1);
+  book.logResult({ subskill: 'measure', ok: false });
+  book.save.squishies.rescued.push('rosie');
+  phone.save.child.name = 'Mia';
+  const bookText = book.exportJSON();
+  assert.equal(phone.mergeJSON(bookText), true);
+  const s = phone.save;
+  assert.equal(s.gems, 30);
+  assert.equal(s.subskills['phonics-encode'].stage, 2, 'the further stage wins');
+  assert.equal(s.subskills['phonics-encode'].lastPracticed, '2026-09-22');
+  assert.equal(s.subskills.measure.stage, 1);
+  assert.equal(s.sightWords.the.box, 4);
+  assert.deepEqual(s.sightWords.the.firstTryDays, ['2026-09-20', '2026-09-21']);
+  assert.equal(s.sightWords.the.introducedDay, '2026-09-18');
+  assert.equal(s.log.length, 2);
+  assert.ok(s.squishies.rescued.includes('rosie'));
+  assert.equal(s.child.name, 'Mia', 'this device keeps its own name and settings');
+  assert.equal(phone.mergeJSON(bookText), true);
+  assert.equal(phone.save.log.length, 2, 'combining again adds nothing');
+  assert.equal(phone.mergeJSON('{"hello":1}'), false);
+});
