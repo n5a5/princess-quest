@@ -45,6 +45,9 @@ PLAN = {
     'l':  ('held', 'lːːːː', 520), 'r':  ('held', 'ɹːːːː', 520), 'y':  ('held', 'jː', 300),
     's':  ('final', 'bus', 540),  'f':  ('final', 'puff', 540), 'sh': ('final', 'fish', 540),
     'th': ('final', 'bath', 520), 'z':  ('final', 'buzz', 520), 'v':  ('final', 'five', 480),
+    # voiced th (this, the, that): the model's ð is a voiced murmur with weak friction, mostly below 500 Hz;
+    # kept like the nasals (the low-frequency run before the vowel) and stretched
+    'dh': ('held', 'ðːːːə', 420),
     'p':  ('final', 'cap', 0),    't':  ('final', 'cat', 0),    'k':  ('final', 'back', 0),
     'b':  ('initial', 'box', 0),  'd':  ('initial', 'dog', 0),  'g':  ('initial', 'gas', 0),
     'ch': ('final', 'rich', 0),
@@ -267,10 +270,11 @@ def build_one(v, pid):
         return y, info
     if method == 'held':
         x = v.say(src, phonemes=True)
-        if pid in ('m', 'n', 'ng'):
+        if pid in ('m', 'n', 'ng', 'dh'):
             # keep only nasal murmur (energy mostly below 500 Hz), never the vowel the model may add after it
             fr, h = frames(x)
-            nas = [k for k, f in enumerate(fr) if f['low'] > 0.7 and f['e'] > max(ff['e'] for ff in fr) - 12]
+            lowmin = 0.9 if pid == 'dh' else 0.7
+            nas = [k for k, f in enumerate(fr) if f['low'] > lowmin and f['e'] > max(ff['e'] for ff in fr) - 14]
             runs, cur = [], [nas[0]]
             for k in nas[1:]:
                 if k == cur[-1] + 1: cur.append(k)

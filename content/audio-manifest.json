@@ -1,6 +1,6 @@
 {
   "ext": "ogg",
-  "generated": "2026-09-27",
+  "generated": "2026-09-28",
   "source": "Letter sounds made with Kokoro-82M af_heart (Apache-2.0) via kokoro-onnx; see tools/build-phonemes.py. Parent recordings override.",
   "phonemes": [
     "s",
@@ -13,6 +13,7 @@
     "z",
     "sh",
     "th",
+    "dh",
     "ng",
     "h",
     "w",

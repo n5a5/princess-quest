@@ -77,7 +77,7 @@ function namesOf(pic) {
   return [...(NAMES.get(pic) || [])];
 }
 const soundOf = (w, end) => { if (!w.u) return end ? null : (w.w[0] === 'c' ? 'k' : w.w[0]); const u = spokenUnits(w); return u.length ? u[end ? u.length - 1 : 0].p : null; };
-const PIC_SKIP = new Set(['🖋️', '🦗']); // "pen", "cricket": not ink or insect to a six-year-old
+const PIC_SKIP = new Set(['🖋️', '🦗', '👉']); // "pen", "cricket", "finger": not ink, insect or this to a six-year-old
 const oneName = (w, end) => !PIC_SKIP.has(w.p) && namesOf(w.p).every(x => x.w === w.w || soundOf(x, end) === null || soundOf(x, end) === soundOf(w, end));
 function startsWith(p) {
   // The keyword picture counts only when the word really begins with the sound (kite is the keyword for
