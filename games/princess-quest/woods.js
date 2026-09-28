@@ -14,6 +14,7 @@
 import { el, wait, shuffle, pick, choiceGrid, picture, promptBar, bigButton } from '../../shared/ui.js';
 import { runEncounterRound, celebrateRound } from '../../shared/encounter.js';
 import { unitsOf } from '../../shared/audio.js';
+import { mouthSVG } from '../../shared/mouths.js';
 import { lunaSVG, svgFrom } from '../../shared/characters.js';
 
 let roundBusy = false;
@@ -46,12 +47,23 @@ function pool(stageIdx) { return phonics.stages.slice(0, Math.max(2, stageIdx + 
 function blendPool(stageIdx) { return stageIdx ? phonics.stages.slice(0, 6).flatMap(s => s.words).filter(earOk) : pool(0); }
 
 // ---------- families ----------
-function paItem(kind, stageIdx, avoid) {
-  const words = pool(stageIdx).filter(w => !avoid.includes(w.w));
+// Sounds that are heard as each other; a foil with one of these makes the item teach the difference.
+const CONFUSABLE = { th: ['f', 's', 'd', 'v'], dh: ['d', 'v', 'th'], f: ['th', 'v', 'p'], v: ['f', 'th', 'b'], s: ['th', 'z', 'sh'], z: ['s'], d: ['dh', 'b', 't'], t: ['d', 'k'], sh: ['s', 'ch'], ch: ['sh', 'j'], b: ['p', 'd'], p: ['b'], m: ['n'], n: ['m'] };
+// focus: a sound the parent is focusing on; about half the first/last-sound items target it (words drawn up
+// to the stage that teaches it), and foils that sound close come first.
+function paItem(kind, stageIdx, avoid, focus = null) {
   const unitAt = w => { const u = spokenUnits(w); return kind === 'first' ? u[0] : kind === 'final' ? u[u.length - 1] : u.find(x => isVowel(x.p)); };
-  const target = pick(words.filter(w => unitAt(w)));
+  let words = pool(stageIdx).filter(w => !avoid.includes(w.w));
+  let target = null;
+  if (focus && kind !== 'medial' && Math.random() < 0.5) {
+    const wide = phonics.stages.flatMap(s => s.words).filter(earOk).filter(w => !avoid.includes(w.w) && unitAt(w) && unitAt(w).p === focus);
+    if (wide.length) { target = pick(wide); words = [...new Set([...words, ...wide])]; }
+  }
+  if (!target) target = pick(words.filter(w => unitAt(w)));
   const tp = unitAt(target).p;
-  const foils = shuffle(words.filter(w => w.w !== target.w && w.p !== target.p && unitAt(w) && unitAt(w).p !== tp)).slice(0, 3);
+  const ok = words.filter(w => w.w !== target.w && w.p !== target.p && unitAt(w) && unitAt(w).p !== tp);
+  const close = shuffle(ok.filter(w => (CONFUSABLE[tp] || []).includes(unitAt(w).p)));
+  const foils = [...close.slice(0, 2), ...shuffle(ok.filter(w => !close.includes(w)))].slice(0, 3);
   return { kind, target, phoneme: tp, foils };
 }
 const soundSeeds = {
@@ -60,7 +72,8 @@ const soundSeeds = {
     const audio = ctx.audio;
     const where = it.kind === 'first' ? 'starts with' : it.kind === 'final' ? 'ends with' : 'has';
     const prompt = it.kind === 'medial' ? 'Listen. Which one has /' + it.phoneme + '/ in the middle?' : 'Listen. Which one ' + where + ' /' + it.phoneme + '/?';
-    stage.setObject(el('div', { class: 'picture', text: '👂' }));
+    const mouth = mouthSVG(it.phoneme);
+    stage.setObject(mouth ? el('div', { class: 'picture mouth-cue', html: mouth }) : el('div', { class: 'picture', text: '👂' }));
     stage.setPrompt(promptBar(audio, prompt, { ears: true }));
     const why = x => { const p = soundAt(x, it.kind); return p ? x.w + ' ' + where + ' /' + p + '/.' : 'That is ' + x.w + '.'; };
     const n = ctx.adaptive.choiceCount('pa-sounds');
@@ -306,7 +319,8 @@ function buildRound(kind) {
     const long = ws.filter(w => spokenUnits(w).length >= 4);
     return pick(sIdx && long.length && Math.random() < 0.67 ? long : ws);
   };
-  const seed = () => take(soundSeeds, paItem(ctx.adaptive.stage('pa-sounds'), sIdx, used));
+  const focus = (ctx.adaptive.focus() || {}).sound || null;
+  const seed = () => take(soundSeeds, paItem(ctx.adaptive.stage('pa-sounds'), sIdx, used, focus));
   const blend = () => take(blendIt, blendWord());
   const count = () => take(countSounds, blendWord());
   const manip = () => { const st = ctx.adaptive.stage('pa-manipulate'); const d = st === 'delete' ? deletePairs(allWords()).find(fresh) : null; if (d) take(takeAway, d); else { const p = swapPairs(pool(sIdx).filter(w => !used.includes(w.w)), 1).find(fresh); if (p) take(oralSwap, p); else seed(); } };
@@ -357,4 +371,4 @@ export async function mount(h, c) {
   showMenu();
 }
 export function unmount() { cancelled = true; host = null; }
-export const __test = { paItem, rhymeItem, deletePairs, swapPairs, onsetOf, rimeOf, pool, blendPool, allWords, EAR_SKIP, init({ phonics: p, sounds: s, pa }) { phonics = p; sounds = s; PA = pa; } };
+export const __test = { paItem, rhymeItem, CONFUSABLE, deletePairs, swapPairs, onsetOf, rimeOf, pool, blendPool, allWords, EAR_SKIP, init({ phonics: p, sounds: s, pa }) { phonics = p; sounds = s; PA = pa; } };

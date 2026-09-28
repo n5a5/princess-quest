@@ -357,3 +357,10 @@ button:focus-visible, .choice:focus-visible, .tile:focus-visible, .place:focus-v
 /* Gem Pouch take-away: the gems given away stay in their pockets, faded and crossed out */
 .ten-frame .cell.taken { position: relative; opacity: 0.45; }
 .ten-frame .cell.taken::after { content: '✕'; position: absolute; inset: 0; display: grid; place-items: center; color: #C0395B; font-weight: 800; font-size: 26px; }
+
+/* Mouth cues: how the tongue and lips make th, f, s, d (shared/mouths.js) */
+.picture.mouth-cue svg { width: 96px; height: 96px; }
+.mouth-small { display: inline-flex; align-items: center; }
+.mouth-small svg { width: 44px; height: 44px; }
+.chip-toggle { border: 2px solid var(--lilac, #C7B4F0); background: #fff; border-radius: 999px; padding: 4px 12px; font-size: 16px; }
+.chip-toggle.on { background: var(--lilac, #C7B4F0); font-weight: 700; }

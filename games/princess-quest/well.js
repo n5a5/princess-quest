@@ -79,7 +79,10 @@ function introduce(word) {
   st.introducedDay = st.introducedDay || ctx.economy.today(); st.lastSeen = st.lastSeen || ctx.economy.today(); st.box = Math.max(1, st.box);
   ctx.economy.persist();
 }
-function nextNewWords(n) { return allWords().filter(w => !peek(w).introducedDay).slice(0, n); }
+// The parent's focus words (Parent Corner) come first: introduced first, practised first, in the notes first.
+const focusWords = () => ((ctx.adaptive && ctx.adaptive.focus && ctx.adaptive.focus()) || {}).words || [];
+const focusFirst = list => { const f = focusWords(); return [...list.filter(w => f.includes(w)), ...list.filter(w => !f.includes(w))]; };
+function nextNewWords(n) { return focusFirst(allWords().filter(w => !peek(w).introducedDay)).slice(0, n); }
 export function masteredWords() { return SW ? allWords().filter(isMastered) : []; }
 
 // Words that sound the same can never be foils for each other: "Which door says two?" has no single answer
@@ -307,12 +310,14 @@ function buildRound() {
   const shaky = introduced().filter(w => peek(w).box <= 1).length;
   // and fewer new words on days with many reviews due, so reviews are never crowded out
   const dueN = dueWords().length;
-  const fresh = introduced().length < 5 ? nextNewWords(5 - introduced().length) : shaky >= 5 || dueN >= 6 ? [] : nextNewWords(dueN >= 3 ? 1 : NEW_PER_SESSION);
+  // a focus word waiting to be introduced always gets in, one a day, even when reviews are piling up
+  const waiting = focusWords().filter(w => !peek(w).introducedDay);
+  const fresh = introduced().length < 5 ? nextNewWords(5 - introduced().length) : shaky >= 5 || dueN >= 6 ? waiting.slice(0, 1) : nextNewWords(dueN >= 3 ? 1 : NEW_PER_SESSION);
   const strong = shuffle(introduced().filter(w => peek(w).box >= 3 && SW.words[w].length >= 2));
   const spell = strong.length ? [{ family: spellHeart, item: strong[0] }] : [];
   // Wish notes: known words found inside real sentences (connected text), when the hearts are known.
   const notes = [], usedNotes = [];
-  for (const w of shuffle(introduced())) { // every known word is a candidate, so a note is found whenever one exists
+  for (const w of focusFirst(shuffle(introduced()))) { // every known word is a candidate, so a note is found whenever one exists
     if (notes.length >= (strong.length ? 1 : 2)) break;
     const s = noteFor(w, usedNotes); if (s) { usedNotes.push(s.id); notes.push({ family: wishNote, item: { word: w, sentence: s } }); }
   }
@@ -325,7 +330,7 @@ function buildRound() {
   // On the very first visits (five new words) some fresh taps give way to the reserved items.
   while (freshTaps.length && intros.length + freshTaps.length + reserved > ROUND_MAX) freshTaps.pop();
   const want = Math.min(4, Math.max(0, ROUND_MAX - intros.length - freshTaps.length - reserved));
-  const due = dueWords().filter(w => !fresh.includes(w));
+  const due = focusFirst(dueWords().filter(w => !fresh.includes(w)));
   const practise = due.length >= want ? due.slice(0, want) : [...due, ...shuffle(introduced().filter(w => !due.includes(w) && !fresh.includes(w))).slice(0, want - due.length)];
   return [...intros, ...practise.map(w => ({ family: hearTap, item: w })), ...freshTaps, ...spell, ...notes, ...say].slice(0, ROUND_MAX);
 }

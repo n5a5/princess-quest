@@ -1,5 +1,5 @@
 // sw.js — cache-first with a versioned precache. Bump VERSION on every release.
-const VERSION = 'arcade-v4.3.0';
+const VERSION = 'arcade-v4.4.0';
 const ASSETS = [
   '',
   'assets/audio/lines/0002394db9cd.ogg',
@@ -993,6 +993,7 @@ const ASSETS = [
   'assets/audio/phonemes/b.ogg',
   'assets/audio/phonemes/ch.ogg',
   'assets/audio/phonemes/d.ogg',
+  'assets/audio/phonemes/dh.ogg',
   'assets/audio/phonemes/e.ogg',
   'assets/audio/phonemes/ee.ogg',
   'assets/audio/phonemes/f.ogg',
@@ -1304,6 +1305,7 @@ const ASSETS = [
   'assets/audio/words/there.ogg',
   'assets/audio/words/they.ogg',
   'assets/audio/words/thin.ogg',
+  'assets/audio/words/think.ogg',
   'assets/audio/words/this.ogg',
   'assets/audio/words/three.ogg',
   'assets/audio/words/thud.ogg',
@@ -1401,6 +1403,7 @@ const ASSETS = [
   'shared/content.js',
   'shared/economy.js',
   'shared/encounter.js',
+  'shared/mouths.js',
   'shared/session.js',
   'shared/sfx.js',
   'shared/speech.js',

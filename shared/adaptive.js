@@ -14,6 +14,8 @@
 //
 // Tier = priority from the assessments: 1 = documented weakness (both systems or a clear dip),
 // 2 = secondary target, 3 = strength kept warm through play. Weights below.
+import { localDay } from './economy.js';
+
 export const SUBSKILLS = [
   // ---- reading: phonics (Unicorn Meadow) ----
   { id: 'phonics-gpc',       strand: 'ELA.K.F.1.3', cabinet: 'meadow',  tier: 1, name: 'Letter sounds',          stages: ['set1', 'set2', 'set3', 'set4', 'digraphs'] },
@@ -52,6 +54,8 @@ export const BKT = { pInit: 0.25, pTransit: 0.05, pSlip: 0.10 };
 // recent: of the last `of` scored items at this stage, at least `need` must be unaided first tries.
 export const PROMOTE = { minP: 0.85, minFirstTry: 6, minDays: 2, recent: { need: 7, of: 8 } };
 export const RETEACH_P = 0.4;
+export const FOCUS_DAYS = 7;
+export const FOCUS_BOOST = 1.6; // planner weight for the skills a parent focus touches
 export const QUEST_GEMS = 10;
 const TIER_WEIGHT = { 1: 3, 2: 1.6, 3: 0.7 };
 
@@ -180,6 +184,21 @@ export function createAdaptive({ economy }) {
     },
     itemsOnDay(id, day) { return save().log.filter(r => r.subskill === id && r.day === day).length; },
     needsReteach: id => entry(id).p < RETEACH_P && !!entry(id).lastPracticed,
+    // The parent's "focus this week" (Parent Corner): { sound, words, until } while it is still running, else null.
+    focus() {
+      const f = save().settings.focus;
+      if (!f || !f.until || f.until < economy.today()) return null;
+      if (!f.sound && !(f.words || []).length) return null;
+      return { sound: f.sound || null, words: f.words || [], until: f.until };
+    },
+    setFocus({ sound = null, words = [] } = {}) {
+      const [y, m, d] = economy.today().split('-').map(Number);
+      const until = localDay(new Date(y, m - 1, d + FOCUS_DAYS));
+      save().settings.focus = sound || words.length ? { sound, words, until } : null;
+      economy.persist();
+      return save().settings.focus;
+    },
+    clearFocus() { save().settings.focus = null; economy.persist(); },
 
     noteMiss(itemId) {
       const s = save();
@@ -204,7 +223,9 @@ export function createAdaptive({ economy }) {
       const recent = historyStops().slice(-2);
       const targeted = recent.length === 2 && recent.every(stops => stops.some(st => st.subskill === id));
       const variety = targeted ? 0.5 : 1;
-      return TIER_WEIGHT[d.tier] * (1 - e.p) * recency * variety;
+      const f = api.focus();
+      const focused = f && ((f.sound && (id === 'phonics-gpc' || id === 'pa-sounds')) || (f.words.length && id === 'sight-words'));
+      return TIER_WEIGHT[d.tier] * (1 - e.p) * recency * variety * (focused ? FOCUS_BOOST : 1);
     },
     // Best stop inside a set of cabinets: the place hosting the highest-scoring skill, avoiding a
     // cabinet that was the stop for this group the last two days. Returns { cabinet, subskill, score }.

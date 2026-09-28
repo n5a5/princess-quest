@@ -9,6 +9,7 @@
 import { el, wait, shuffle, pick, choiceGrid, picture, promptBar, tileBoard, bigButton } from '../../shared/ui.js';
 import { runEncounterRound, celebrateRound } from '../../shared/encounter.js';
 import { unitsOf, decodeSteps } from '../../shared/audio.js';
+import { mouthSVG } from '../../shared/mouths.js';
 import { lunaSVG, svgFrom } from '../../shared/characters.js';
 
 let roundBusy = false;
@@ -30,9 +31,16 @@ function blendSteps(highlight, node) {
 }
 
 // Pick n words from the current stage, mixing in one review word from earlier stages.
-function pickWords(stageIdx, n, { avoid = [] } = {}) {
+// prefer: a grapheme the parent is focusing on; about half the words carry it (drawn up to its own stage).
+function pickWords(stageIdx, n, { avoid = [], prefer = null } = {}) {
   const cur = shuffle(wordsAt(stageIdx).filter(w => !avoid.includes(w.w)));
   const out = cur.slice(0, n);
+  if (prefer) {
+    const carry = shuffle(wordsUpTo(Math.max(stageIdx, stageOfGrapheme(prefer))).filter(w => !avoid.includes(w.w) && w.u.some(u => u[0] === prefer) && !out.includes(w)));
+    // half the picks (a single pick: a coin toss), so the stage's own words still get practised
+    const want = n === 1 ? (Math.random() < 0.5 ? 1 : 0) : Math.ceil(n / 2);
+    for (let i = 0; i < want && carry[i]; i++) { if (out.length < n) out.push(carry[i]); else out[i] = carry[i]; }
+  }
   if (stageIdx > 0 && n >= 3) { const earlier = shuffle(wordsUpTo(stageIdx - 1)); if (earlier[0]) out[out.length - 1] = earlier[0]; }
   return out;
 }
@@ -46,12 +54,27 @@ function minimalPairs(w, pool) {
   const any = shuffle(pool.filter(x => x.w !== w.w && x.p !== w.p && !same.includes(x)));
   return [...keepFirst, ...pairs.filter(x => !keepFirst.includes(x)), ...rest, ...any];
 }
+// Look-alike and sound-alike stones a beginner mixes up. th/f/s/d and their voiced twins are the classic
+// "fink" for think, "dat" for that.
+const CONFUSABLE = { b: ['d', 'p'], d: ['b', 'p', 'th'], p: ['b', 'q'], m: ['n', 'w'], n: ['m', 'u'], a: ['e', 'o'], e: ['a', 'i'], i: ['e', 'a'], o: ['a', 'u'], u: ['o', 'a'],
+  f: ['th', 't', 'v'], t: ['f', 'd', 'th'], th: ['f', 's', 'd', 'v'], s: ['th', 'z', 'sh'], v: ['f', 'th', 'b'], z: ['s'], sh: ['s', 'ch'], ch: ['sh', 'j'] };
+// The ear picture, or the mouth for sounds children mix up (how the tongue and lips make it).
+const earOrMouth = p => { const m = mouthSVG(p); return m ? el('div', { class: 'picture mouth-cue', html: m }) : el('div', { class: 'picture', text: '👂' }); };
+// The first phonics stage that teaches a grapheme (for a focus on a sound she has not reached yet).
+const stageOfGrapheme = g => Math.max(0, phonics.stages.findIndex(st => st.graphemes.includes(g)));
+// The parent's focus sound as a letter stone: voiced th is spelled th; k may be c or k.
+function focusGrapheme() {
+  const f = ctx.adaptive.focus();
+  if (!f || !f.sound) return null;
+  if (f.sound === 'dh') return 'th';
+  return Object.values(GPC_SETS).flat().find(g => phonemeFor(g) === f.sound) || null;
+}
 function distractorGraphemes(w, stageIdx, n) {
   const used = new Set(w.u.map(u => u[0]));
   // a spare stone never makes a sound the word already has (c in "kit" would be a second right answer)
   const usedP = new Set(w.u.map(u => u[1]).filter(Boolean));
   const pool = graphemePool(stageIdx).filter(g => !used.has(g) && !usedP.has(phonemeFor(g)));
-  const confusable = { b: ['d', 'p'], d: ['b', 'p'], p: ['b', 'q'], m: ['n', 'w'], n: ['m', 'u'], a: ['e', 'o'], e: ['a', 'i'], i: ['e', 'a'], o: ['a', 'u'], u: ['o', 'a'], f: ['t'], t: ['f'] };
+  const confusable = CONFUSABLE;
   const wanted = [];
   for (const u of w.u) for (const c of (confusable[u[0]] || [])) if (pool.includes(c) && !wanted.includes(c)) wanted.push(c);
   const rest = shuffle(pool.filter(g => !wanted.includes(g)));
@@ -89,18 +112,22 @@ function startsWith(p) {
   return [...(kw ? [kw] : []), ...fromWords].filter(w => oneName(w, false) && !seen.has(w.p) && seen.add(w.p));
 }
 function endsWith(p) { return phonics.stages.flatMap(s => s.words).filter(w => { const u = spokenUnits(w); return u.length && u[u.length - 1].p === p && oneName(w, true); }); }
-function gpcItem(stageName, avoid) {
+function gpcItem(stageName, avoid, focus = null) {
   const cur = GPC_SETS[stageName] || GPC_SETS.set1;
   const all = gpcPool(stageName);
+  if (focus && !all.includes(focus)) all.push(focus); // a focus sound joins the pool even before its stage
   const from = (Math.random() < 0.7 ? cur : all).filter(x => !avoid.includes(x));
-  const g = pick(from.length ? from : cur);
+  // the focus stone comes up in almost half the items (never twice in a row)
+  const g = focus && Math.random() < 0.45 && avoid[avoid.length - 1] !== focus ? focus : pick(from.length ? from : cur);
   const p = phonemeFor(g);
   // no picture that surely starts with the sound (short i: insect 🐛 is also "bug", ink 🖋️ is "pen"): hear items only
   const kind = Math.random() < 0.5 && (p === 'ng' || p === 'x' ? endsWith(p) : startsWith(p)).length ? 'see' : 'hear';
   if (kind === 'hear') {
     // Foils carry different sounds from the target and from each other (c and k never share a row).
     const used = new Set([p]);
-    const foils = shuffle(all.filter(x => x !== g)).filter(x => !used.has(phonemeFor(x)) && used.add(phonemeFor(x))).slice(0, 3);
+    // sound-alikes first (th beside f and s), then the rest of what she has met
+    const conf = shuffle((CONFUSABLE[g] || []).filter(x => all.includes(x)));
+    const foils = [...conf, ...shuffle(all.filter(x => x !== g && !conf.includes(x)))].filter(x => x !== g && !used.has(phonemeFor(x)) && used.add(phonemeFor(x))).slice(0, 3);
     return { kind, g, p, options: shuffle([g, ...foils]), foilsAll: foils };
   }
   const atEnd = p === 'ng' || p === 'x';
@@ -117,7 +144,7 @@ const letterSound = {
     const audio = ctx.audio;
     if (it.kind === 'hear') {
       const prompt = 'Listen: /' + it.p + '/. Which letter stone makes that sound?';
-      stage.setObject(el('div', { class: 'picture', text: '👂' }));
+      stage.setObject(earOrMouth(it.p));
       stage.setPrompt(promptBar(audio, prompt, { ears: true }));
       const k = ctx.adaptive.choiceCount('phonics-gpc') - 1;
       const opts = shuffle([it.g, ...(it.foilsAll || it.options.filter(x => x !== it.g)).slice(0, k)]);
@@ -332,24 +359,34 @@ const soundSwap = {
         return t;
       }));
       runes.runes[index].classList.add('glow');
-      stage.setBody(el('div', { class: 'row' }, [runes.row]), tiles);
+      const mouth = mouthSVG(newU[1]);
+      stage.setBody(el('div', { class: 'row' }, [runes.row]), mouth ? el('div', { class: 'row' }, [el('div', { class: 'mouth-small', html: mouth }), tiles]) : tiles);
     });
     return result;
   }
 };
 // wash and bush are coded with the vowels of cash and hush, which they do not have: never swapped
 const SWAP_SKIP = new Set(['wash', 'bush']);
-function swapPairs(pool, n) {
+function swapPairs(pool, n, prefer = null) {
   const out = [], seen = new Set();
   const shuffled = shuffle(pool.filter(w => !SWAP_SKIP.has(w.w)));
-  for (const a of shuffled) {
-    if (seen.has(a.w)) continue;
-    for (const b of shuffled) {
-      if (a === b || seen.has(b.w) || a.u.length !== b.u.length || a.p === b.p) continue;
-      const diff = a.u.map((u, i) => u[0] !== b.u[i][0] ? i : -1).filter(i => i >= 0);
-      if (diff.length === 1 && a.u[diff[0]][1] && b.u[diff[0]][1] && a.u[diff[0]][1] !== b.u[diff[0]][1]) { out.push({ from: a, to: b, index: diff[0] }); seen.add(a.w); seen.add(b.w); break; }
+  const pairOf = (a, b) => {
+    if (a === b || seen.has(b.w) || a.u.length !== b.u.length || a.p === b.p) return null;
+    const diff = a.u.map((u, i) => u[0] !== b.u[i][0] ? i : -1).filter(i => i >= 0);
+    return diff.length === 1 && a.u[diff[0]][1] && b.u[diff[0]][1] && a.u[diff[0]][1] !== b.u[diff[0]][1] ? { from: a, to: b, index: diff[0] } : null;
+  };
+  // With a focus grapheme, pairs that put it in or take it out (thin/fin, bath/bat) are taken first;
+  // only then do ordinary pairs fill the rest.
+  const passes = prefer ? [p => p.from.u[p.index][0] === prefer || p.to.u[p.index][0] === prefer, () => true] : [() => true];
+  for (const ok of passes) {
+    for (const a of shuffled) {
+      if (out.length >= n) break;
+      if (seen.has(a.w)) continue;
+      for (const b of shuffled) {
+        const p = pairOf(a, b);
+        if (p && ok(p)) { out.push(p); seen.add(a.w); seen.add(b.w); break; }
+      }
     }
-    if (out.length >= n) break;
   }
   return out;
 }
@@ -471,16 +508,18 @@ function buildRound(kind) {
   const items = [];
   const used = [];
   const take = (family, item) => { if (!item) return; items.push({ family, item }); if (item && item.w) used.push(item.w); if (item && item.g) used.push(item.g); };
+  const fg = focusGrapheme(); // the parent's focus sound, if any: more of its stone, its words and its swaps
+  const swapPool = () => wordsUpTo(fg ? Math.max(enc, stageOfGrapheme(fg)) : enc).filter(w => !used.includes(w.w));
   const fam = {
-    gpc: () => take(letterSound, gpcItem(gpcStage, used.filter(x => x.length <= 2))),
-    spell: () => take(wordSpell, pickWords(enc, 1, { avoid: used })[0]),
-    read: () => take(readRune, pickWords(dec, 1, { avoid: used })[0]),
-    swap: () => { const p = swapPairs(wordsUpTo(enc).filter(w => !used.includes(w.w)), 1)[0]; if (p) { take(soundSwap, p); used.push(p.from.w, p.to.w); } else fam.spell(); },
+    gpc: () => take(letterSound, gpcItem(gpcStage, used.filter(x => x.length <= 2), fg)),
+    spell: () => take(wordSpell, pickWords(enc, 1, { avoid: used, prefer: fg })[0]),
+    read: () => take(readRune, pickWords(dec, 1, { avoid: used, prefer: fg })[0]),
+    swap: () => { const p = swapPairs(swapPool(), 1, fg)[0]; if (p) { take(soundSwap, p); used.push(p.from.w, p.to.w); } else fam.spell(); },
     scroll: () => { const s = pickSentences(1, items.filter(i => i.family === spellScroll).map(i => i.item.id))[0]; if (s) take(spellScroll, s); else fam.read(); }
   };
-  if (kind === 'spell') pickWords(enc, 6).forEach(w => take(wordSpell, w));
-  else if (kind === 'read') pickWords(dec, 6).forEach(w => take(readRune, w));
-  else if (kind === 'swap') { swapPairs(wordsUpTo(enc), 6).forEach(p => take(soundSwap, p)); while (items.length < 6) fam.spell(); }
+  if (kind === 'spell') pickWords(enc, 6, { prefer: fg }).forEach(w => take(wordSpell, w));
+  else if (kind === 'read') pickWords(dec, 6, { prefer: fg }).forEach(w => take(readRune, w));
+  else if (kind === 'swap') { swapPairs(swapPool(), 6, fg).forEach(p => take(soundSwap, p)); while (items.length < 6) fam.spell(); }
   else if (kind === 'gpc') for (let i = 0; i < 6; i++) fam.gpc();
   else if (kind === 'scroll') { pickSentences(5).forEach(s => take(spellScroll, s)); fam.read(); }
   else if (kind === 'books') { const book = pickBook(); book.pages.forEach((p, n) => items.push({ family: bookPage, item: { book, n } })); items.push({ family: bookQuestion, item: { book } }); return items; }
@@ -537,4 +576,4 @@ export async function mount(h, c) {
 }
 
 export function unmount() { cancelled = true; host = null; }
-export const __test = { gpcItem, swapPairs, minimalPairs, distractorGraphemes, startsWith, endsWith, init({ phonics: p, sounds: s, sentences }) { phonics = p; sounds = s; SENT = sentences; NAMES = null; } };
+export const __test = { gpcItem, swapPairs, minimalPairs, distractorGraphemes, pickWords, CONFUSABLE, startsWith, endsWith, init({ phonics: p, sounds: s, sentences }) { phonics = p; sounds = s; SENT = sentences; NAMES = null; } };

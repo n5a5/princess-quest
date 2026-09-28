@@ -42,7 +42,8 @@ export function defaultSave() {
     scenariosSeen: [],  // Uh-Oh Courtyard scenario ids already shown
     // voice: 'device' = the device's text-to-speech for instructions; 'luna' = the pre-recorded story voice
     // (the same voice as the words and letter sounds). Stays 'device' until the parent picks in Parent Corner.
-    settings: { muted: false, rate: 0.9, voiceName: '', modulesOff: [], voice: 'device' },
+    // focus: what the parent asked the app to lean on for a week: { sound, words: [], until: 'YYYY-MM-DD' } or null
+    settings: { muted: false, rate: 0.9, voiceName: '', modulesOff: [], voice: 'device', focus: null },
     log: []
   };
 }
@@ -93,6 +94,9 @@ export function migrate(raw) {
   for (const [id, w] of Object.entries(out.wallet)) if (!isObj(w) || typeof w.earned !== 'number' || typeof w.spent !== 'number') delete out.wallet[id];
   if (!Array.isArray(out.settings.modulesOff)) out.settings.modulesOff = [];
   if (!['device', 'luna'].includes(out.settings.voice)) out.settings.voice = 'device';
+  const f = out.settings.focus;
+  if (!isObj(f) || typeof f.until !== 'string' || (f.sound !== null && f.sound !== undefined && typeof f.sound !== 'string')) out.settings.focus = null;
+  else out.settings.focus = { sound: f.sound || null, words: Array.isArray(f.words) ? f.words.filter(w => typeof w === 'string') : [], until: f.until };
   out.schemaVersion = SCHEMA_VERSION;
   return out;
 }

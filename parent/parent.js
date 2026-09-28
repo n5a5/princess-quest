@@ -13,6 +13,7 @@ import { createAudioStore } from '../shared/audiostore.js';
 import { createContentLoader } from '../shared/content.js';
 import { createSpeech } from '../shared/speech.js';
 import { createAudio, createWebAudioPlayer } from '../shared/audio.js';
+import { mouthSVG } from '../shared/mouths.js';
 
 const economy = createEconomy({ storage: localStorage, onSaveError: () => alert('This device could not store the save (storage full or blocked). Use Export now to keep a copy.') });
 const adaptive = createAdaptive({ economy });
@@ -162,6 +163,7 @@ function render() {
   const mastered = sw.filter(([, v]) => v.box >= 5 && v.firstTryDays.length >= 3).length;
   app.replaceChildren(
     weekSection(),
+    focusSection(),
     el('section', {}, [
       el('h2', { text: 'Is it working?' }),
       el('div', { class: 'kpis' }, [
@@ -264,6 +266,49 @@ function render() {
   );
 }
 // This week on one screen: time, days, what she practised, what moved up, and what comes next.
+// Focus this week: the parent picks a sound and some wish words; for seven days the planner leans on them
+// (more of that letter stone and its words in the Meadow, that sound as the target in the Woods, those
+// words first in the Well) without switching anything else off.
+function focusSection() {
+  const s = economy.save;
+  const section = el('section', {}, [el('h2', { text: 'Focus this week' })]);
+  const active = adaptive.focus();
+  const soundName = id => { const x = SOUNDS.find(z => z.id === id); return x ? x.label + ' (' + x.word + ')' : id; };
+  if (active) {
+    const parts = [];
+    if (active.sound) parts.push('the sound ' + soundName(active.sound));
+    if (active.words.length) parts.push(active.words.length + ' wish words: ' + active.words.join(', '));
+    section.append(
+      el('p', {}, [el('strong', { text: 'Focusing on ' + parts.join(' and ') + ' until ' + active.until + '.' })]),
+      el('p', { class: 'muted', text: 'Letter Sounds and Whisper Woods draw this sound in almost half their items, Word Spell, Letter Stones and Sound Swap prefer its words, and the focus wish words are introduced and practised first. The planner also sends the trail to those skills more often.' }),
+      el('button', { type: 'button', text: 'Stop the focus', onclick: () => { adaptive.clearFocus(); render(); } })
+    );
+    return section;
+  }
+  const sel = el('select', {}, [el('option', { value: '', text: 'no sound' }), ...SOUNDS.map(x => el('option', { value: x.id, text: x.label + ' as in ' + x.word }))]);
+  const chips = el('div', { class: 'row', style: 'justify-content:flex-start;flex-wrap:wrap;gap:6px' });
+  const picked = new Set();
+  const allWords = SW ? [...SW.lists.prePrimer, ...SW.lists.primer] : [];
+  const refreshChips = () => {
+    const snd = SOUNDS.find(x => x.id === sel.value);
+    const hits = snd ? allWords.filter(w => w.includes(snd.label)) : [];
+    picked.clear(); hits.forEach(w => picked.add(w));
+    chips.replaceChildren(...allWords.map(w => {
+      const b = el('button', { type: 'button', class: 'chip-toggle' + (picked.has(w) ? ' on' : ''), text: w });
+      b.addEventListener('click', () => { if (picked.has(w)) picked.delete(w); else picked.add(w); b.classList.toggle('on', picked.has(w)); });
+      return b;
+    }));
+  };
+  sel.addEventListener('change', refreshChips);
+  refreshChips();
+  section.append(
+    el('p', { class: 'muted', text: 'Pick a sound she is finding hard, and any wish words to bring forward. For seven days the app leans on them: that letter stone and its words come up far more often, the Woods listen for that sound, and those wish words are introduced and practised first. Picking a sound pre-selects the wish words spelled with it; tap words to add or remove them.' }),
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [el('label', { text: 'Sound ' }), sel]),
+    chips,
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [el('button', { type: 'button', text: 'Start a 7-day focus', onclick: () => { adaptive.setFocus({ sound: sel.value || null, words: [...picked] }); render(); } })])
+  );
+  return section;
+}
 function weekSection() {
   const today = economy.today();
   const rows = economy.save.log.filter(r => !r.review && !(r.choices < 2));
@@ -424,7 +469,8 @@ function soundCheckSection() {
       } catch (e) { session = null; recBtn.classList.remove('live'); recBtn.textContent = 'Record'; alert('Microphone not available: ' + (e && e.message ? e.message : e)); }
     });
     delBtn.addEventListener('click', async () => { await store.remove('phoneme', s.id); delBtn.setAttribute('disabled', ''); refresh(); });
-    row.append(el('span', { class: 'chip', text: s.label }), el('div', { class: 'meta' }, [el('span', { text: s.pic + ' ' + s.word + ' · ' }), src, el('span', { class: 'tip', text: s.tip })]), playBtn, recBtn, delBtn);
+    const mouth = mouthSVG(s.id);
+    row.append(el('span', { class: 'chip', text: s.label }), mouth ? el('span', { class: 'mouth-small', html: mouth }) : el('span'), el('div', { class: 'meta' }, [el('span', { text: s.pic + ' ' + s.word + ' · ' }), src, el('span', { class: 'tip', text: s.tip })]), playBtn, recBtn, delBtn);
     grid.appendChild(row);
   }
   section.appendChild(el('div', { class: 'row' }, [
