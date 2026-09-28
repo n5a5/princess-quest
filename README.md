@@ -2,6 +2,10 @@
 
 A magical kindergarten adventure for one child, Amelia, built as a static offline PWA. Luna the unicorn guides her through a kingdom of six places (plus the Squishy Garden); each place hides rigorous practice for the strands her fall 2026 i-Ready and Star assessments flagged (phonics, phonological awareness, high-frequency words, number sense and operations, measurement and data, patterns), while her strengths stay warm through stories and play. Priorities and the reasoning: `docs/superpowers/specs/2026-09-11-assessment-driven-priorities.md`. Live at https://n5a5.github.io/princess-quest/.
 
+Scorecard against the best children's learning apps and the ranked roadmap: `docs/state-of-the-art-scorecard.md` (research behind it: `docs/research/`).
+
+Audio is built offline with Kokoro-82M (af_heart, Apache-2.0) via kokoro-onnx: `tools/build-phonemes.py` (letter sounds), `tools/build-word-audio.py` (words), `tools/collect-lines.py` then `tools/build-lines-audio.py` (the story voice), `tools/build-audition.py` (Parent Corner voice audition).
+
 Design documents: `docs/superpowers/specs/2026-09-11-princess-quest-ideal-architecture.md` (research synthesis, evidence grades, decisions) and `docs/superpowers/specs/2026-09-10-princess-quest-v3-design.md` (original v3 spec).
 
 ## Run locally
@@ -10,7 +14,7 @@ Design documents: `docs/superpowers/specs/2026-09-11-princess-quest-ideal-archit
 npx http-server . -p 8765 -c-1
 ```
 
-Open http://localhost:8765/. Tests: `node --test tests/*.test.js` (61 tests, no dependencies; generators are stress-tested with thousands of draws and every content word is checked for a bundled clip). Parent Corner: tap ⚙ on the map, PIN `1234`.
+Open http://localhost:8765/. Tests: `node --test tests/*.test.js` (69 tests, no dependencies; every module is parsed as an ES module, generators are stress-tested with thousands of draws, every content word and letter sound is checked for a bundled clip, and letter sounds must meet minimum length and loudness). Parent Corner: tap ⚙ on the map, PIN `1234`.
 
 ## The kingdom
 
