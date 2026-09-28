@@ -10,7 +10,7 @@ Reader, DragonBox Numbers, Todo Math, Kitkit School, Reading Eggs and others. Co
 judgments from public evidence, not hands-on testing. Princess Quest scores are from testing the running app.
 
 v4.3.0 came from a multi-agent review (nine read-only reviewers, each finding adversarially verified;
-134 confirmed findings: 1 P0, 20 P1, 46 P2, the rest P3). The P0, every P1 and most P2 were fixed with
+134 confirmed findings: 1 P0, 21 P1, 45 P2, 67 P3; 4 more were rejected). The P0, every P1 and most P2 were fixed with
 regression tests, then seven roadmap features were built and the result re-verified.
 
 ## Scorecard (1–10)
