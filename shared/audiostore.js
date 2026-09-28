@@ -54,7 +54,12 @@ export function createAudioStore() {
     canRecord: () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && globalThis.MediaRecorder),
     // Starts recording; auto-stops at maxMs. Returns { stop(), blob: Promise<Blob> }.
     async record(maxMs = 1800) {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // The browser's automatic gain control, noise suppression and echo cancelling are for calls:
+      // they pull the level down partway through a held sound and can duck the microphone while the app
+      // is still talking. Ask for the raw microphone; fall back to the defaults if a device refuses.
+      let stream;
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: { autoGainControl: false, noiseSuppression: false, echoCancellation: false } }); }
+      catch { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
       const rec = new MediaRecorder(stream);
       const chunks = [];
       rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };

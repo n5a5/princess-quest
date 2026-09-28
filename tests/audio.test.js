@@ -1,7 +1,7 @@
 // tests/audio.test.js — resolution chain, decoding sequence, cancellation. All DOM-free via injected deps.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAudio, decodeSteps, swapSteps, parseParts, letterName, TIMING, splitSentences, keyOf } from '../shared/audio.js';
+import { createAudio, decodeSteps, swapSteps, parseParts, letterName, TIMING, splitSentences, keyOf, conditionClip } from '../shared/audio.js';
 
 function harness({ recorded = [], bundled = { phonemes: [], letters: [], words: [] }, sounds = {}, muted = false } = {}) {
   const log = [];
@@ -230,4 +230,18 @@ test('an intro run as one sequence stops when she answers, and is not asked agai
   const said = log.map(x => x[1]);
   assert.ok(!said.includes('Which picture starts with'), 'the question is not re-asked after the answer: ' + JSON.stringify(said));
   assert.equal(said[said.length - 1], 'Great job!');
+});
+
+test('a recording whose level drops halfway (automatic gain control) is evened out, trimmed and normalised', () => {
+  const sr = 24000, x = new Float32Array(sr * 1.6);
+  // 0.3 s silence, 1 s tone (0.5 then 0.15 amplitude from the middle), 0.3 s silence
+  for (let i = 0; i < sr; i++) x[Math.round(sr * 0.3) + i] = Math.sin(i * 0.1) * (i < sr / 2 ? 0.5 : 0.15);
+  const y = conditionClip(x, sr);
+  assert.ok(y.length < sr * 1.1 && y.length > sr * 0.95, 'silence trimmed: ' + y.length / sr);
+  const rms = (a, b) => { let s = 0; for (let i = a; i < b; i++) s += y[i] * y[i]; return Math.sqrt(s / (b - a)); };
+  const q1 = rms(Math.round(y.length * 0.1), Math.round(y.length * 0.4)), q2 = rms(Math.round(y.length * 0.6), Math.round(y.length * 0.9));
+  assert.ok(q2 / q1 > 0.8, 'second half at ' + (q2 / q1).toFixed(2) + ' of the first (was 0.3)');
+  let mx = 0; for (const v of y) mx = Math.max(mx, Math.abs(v));
+  assert.ok(mx > 0.85 && mx <= 0.9001, 'peak normalised: ' + mx);
+  assert.equal(conditionClip(new Float32Array(100), sr).length, 100, 'silence is left alone');
 });

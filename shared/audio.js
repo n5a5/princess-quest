@@ -306,6 +306,42 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
   return api;
 }
 
+// Parent recordings come off the microphone raw: the browser's automatic gain control pulls the level
+// down partway through a held sound ("sss" fades to a whisper), there is silence either side, and the
+// level differs between takes. This evens the level (a gentle upward leveller: quiet-but-active parts are
+// lifted toward the loud part, at most 4x), trims the silence, normalises the peak and adds short fades.
+// Pure function over samples, so it is unit-tested; the Web Audio player runs it on every recorded clip.
+export function conditionClip(x, sr) {
+  const n = x.length;
+  const win = Math.max(1, Math.round(sr * 0.02)), hop = Math.max(1, Math.round(sr * 0.01));
+  const rms = [];
+  for (let i = 0; i + win <= n; i += hop) { let s = 0; for (let k = i; k < i + win; k++) s += x[k] * x[k]; rms.push(Math.sqrt(s / win)); }
+  if (rms.length < 3) return x;
+  const sorted = [...rms].sort((a, b) => a - b);
+  const floor = sorted[Math.floor(sorted.length * 0.1)], loud = sorted[Math.floor(sorted.length * 0.9)];
+  const thr = Math.max(floor * 3, loud * 0.08, 1e-4);
+  const active = rms.map(r => r > thr);
+  const first = active.indexOf(true), last = active.lastIndexOf(true);
+  if (first < 0) return x;
+  const pad = Math.round(sr * 0.015);
+  const s0 = Math.max(0, first * hop - pad), s1 = Math.min(n, last * hop + win + pad);
+  const target = loud * 0.85;
+  const g = rms.map((r, i) => active[i] ? Math.min(4, Math.max(1, target / r)) : 1);
+  const sm = g.map((_, i) => { let s = 0, c = 0; for (let k = Math.max(0, i - 4); k <= Math.min(g.length - 1, i + 4); k++) { s += g[k]; c++; } return s / c; });
+  const out = new Float32Array(s1 - s0);
+  for (let i = s0; i < s1; i++) {
+    const f = Math.max(0, Math.min(sm.length - 1, (i - win / 2) / hop));
+    const lo = Math.floor(f), hi = Math.min(sm.length - 1, lo + 1), t = f - lo;
+    out[i - s0] = x[i] * (sm[lo] * (1 - t) + sm[hi] * t);
+  }
+  let mx = 0; for (let i = 0; i < out.length; i++) mx = Math.max(mx, Math.abs(out[i]));
+  if (mx > 0) { const k = 0.9 / mx; for (let i = 0; i < out.length; i++) out[i] *= k; }
+  const fi = Math.min(out.length >> 2, Math.round(sr * 0.005)), fo = Math.min(out.length >> 1, Math.round(sr * 0.025));
+  for (let i = 0; i < fi; i++) out[i] *= i / fi;
+  for (let i = 0; i < fo; i++) out[out.length - 1 - i] *= i / fo;
+  return out;
+}
+
 // Web Audio player: decoded buffers cached in memory, sample-accurate chaining with crossfade for
 // connected-phonation blending, instant stop. Falls back to the HTML player if AudioContext is missing.
 export function createWebAudioPlayer() {
@@ -349,10 +385,23 @@ export function createWebAudioPlayer() {
     if (!buffers.has(k)) {
       const p = (src instanceof Blob ? src.arrayBuffer() : fetch(src).then(r => { if (!r.ok) throw new Error('audio ' + r.status); return r.arrayBuffer(); }))
         .then(ab => context().decodeAudioData(ab))
+        .then(buf => (src instanceof Blob ? conditioned(buf) : buf))
         .catch(e => { buffers.delete(k); throw e; });
       buffers.set(k, p);
     }
     return buffers.get(k);
+  }
+  // A recording (Blob) is levelled, trimmed and normalised once, when it is decoded.
+  function conditioned(buf) {
+    try {
+      const n = buf.length, ch = buf.numberOfChannels;
+      const mono = new Float32Array(n);
+      for (let c = 0; c < ch; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) mono[i] += d[i] / ch; }
+      const y = conditionClip(mono, buf.sampleRate);
+      const out = context().createBuffer(1, y.length, buf.sampleRate);
+      out.copyToChannel(y, 0);
+      return out;
+    } catch (e) { console.warn('recording not conditioned', e); return buf; }
   }
   // Every clip gets a short gain envelope (a few ms in, a dozen ms out) and an interrupted clip is
   // faded, not chopped: a hard edge at sample level is the "click" laptop speakers reveal.
