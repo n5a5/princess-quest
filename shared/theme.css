@@ -542,6 +542,10 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
   .scene.stage .song-box { padding: 10px; gap: 10px; }
   .scene.stage.menu .plan-strip { display: none; }
   .scene.stage .encounter-btn { min-height: 76px; }
+  main:has(> #cabinet .scene.stage) { padding-bottom: 6px; }
+  .scene.stage.breath .breath-cue { font-size: 56px; }
+  .scene.stage.breath .bubble { width: 30vh; height: 30vh; }
+  .scene.stage .ask-mic { font-size: 72px; }
 }
 @media (orientation: landscape) and (max-height: 400px) {
   .scene.stage.menu .day-strip { display: none; }
