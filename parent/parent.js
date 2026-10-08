@@ -14,6 +14,8 @@ import { createContentLoader } from '../shared/content.js';
 import { createSpeech } from '../shared/speech.js';
 import { createAudio, createWebAudioPlayer } from '../shared/audio.js';
 import { mouthSVG } from '../shared/mouths.js';
+import { canListen, openMic } from '../shared/mic.js';
+import { createSongPlayer } from '../shared/songclip.js';
 
 const economy = createEconomy({ storage: localStorage, onSaveError: () => alert('This device could not store the save (storage full or blocked). Use Export now to keep a copy.') });
 const adaptive = createAdaptive({ economy });
@@ -278,7 +280,8 @@ function stageSection() {
   const st = economy.save.stage;
   const days = Object.keys(st.days).sort();
   const when = STAGE ? (([y, m, d]) => `${+m}/${+d}/${y}`)(STAGE.auditionDate.split('-')) : '';
-  const play = id => { player.stop(); player.play(store.get('stage', id)); };
+  // as recorded, not levelled: you hear how loud she really was
+  const play = id => { player.stop(); player.play(store.get('stage', id), { raw: true }); };
   const takes = STAGE_TAKES.filter(([id]) => store.has('stage', id)).map(([id, name]) => el('div', { class: 'row', style: 'justify-content:flex-start' }, [
     el('span', { text: name, style: 'min-width:150px' }),
     store.has('stage', id + '-first') ? el('button', { type: 'button', text: '▶ First take', onclick: () => play(id + '-first') }) : null,
@@ -289,8 +292,74 @@ function stageSection() {
     el('div', { class: 'kpis' }, [kpi('Days practiced', days.length), kpi('Line practices', st.solos.line || 0), kpi('Song practices', st.solos.song || 0), kpi('Full auditions', st.auditions), kpi('Watched the clip', st.watched)]),
     el('p', {}, [el('strong', { text: 'By day: ' }), days.slice(-10).map(d => d.slice(5) + ' ' + Object.entries(st.days[d]).map(([k, n]) => (STAGE_WORDS[k] || k) + (n > 1 ? ' ×' + n : '')).join(', ')).join(' · ') || 'nothing yet.']),
     ...(takes.length ? takes : [el('p', { class: 'muted', text: 'Her recordings appear here after her first practice.' })]),
-    el('p', { class: 'muted', text: 'First time: open Star Stage on the map yourself and tap Allow when the browser asks for the microphone; then she can practice alone. The microphone only checks that she spoke and how loud (the star), never the words. Watch the orphans plays the film clip from YouTube and needs the internet; everything else works offline. Recordings stay on this device.' })
+    songBlock(),
+    micTest(),
+    el('p', { class: 'muted', text: 'The microphone only checks that she spoke and how loud (the star), never the words. Watch the orphans plays the film clip from YouTube and needs the internet; everything else works offline. Recordings stay on this device and play here exactly as loud as she was.' })
   ]);
+}
+
+// The cast recording for My Song and Hear the orphans. Loaded from a file on this device and kept only here (the
+// app and its public site never contain it). The audition chorus inside it was found by analysis, not by ear:
+// "Play my part" lets a grown-up check it and the buttons move its start and end half a second at a time.
+let songPlayer = null;
+function songBlock() {
+  const s = economy.save.stage;
+  const rec = store.get('stage', 'song-audio');
+  const base = STAGE && STAGE.songCut;
+  const fmt = t => Math.floor(t / 60) + ':' + (t % 60).toFixed(1).padStart(4, '0');
+  const load = el('input', { type: 'file', accept: 'audio/*', onchange: async e => {
+    const f = e.target.files[0]; if (!f) return;
+    await store.save('stage', 'song-audio', f);
+    const d = await createSongPlayer(f).duration();
+    if (base && d && Math.abs(d - base.duration) > 2) alert('This recording is ' + fmt(d) + ' long, not ' + fmt(base.duration) + ' like the clip the times were set for. Use "Play my part" and the buttons to find "It\'s the hard-knock life for us" … "It\'s the hard-knock life!".');
+    render();
+  } });
+  if (!rec) return el('div', { class: 'song-setup' }, [
+    el('p', {}, [el('strong', { text: 'The real song: ' }), 'not loaded. Load the movie clip audio (the "It\'s the Hard Knock Life" Full Clip MP3) and My Song plays the orphans singing her part, offline; Watch becomes Hear the orphans, with no YouTube. The file stays on this device.']),
+    el('label', { class: 'toggle' }, ['Load the song ', load])
+  ]);
+  if (!songPlayer) songPlayer = createSongPlayer(rec);
+  const cut = () => s.songCut || { start: base.start, end: base.end };
+  const label = el('span', { text: '' });
+  const show = () => { const c = cut(); label.textContent = 'Her part: ' + fmt(c.start) + ' to ' + fmt(c.end) + (s.songCut ? ' (adjusted)' : ''); };
+  const nudge = (key, by) => () => { const c = { ...cut() }; c[key] = Math.max(0, Math.round((c[key] + by) * 10) / 10); if (c.end - c.start < 3) return; s.songCut = c; economy.persist(); show(); };
+  show();
+  return el('div', { class: 'song-setup' }, [
+    el('p', {}, [el('strong', { text: 'The real song: ' }), '✓ loaded on this device. Play her part once: it should start at "It\'s the hard-knock life for us" and end after "It\'s the hard-knock life!".']),
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+      el('button', { type: 'button', text: '▶ Play my part', onclick: () => { const c = cut(); songPlayer.play({ from: c.start, to: c.end }); } }),
+      el('button', { type: 'button', text: '⏹ Stop', onclick: () => songPlayer.stop() }),
+      label
+    ]),
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+      el('span', { text: 'Start' }), el('button', { type: 'button', text: '−½ s', onclick: nudge('start', -0.5) }), el('button', { type: 'button', text: '+½ s', onclick: nudge('start', 0.5) }),
+      el('span', { text: 'End' }), el('button', { type: 'button', text: '−½ s', onclick: nudge('end', -0.5) }), el('button', { type: 'button', text: '+½ s', onclick: nudge('end', 0.5) }),
+      el('button', { type: 'button', text: 'Reset', onclick: () => { s.songCut = null; economy.persist(); show(); } }),
+      el('button', { type: 'button', class: 'danger', text: 'Remove the song', onclick: async () => { if (!confirm('Remove the song from this device?')) return; songPlayer.release(); songPlayer = null; await store.remove('stage', 'song-audio'); render(); } })
+    ])
+  ]);
+}
+
+// Set-up check for a grown-up: asks for the microphone (so she never meets the browser's permission question
+// alone) and shows how loud a shout is on this device.
+function micTest() {
+  const out = el('span', { class: 'muted', text: canListen() ? 'Tap, then say "Hello, everybody!" in a big voice.' : 'This browser cannot record.' });
+  const btn = el('button', { type: 'button', text: '🎤 Test the microphone', onclick: async () => {
+    btn.disabled = true; out.textContent = 'Listening… say "Hello, everybody!"';
+    let m = null;
+    try {
+      m = await openMic();
+      const room = await m.floor(400);
+      const res = await m.listen({ floorDb: room, maxMs: 5000, endSilenceMs: 900, noVoiceMs: 4500 });
+      out.textContent = res.heard
+        ? `✓ Heard you. Loudest ${Math.round(res.peakDb)} dB, room ${Math.round(room)} dB. Star Stage is ready; she will not be asked for the microphone again.`
+        : `Nothing heard (room ${Math.round(room)} dB). Check the volume and that nothing covers the microphone, then try again.`;
+    } catch (e) {
+      out.textContent = e && e.name === 'NotAllowedError' ? 'The microphone is blocked. Allow it in the browser\'s site settings for this app, then try again.' : 'No microphone found (' + (e && e.name || e) + ').';
+    } finally { if (m) m.close(); btn.disabled = false; }
+  } });
+  if (!canListen()) btn.disabled = true;
+  return el('div', { class: 'row', style: 'justify-content:flex-start' }, [btn, out]);
 }
 
 function focusSection() {

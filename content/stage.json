@@ -2,13 +2,30 @@
   "auditionDate": "2026-10-14",
   "showDate": "2027-02-21",
   "show": "Annie",
-  "warmup": { "id": "warmup", "chunks": [{ "text": "Hello, everybody!", "pic": "👋" }] },
+  "warmup": {
+    "id": "warmup",
+    "chunks": [
+      {
+        "text": "Hello, everybody!",
+        "pic": "👋"
+      }
+    ]
+  },
   "slate": {
     "id": "slate",
     "chunks": [
-      { "text": "Hi! I'm {name}.", "pic": "👋" },
-      { "text": "I'm in kindergarten.", "pic": "🏫" },
-      { "text": "I'll be singing, It's the Hard-Knock Life!", "pic": "🎵" }
+      {
+        "text": "Hi! I'm {name}.",
+        "pic": "👋"
+      },
+      {
+        "text": "I'm in kindergarten.",
+        "pic": "🏫"
+      },
+      {
+        "text": "I'll be singing, It's the Hard-Knock Life!",
+        "pic": "🎵"
+      }
     ]
   },
   "pieces": [
@@ -20,10 +37,22 @@
       "tip": "Rub your eyes and say it like you are so, so sleepy. Then say Yes, Miss Hannigan, slow and grumpy.",
       "maxMs": 12000,
       "chunks": [
-        { "text": "Oh my goodness, oh my goodness.", "pic": "😱" },
-        { "text": "It's four o'clock", "pic": "🕓" },
-        { "text": "in the morning!", "pic": "🌙" },
-        { "text": "Yes, Miss Hannigan.", "pic": "🙄" }
+        {
+          "text": "Oh my goodness, oh my goodness.",
+          "pic": "😱"
+        },
+        {
+          "text": "It's four o'clock",
+          "pic": "🕓"
+        },
+        {
+          "text": "in the morning!",
+          "pic": "🌙"
+        },
+        {
+          "text": "Yes, Miss Hannigan.",
+          "pic": "🙄"
+        }
       ]
     },
     {
@@ -34,12 +63,34 @@
       "tip": "Sing it strong, like you are scrubbing the floor! Stomp your foot when you sing hard knock.",
       "maxMs": 30000,
       "chunks": [
-        { "text": "It's the hard-knock life for us! It's the hard-knock life for us!", "pic": "🧹" },
-        { "text": "'Steada treated, we get tricked!", "pic": "🍭🎃" },
-        { "text": "'Steada kisses, we get kicked!", "pic": "😘🦶" },
-        { "text": "It's the hard-knock life!", "pic": "🪣" }
+        {
+          "text": "It's the hard-knock life for us! It's the hard-knock life for us!",
+          "pic": "🧹"
+        },
+        {
+          "text": "'Steada treated, we get tricked!",
+          "pic": "🍭🎃"
+        },
+        {
+          "text": "'Steada kisses, we get kicked!",
+          "pic": "😘🦶"
+        },
+        {
+          "text": "It's the hard-knock life!",
+          "pic": "🪣"
+        }
       ]
     }
   ],
-  "videos": ["LH6MstVxehQ", "j95fGroRjhw", "xh0YzOZrniQ"]
+  "videos": [
+    "LH6MstVxehQ",
+    "j95fGroRjhw",
+    "xh0YzOZrniQ"
+  ],
+  "songCut": {
+    "start": 10.8,
+    "end": 27.0,
+    "duration": 221.9,
+    "note": "The audition chorus inside the Sony 'Full Clip' audio (3:41.9). Times found by analysis, not by ear: Parent Corner lets a grown-up check and nudge them."
+  }
 }

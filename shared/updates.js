@@ -10,7 +10,8 @@ const FLAG = 'arcade.updated';
 
 export function watchUpdates({ onSplash = () => false } = {}) {
   const sw = navigator.serviceWorker;
-  const hadController = !!sw.controller;
+  // false only until the very first install takes over this page; every later new version is an update
+  let controlled = !!sw.controller;
   let pill = null, label = null, fill = null, ready = false;
 
   function show(text, frac) {
@@ -40,18 +41,18 @@ export function watchUpdates({ onSplash = () => false } = {}) {
 
   sw.addEventListener('message', e => {
     const d = e.data;
-    if (!hadController || ready || !d || d.type !== 'install-progress' || !d.total) return;
+    if (!controlled || ready || !d || d.type !== 'install-progress' || !d.total) return;
     show('Updating Princess Quest… ' + Math.round(d.done / d.total * 100) + '%', d.done / d.total);
   });
   sw.addEventListener('controllerchange', () => {
-    if (!hadController) return;
+    if (!controlled) { controlled = true; return; }
     if (onSplash()) return reloadNow();
     ready = true;
     show('✨ Update ready. It starts when you go back to the map.', undefined);
   });
   sw.register('sw.js').then(reg => {
     const watch = w => {
-      if (!w || !hadController) return;
+      if (!w || !controlled) return;
       show('Updating Princess Quest…', null);
       // a failed download (no internet halfway): hide; the next visit tries again
       w.addEventListener('statechange', () => { if (w.state === 'redundant' && !ready) hide(); });
@@ -69,4 +70,21 @@ export function watchUpdates({ onSplash = () => false } = {}) {
   }).catch(e => console.warn('sw', e));
 
   return { reloadIfReady() { if (!ready) return false; reloadNow(); return true; } };
+}
+
+// The version installed on this device, as the service worker that runs the app reports it ("4.6.0"), or null
+// (not installed, e.g. ?nosw=1). Falls back to the cache name when the worker does not answer.
+export async function installedVersion() {
+  const sw = navigator.serviceWorker;
+  let v = null;
+  if (sw && sw.controller) {
+    v = await new Promise(res => {
+      const ch = new MessageChannel();
+      ch.port1.onmessage = e => res(e.data);
+      sw.controller.postMessage({ type: 'version' }, [ch.port2]);
+      setTimeout(() => res(null), 1500);
+    });
+  }
+  if (!v) { try { const keys = (await caches.keys()).filter(k => k.startsWith('arcade-v')); if (keys.length === 1) v = keys[0]; } catch {} }
+  return v ? String(v).replace(/^arcade-v/, '') : null;
 }

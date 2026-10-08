@@ -12,7 +12,7 @@ import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick 
 import { lunaSVG, gemSVG, chestSVG, placeArtSVG, svgFrom, starFieldEl } from './shared/characters.js';
 import { flyGems } from './shared/encounter.js';
 import { daysUntil, countdownHint } from './shared/stage-plan.js';
-import { watchUpdates } from './shared/updates.js';
+import { watchUpdates, installedVersion } from './shared/updates.js';
 
 // If the browser refuses to store the save, say so once instead of losing progress silently.
 const economy = createEconomy({ storage: localStorage, onSaveError: () => toast('Progress could not be saved on this device. Ask a grown-up to check Parent Corner.', 6000) });
@@ -290,6 +290,10 @@ async function boot() {
   document.addEventListener('pointerdown', () => clock.touch(), { passive: true });
   document.addEventListener('keydown', onKey);
   // ?nosw=1 skips the service worker (local testing only: no cache-first surprises while editing files).
-  if ('serviceWorker' in navigator && !/[?&]nosw=1/.test(location.search)) updates = watchUpdates({ onSplash: () => !!$('splash') });
+  if ('serviceWorker' in navigator && !/[?&]nosw=1/.test(location.search)) {
+    updates = watchUpdates({ onSplash: () => !!$('splash') });
+    // the version on this device, small at the bottom of the splash (a grown-up checking an update)
+    navigator.serviceWorker.ready.then(() => installedVersion()).then(v => { const n = $('app-version'); if (v && n) n.textContent = 'Version ' + v; }).catch(() => {});
+  }
 }
 boot();

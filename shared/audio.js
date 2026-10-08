@@ -364,6 +364,7 @@ export function createWebAudioPlayer() {
   // Recordings by Blob, held only as long as the Blob is: Star Stage plays back a new take every few minutes,
   // and a Map kept every one of them decoded until the app was closed.
   const blobBuffers = new WeakMap();
+  const rawBlobBuffers = new WeakMap(); // the same recordings unlevelled: Parent Corner hears how loud she really was
   let playing = [];          // active source nodes
   let timers = [];
   let waiters = [];          // resolvers of in-flight play()/chain() promises; settled false on stop
@@ -395,13 +396,13 @@ export function createWebAudioPlayer() {
     try { await Promise.race([c.resume(), new Promise(r => setTimeout(r, 400))]); } catch {}
     return c;
   }
-  function decode(src) {
+  function decode(src, raw = false) {
     const k = keyOf(src);
-    const cache = src instanceof Blob ? blobBuffers : buffers;
+    const cache = src instanceof Blob ? (raw ? rawBlobBuffers : blobBuffers) : buffers;
     if (!cache.has(k)) {
       const p = (src instanceof Blob ? src.arrayBuffer() : fetch(src).then(r => { if (!r.ok) throw new Error('audio ' + r.status); return r.arrayBuffer(); }))
         .then(ab => context().decodeAudioData(ab))
-        .then(buf => (src instanceof Blob ? conditioned(buf) : buf))
+        .then(buf => (src instanceof Blob && !raw ? conditioned(buf) : buf))
         .catch(e => { cache.delete(k); throw e; });
       cache.set(k, p);
     }
@@ -463,10 +464,11 @@ export function createWebAudioPlayer() {
     return end;
   }
   return {
-    async play(src) {
+    // { raw: true }: a recording as it was captured, without the levelling every recording otherwise gets
+    async play(src, { raw = false } = {}) {
       const g0 = gen;
       let buffer;
-      try { buffer = await decode(src); } catch (e) { console.warn('audio missing', src, e); lastError = String(e && e.message || e); return false; }
+      try { buffer = await decode(src, raw); } catch (e) { console.warn('audio missing', src, e); lastError = String(e && e.message || e); return false; }
       if (gen !== g0) return 'stopped'; // stop() or a newer clip came while this one loaded
       stopAll();
       const mine = gen;

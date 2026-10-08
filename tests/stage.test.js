@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, readJSON } from './helpers.js';
-import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate } from '../shared/stage-plan.js';
+import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate, roomLevel, followTimes, dayStrip, addDays } from '../shared/stage-plan.js';
 import { REGISTRY } from '../games/registry.js';
 import { migrate, defaultSave } from '../shared/economy.js';
 
@@ -18,6 +18,8 @@ test('every clip the place can play is bundled, and nothing else', () => {
   const have = new Set(readdirSync(join(ROOT, 'assets/audio/stage')));
   assert.deepEqual([...want].filter(f => !have.has(f)), [], 'missing clips (run tools/build-stage-audio.py)');
   assert.deepEqual([...have].filter(f => !want.has(f)), [], 'stale clips');
+  const dur = readJSON('content/stage-audio.json');
+  for (const f of want) assert.ok(dur[f.replace('.ogg', '')] > 300, 'duration of ' + f);
 });
 
 test('content: pieces, pictures, dates', () => {
@@ -103,10 +105,47 @@ test('every Star Stage sentence has a story-voice clip', async () => {
   const src = readFileSync(join(ROOT, 'games/princess-quest/stage.js'), 'utf8');
   const unq = s => s.replace(/\\'/g, "'");
   const said = [...src.matchAll(/say\('((?:[^'\\]|\\.)*)'\)/g)].map(m => unq(m[1]));
+  said.push(...[...src.match(/const HINT = \{([\s\S]*?)\};/)[1].matchAll(/: '((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
+  said.push(...[...src.matchAll(/cannot\('((?:[^'\\]|\\.)*)'\)/g)].map(m => unq(m[1])));
   for (const list of ['BIG', 'MORE', 'NOMIC']) said.push(...[...src.match(new RegExp('const ' + list + ' = \\[(.*)\\];'))[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
   said.push(...[...src.matchAll(/(?:intro|line): '((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])), 'You did it!');
   for (const p of stage.pieces) said.push(p.intro, p.tip);
   const missing = said.flatMap(t => splitSentences(t)).filter(sn => !have[keyOf(sn)]);
   assert.ok(said.length >= 25, String(said.length));
   assert.deepEqual([...new Set(missing)], [], 'run tools/collect-lines.py and tools/build-lines-audio.py');
+});
+
+test('room level: median of real readings, not the silent first ones', () => {
+  assert.equal(roomLevel([-120, -120, -45, -44, -46, -130, -43]), -44);
+  assert.equal(roomLevel([-120, -120, -120]), -60);
+  assert.equal(roomLevel([]), -60);
+  // a TV at -40 dB now raises the start level, so the TV alone is not her voice
+  assert.equal(createVoiceGate({ floorDb: roomLevel([-120, -120, -40, -41, -40, -39]) }).startDb, -28);
+});
+
+test('follow-along: each picture lights in proportion to its words', () => {
+  assert.deepEqual(followTimes(['abcd', 'abcd'], 1000), [0, 500]);
+  assert.deepEqual(followTimes(['Yes, Miss Hannigan.'], 1300), [0]);
+  const t = followTimes(stage.pieces[0].chunks.map(c => c.text), 5327);
+  assert.equal(t.length, 4); assert.equal(t[0], 0); assert.ok(t.every((x, k) => k === 0 || x > t[k - 1]) && t[3] < 5327);
+});
+
+test('day strip: a circle per day to the audition, stars on practice days', () => {
+  const kinds = s => s.map(d => d.kind).join(' ');
+  assert.equal(kinds(dayStrip('2026-10-09', '2026-10-14', new Set(['2026-10-08']))), 'done today future future future future audition');
+  assert.equal(kinds(dayStrip('2026-10-09', '2026-10-14', new Set(['2026-10-07', '2026-10-09']))), 'done missed done future future future future audition');
+  assert.equal(dayStrip('2026-10-09', '2026-10-14', new Set()).filter(d => d.today).length, 1);
+  assert.equal(kinds(dayStrip('2026-10-14', '2026-10-14', new Set())), 'audition');
+  assert.deepEqual(dayStrip('2026-10-15', '2026-10-14', new Set()), []);
+  assert.ok(dayStrip('2026-10-13', '2026-10-14', new Set(['2026-09-01'])).length <= 9, 'at most a week back');
+  assert.equal(addDays('2026-10-31', 1), '2026-11-01');
+});
+
+test('song cut: kept when sane, dropped when not; content default is inside the clip', () => {
+  assert.deepEqual(cleanStage({ songCut: { start: 10.8, end: 27 } }).songCut, { start: 10.8, end: 27 });
+  assert.equal(cleanStage({ songCut: { start: 10, end: 10.5 } }).songCut, null);
+  assert.equal(cleanStage({ songCut: 'x' }).songCut, null);
+  assert.deepEqual(mergeStage({ songCut: null }, { songCut: { start: 1, end: 9 } }).songCut, { start: 1, end: 9 });
+  const c = stage.songCut;
+  assert.ok(c.start >= 0 && c.end > c.start + 5 && c.end < c.duration, 'chorus inside the recording');
 });

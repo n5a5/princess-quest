@@ -3,7 +3,8 @@
 # place plays one chunk when a picture is tapped and every tail (chunk i to the end) for backward chaining,
 # so those ranges are rendered: assets/audio/stage/<block>-<i>-<j>.ogg covers chunks i..j-1.
 # A tail is rendered as one sentence, not spliced from chunks, so it keeps natural phrasing. Every clip is set to
-# the same loudness (pqaudio.normalise_loudness; needs pyloudnorm).
+# the same loudness (pqaudio.normalise_loudness; needs pyloudnorm). Each clip's length goes to
+# content/stage-audio.json { id: ms }, so the place can light each picture as Luna says its words.
 # Usage: python tools/build-stage-audio.py --model <kokoro-v1.0.onnx> --voices <voices-v1.0.bin> [--name Amelia]
 import argparse, json, sys
 from pathlib import Path
@@ -31,7 +32,7 @@ def main():
     blocks = [stage['warmup'], stage['slate']] + stage['pieces']
     v = pa.Voice(args.model, args.voices, args.voice)
     OUT.mkdir(parents=True, exist_ok=True)
-    keep = set()
+    keep, dur = set(), {}
     for b in blocks:
         texts = [c['text'].replace('{name}', args.name) for c in b['chunks']]
         for i, j in ranges(len(texts)):
@@ -43,9 +44,11 @@ def main():
             x, _ = pa.trim_lead_murmur(raw, first, window_ms=450, max_ms=140)
             x = pa.normalise_loudness(pa.fade(pa.trim_silence(x, -45, 20), 5, 25))
             pa.encode_opus(x, OUT / f'{fid}.ogg', 32)
+            dur[fid] = round(len(x) / pa.SR * 1000)
             print(f'{fid}: {len(x) / pa.SR:.2f}s  {text}')
     for f in OUT.glob('*.ogg'):
         if f.stem not in keep: f.unlink()
+    (ROOT / 'content' / 'stage-audio.json').write_text(json.dumps(dict(sorted(dur.items())), indent=0) + '\n', encoding='utf-8')
 
 
 if __name__ == '__main__':

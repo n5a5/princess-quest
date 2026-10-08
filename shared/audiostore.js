@@ -77,6 +77,7 @@ export function createAudioStore() {
     async exportJSON() {
       const clips = {};
       for (const [k, blob] of cache) {
+        if (k.startsWith('stage:')) continue; // Star Stage takes stay on this device
         const buf = new Uint8Array(await blob.arrayBuffer());
         let bin = ''; for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
         clips[k] = { type: blob.type, b64: btoa(bin) };

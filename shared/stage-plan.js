@@ -28,8 +28,9 @@ export function countdownHint(days, label) {
 
 // ---------- practice log (save.stage) ----------
 // days: { 'YYYY-MM-DD': { line, song, watch, audition } } counts; solos: { line, song } finished practices;
-// watched: times the clip played 45 s or more; auditions: full run-throughs.
-export const stageDefaults = () => ({ days: {}, watched: 0, auditions: 0, solos: {} });
+// watched: times the clip played 45 s or more; auditions: full run-throughs; songCut: where the audition
+// chorus sits in the loaded song recording, if a grown-up adjusted it ({ start, end } seconds) or null.
+export const stageDefaults = () => ({ days: {}, watched: 0, auditions: 0, solos: {}, songCut: null });
 const count = v => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
 const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -44,6 +45,8 @@ export function cleanStage(x) {
   }
   out.watched = count(x.watched); out.auditions = count(x.auditions);
   if (isObj(x.solos)) for (const [k, v] of Object.entries(x.solos)) if (count(v)) out.solos[k] = count(v);
+  const c = x.songCut;
+  if (isObj(c) && Number.isFinite(c.start) && Number.isFinite(c.end) && c.start >= 0 && c.end > c.start + 1) out.songCut = { start: c.start, end: c.end };
   return out;
 }
 
@@ -62,6 +65,7 @@ export function mergeStage(a, b) {
   }
   x.watched = Math.max(x.watched, y.watched); x.auditions = Math.max(x.auditions, y.auditions);
   for (const [k, v] of Object.entries(y.solos)) x.solos[k] = Math.max(x.solos[k] || 0, v);
+  if (!x.songCut && y.songCut) x.songCut = y.songCut; // the recording lives per device; keep this device's cut
   return x;
 }
 
@@ -101,4 +105,42 @@ export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12
       return null;
     }
   };
+}
+
+// The room's quiet level from readings taken while nothing plays: the median, skipping the first two (an analyser
+// that has not received samples yet reads silence) and anything at or below -100 dB (dead air while the
+// microphone starts). The minimum used before made every room look silent, so a TV or a fan always counted as
+// her voice. No usable reading: -60.
+export function roomLevel(readings) {
+  const ok = readings.slice(2).filter(db => Number.isFinite(db) && db > -100).sort((a, b) => a - b);
+  return ok.length ? ok[Math.floor(ok.length / 2)] : -60;
+}
+
+// When each chunk starts inside a clip that says chunks i..j-1, so its picture can light up as Luna says it:
+// offsets in ms, in proportion to each chunk's letters.
+export function followTimes(texts, ms) {
+  const w = texts.map(t => Math.max(1, String(t).replace(/[^a-z]/gi, '').length));
+  const total = w.reduce((a, b) => a + b, 0);
+  let acc = 0;
+  return w.map(x => { const at = Math.round(acc / total * ms); acc += x; return at; });
+}
+
+// The row of days up to the audition for the menu (she counts circles, she cannot read "in 5 days"): from the
+// first day she practiced, or today, at most a week back. kind: 'done' (practiced), 'missed', 'today', 'future',
+// 'audition'. Empty once the audition has passed.
+export function dayStrip(today, auditionDate, practiced) {
+  if (daysUntil(today, auditionDate) < 0) return [];
+  const first = [...practiced].filter(d => d <= today).sort()[0] || today;
+  const back = Math.min(7, Math.max(0, daysUntil(first, today)));
+  const out = [];
+  for (let k = -back; k <= daysUntil(today, auditionDate); k++) {
+    const d = addDays(today, k);
+    const kind = d === auditionDate ? 'audition' : practiced.has(d) ? 'done' : d === today ? 'today' : d < today ? 'missed' : 'future';
+    out.push({ day: d, kind, today: d === today });
+  }
+  return out;
+}
+export function addDays(day, n) {
+  const t = new Date(dayNum(day) * 86400000 + n * 86400000);
+  return t.toISOString().slice(0, 10);
 }
