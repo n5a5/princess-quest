@@ -30,18 +30,24 @@ def true_peak_db(path):
     return float(m.group(1)) if m and m.group(1) != '-inf' else -120.0
 
 
-def encode_checked(x, out, kbps, target=None, tp_max=-1.0):
-    """Encodes, measures the true peak of the result, and if Opus pushed it over tp_max (low bitrates overshoot
-    by up to ~2.5 dB) limits harder and encodes again, keeping the loudness. Returns the final true peak."""
-    ceiling = -2.0
-    y = x if target is None else normalise_loudness(x, target, ceiling)
-    for _ in range(5):
+def encode_checked(x, out, kbps, target=None, tp_max=-1.0, tol=0.2):
+    """Encodes and measures the result, then corrects until the ENCODED file is right: true peak at or under
+    tp_max (Opus at low bitrates overshoots by up to ~2.5 dB, so the limiter is tightened) and loudness within tol
+    of `target` (encoding shifts it by ~0.6 dB, short clips by up to ~2 dB, so the aim is corrected by what the
+    file measures). Returns the final true peak."""
+    tgt = target if target is not None else LOUDNESS_LUFS
+    ceiling, aim, tp = -2.0, tgt, 0.0
+    for _ in range(6):
+        y = normalise_loudness(x, aim, ceiling)
         encode_opus(y, out, kbps)
         tp = true_peak_db(out)
-        if tp <= tp_max:
-            return tp
-        ceiling -= (tp - tp_max) + 0.3
-        y = normalise_loudness(x, target or LOUDNESS_LUFS, ceiling)
+        if tp > tp_max:
+            ceiling -= (tp - tp_max) + 0.3
+            continue
+        got = loudness(from_file(out))
+        if abs(got - tgt) <= tol:
+            break
+        aim += tgt - got
     return tp
 
 
