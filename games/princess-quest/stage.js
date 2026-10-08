@@ -165,8 +165,9 @@ async function askMic(r, { scene = true } = {}) {
   (async () => {
     let state = null;
     try { state = (await navigator.permissions.query({ name: 'microphone' })).state; } catch {}
-    if (state === 'granted' || state === 'denied') return;
-    if (state !== 'prompt') await Promise.race([p.catch(() => {}), wait(1200)]); // not known: only if it takes a while
+    if (state === 'denied') return; // refused for good: openMic fails at once
+    // asking now: at once; otherwise only if the microphone takes a while (a device stuck opening it)
+    if (state !== 'prompt') await Promise.race([p.catch(() => {}), wait(1200)]);
     if (!pending || !alive(r)) return;
     if (scene) host.replaceChildren(el('div', { class: 'scene stage breath' }, [
       el('div', { class: 'scene-head' }, [svgFrom(lunaSVG({ state: 'think', glow: ctx.economy.companion().level })), el('div', {}, [el('div', { class: 'title', text: 'Microphone' })])]),
