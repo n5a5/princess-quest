@@ -179,6 +179,15 @@ export function quietFloor(readings, refDb = null) {
   return refDb === null || refDb === undefined ? f : Math.min(f, refDb - 18);
 }
 
+// The room's level as heard during a take: the 10th percentile of its usable readings (the quiet before she starts,
+// between phrases and after she stops), or null with fewer than 10 of them. Each take adds one to the room readings,
+// so a bad reading (her "yay!" while the room was read, or a microphone that delivered nothing while it warmed up)
+// is outvoted by the next try instead of lasting the whole visit.
+export function quietLevel(readings) {
+  const ok = readings.filter(db => Number.isFinite(db) && db > -100).sort((a, b) => a - b);
+  return ok.length >= 10 ? ok[Math.floor(ok.length * 0.1)] : null;
+}
+
 // A take in which the microphone delivered digital silence (a muted, blocked or dead input): a working microphone
 // always picks up some room noise, far above -90 dB, even when she says nothing.
 export const deadMic = res => !!res && !res.heard && (res.maxDb === null || res.maxDb === undefined || res.maxDb < -90);

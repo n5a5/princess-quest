@@ -317,6 +317,7 @@ async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000 }) {
       onLevel: db => v.level(db, thr), live: () => alive(r)
     });
     if (!alive(r)) return null;
+    if (res.quietDb !== null && res.quietDb !== undefined) rooms.push(res.quietDb); // the room as heard during her take
     // Set the microphone aside only when it delivers digital silence three turns running (muted or dead input). A
     // quiet child or a noisy room is never a reason: she gets "say it nice and loud" instead.
     deaf = deadMic(res) ? deaf + 1 : 0;

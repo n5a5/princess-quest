@@ -265,3 +265,18 @@ test('map countdown: Luna says where to go in the audition week only', async () 
   const lines = JSON.parse(readFileSync(new URL('../content/lines-audio.json', import.meta.url), 'utf8')).lines;
   for (let d = 0; d <= 7; d++) for (const part of countdownSay(d).match(/[^!.]+[!.]/g)) assert.ok(lines[part.trim().toLowerCase()], 'clip for ' + part);
 });
+
+test('room level from her takes: one loud reading is outvoted by the next take (review: still deaf for the visit when the first reading was loud)', async () => {
+  const { quietLevel, quietFloor } = await import('../shared/stage-plan.js');
+  assert.equal(quietLevel([-120, -120, -50]), null, 'too few usable readings');
+  const take = [...Array(20).fill(-120), ...Array(30).fill(-61), ...Array(60).fill(-25), ...Array(30).fill(-60)];
+  assert.equal(quietLevel(take), -61, 'the quiet around her voice, not her voice and not the warm-up silence');
+  // her "yay!" during the room reading, then readings that came back empty (a microphone warming up): the first
+  // take's quiet level brings the start level back down for the retry
+  const rooms = [-21];
+  assert.equal(quietFloor(rooms), -21);
+  rooms.push(quietLevel(take));
+  assert.equal(quietFloor(rooms), -61);
+  // a steady TV is not quiet: its level is the room
+  assert.equal(quietLevel(Array(100).fill(-30)), -30);
+});

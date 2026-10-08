@@ -3,7 +3,7 @@
 // The raw microphone is asked for (no automatic gain): automatic gain would make every take equally loud and
 // the big-voice star meaningless. Open it for one take, after Luna has finished, and close it right after, so
 // the device never sits in call mode while Luna is talking.
-import { rmsDb, createVoiceGate, roomLevel } from './stage-plan.js';
+import { rmsDb, createVoiceGate, roomLevel, quietLevel } from './stage-plan.js';
 
 export const canListen = () => !!(globalThis.navigator && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && globalThis.MediaRecorder);
 
@@ -44,7 +44,8 @@ export async function openMic({ timeoutMs = 10000 } = {}) {
       for (let t = 0; t < ms; t += 50) { readings.push(level()); await sleep(50); }
       return roomLevel(readings, fallback);
     },
-    // Records until the gate closes or live() turns false. Resolves { blob, heard, peakDb, ms, reason }.
+    // Records until the gate closes or live() turns false. Resolves { blob, heard, peakDb, maxDb, ms, reason, quietDb }
+    // (quietDb: the room as heard during the take, shared/stage-plan.js quietLevel).
     // nudgeMs: with no voice yet by then, onNudge() runs once (the "your turn" reminder) and the gate ignores the
     // next 500 ms, so the reminder's own chime is never taken for her voice.
     listen({ floorDb, maxMs, endSilenceMs, noVoiceMs, graceMs = 250, nudgeMs = 0, onNudge = () => {}, onLevel = () => {}, live = () => true }) {
@@ -54,12 +55,14 @@ export async function openMic({ timeoutMs = 10000 } = {}) {
       rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
       return new Promise(resolve => {
         let result = null;
-        rec.onstop = () => resolve({ ...result, blob: chunks.length ? new Blob(chunks, { type: rec.mimeType || 'audio/webm' }) : null });
+        const heardLevels = [];
+        rec.onstop = () => resolve({ ...result, quietDb: quietLevel(heardLevels), blob: chunks.length ? new Blob(chunks, { type: rec.mimeType || 'audio/webm' }) : null });
         const t0 = Date.now();
         let nudged = false;
         rec.start();
         const timer = setInterval(() => {
           const db = level(), t = Date.now() - t0;
+          if (t >= graceMs) heardLevels.push(db);
           if (nudgeMs && !nudged && t >= nudgeMs && !gate.heard) { nudged = true; gate.ignore(t + 500); try { onNudge(); } catch {} }
           if (t >= graceMs) onLevel(db);
           const r = live() ? gate.step(db, t) : { reason: 'cancelled', heard: false, peakDb: null, ms: t };
