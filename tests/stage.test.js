@@ -292,3 +292,20 @@ test('voice gate: once she has started, a soft syllable keeps the take open (rev
   assert.equal(r.reason, 'end');
   assert.ok(r.ms >= lastSoft + 1000, `the take ran past her last soft syllable (${r.ms} ms vs ${lastSoft} ms)`);
 });
+
+test('voice gate: a knock with a room tail is not her turn, and her voice after it still is (red team: a table knock earned "Big stage voice!")', () => {
+  const knock = [-25, -18, -33, -47];
+  const alone = flat(-60, 8000); knock.forEach((db, k) => { alone[20 + k] = db; });
+  const r1 = run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), alone);
+  assert.deepEqual([r1.reason, r1.heard, r1.peakDb], ['novoice', false, null]);
+  // the knock, then she speaks at 3 s: the take waits for her and reports her, not the knock
+  const syll = Array.from({ length: 40 }, (_, k) => -26 - 10 * Math.abs(Math.sin(k / 2.4)));
+  const then = [...flat(-60, 1000), ...knock, ...flat(-60, 1800), ...syll, ...flat(-60, 2000)];
+  const r2 = run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), then);
+  assert.equal(r2.reason, 'end'); assert.equal(r2.heard, true);
+  assert.ok(r2.peakDb < -24, 'the peak is her voice, not the knock: ' + r2.peakDb);
+  assert.ok(r2.ms > 1000 + 200 + 1800 + 2000, 'ended after her voice, not after the knock: ' + r2.ms);
+  // a short real word ("Hi!", about 350 ms) still counts
+  const hi = [...flat(-60, 600), -40, -30, -26, -25, -27, -32, -38, ...flat(-60, 2000)];
+  assert.equal(run(createVoiceGate({ floorDb: -60, endSilenceMs: 900 }), hi).heard, true);
+});

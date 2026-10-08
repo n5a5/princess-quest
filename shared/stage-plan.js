@@ -115,7 +115,9 @@ export function bigVoiceThreshold(refDb) { return refDb === null || refDb === un
 
 // Voice gate, fed one level reading (dB) every ~50 ms. Speech starts when the smoothed level rises 12 dB above
 // the room (at least -50 dB, at most -12 dB) and at least minVoiced raw readings in that stretch are above it too,
-// so a tap or a thud near the microphone (one loud reading that the smoothing drags out) is not her voice. It ends
+// so a tap or a thud near the microphone (one loud reading that the smoothing drags out) is not her voice. A knock
+// with a room tail (three or four loud readings) is forgotten when the sound stops: a take needs minTotal raw
+// readings above the start level in all (300 ms) before it can end, so it keeps listening for her. It ends
 // after endSilenceMs below the start level, at maxMs, or after noVoiceMs with no voice at all. The first graceMs
 // are ignored (the start chime). A voice rises and falls with every syllable and the gaps between words; a steady
 // sound (a fan, a hum, a TV's music bed) above the start level does not. So every smoothed reading from her first
@@ -125,11 +127,11 @@ export function bigVoiceThreshold(refDb) { return refDb === null || refDb === un
 // { reason: 'end' | 'max' | 'novoice' | 'steady', heard, peakDb, maxDb, ms }; maxDb is the loudest smoothed reading
 // (null if none), so a caller can tell a quiet voice (some sound) from a dead microphone (nothing at all).
 // ignore(untilMs): skip readings until then (the "your turn" reminder chime played mid-take).
-export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12000, noVoiceMs = 7000, graceMs = 300, minVoiced = 3 } = {}) {
+export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12000, noVoiceMs = 7000, graceMs = 300, minVoiced = 3, minTotal = 6 } = {}) {
   const startDb = Math.min(Math.max(floorDb + 12, -50), -12);
   let smooth = null, heard = false, peakDb = -120, maxDb = -120, lastVoice = 0, done = null, ignoreUntil = 0;
-  let voiced = 0, runPeak = -120, loudN = 0; // this loud stretch: raw readings above the start level, its peak
-  const since = []; // every smoothed level from her first word on
+  let voiced = 0, runPeak = -120, loudN = 0, total = 0; // this stretch: raw readings above the start level, its peak; all of them
+  let since = []; // every smoothed level from her first word on
   const varies = () => { if (since.length < 8) return true; const s = [...since].sort((a, b) => a - b); return s[Math.floor(s.length * 0.9)] - s[Math.floor(s.length * 0.1)] >= 4; };
   const round = v => Math.round(v * 10) / 10;
   return {
@@ -146,15 +148,19 @@ export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12
       const s = 20 * Math.log10(smooth + 1e-12);
       maxDb = Math.max(maxDb, s);
       if (s >= startDb) {
-        if (db >= startDb) voiced++;
+        if (db >= startDb) { voiced++; total++; }
         runPeak = Math.max(runPeak, s);
         if (voiced >= minVoiced) { heard = true; peakDb = Math.max(peakDb, runPeak); } // a bump never sets the peak
         if (heard) { lastVoice = t; loudN++; } // once she has started, every soft syllable keeps the take open
-      } else { voiced = 0; runPeak = -120; }
+      } else { voiced = 0; runPeak = -120; if (!heard) total = 0; } // only stretches from her first word on count
       if (heard) since.push(s);
       if (t >= maxMs) return finish('max');
       if (loudN >= 50 && !varies()) return finish('steady'); // 2.5 s of a steady sound: not her voice
-      if (heard && t - lastVoice >= endSilenceMs) return finish('end');
+      if (heard && t - lastVoice >= endSilenceMs) {
+        if (total >= minTotal) return finish('end');
+        // too short to be her (a knock and its echo): forget it and keep listening
+        heard = false; peakDb = -120; loudN = 0; total = 0; since = [];
+      }
       if (!heard && t >= noVoiceMs) return finish('novoice');
       return null;
     }

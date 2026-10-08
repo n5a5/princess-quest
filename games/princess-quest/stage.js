@@ -47,7 +47,7 @@ let host = null, ctx = null, S = null, DUR = {};
 let run = null;     // the activity in progress, { live, noMic }; Back, Home or leaving the place turns it off
 // This visit (reset in mount): her warm-up shout (the bar for a big voice), the room's quiet level readings
 // (shared/stage-plan.js quietFloor), and whether the microphone may be used at all (no device, or permission refused).
-let refDb = null, rooms = [], micOK = true, micOpened = false;
+let refDb = null, rooms = [], micOK = true, micOpened = false, micDead = false; // micDead: set aside once this visit
 let deaf = 0;       // turns in a row in this activity where the microphone delivered digital silence (deadMic)
 let wake = null;    // screen wake lock while an activity runs (it is hands-free for minutes at a time)
 let song = null;    // the cast recording from Parent Corner (shared/songclip.js), or null when absent or unplayable
@@ -83,6 +83,8 @@ const alive = r => !!r && r === run && r.live && !ctx.audio.muted;
 const piece = id => S.pieces.find(p => p.id === id);
 const blockText = (b, i, j) => named(b.chunks.slice(i, j).map(c => c.say || c.text).join(' '));
 const estimateMs = text => 3000 + text.split(/\s+/).length * 900;
+// How long she takes to say chunks i..j-1: Luna's model clip, or the chorus when she sings with the real song.
+const expectFor = (b, i, j) => (b.id === 'song' && i === 0 && j === b.chunks.length && song && chorusOK ? (chorus().to - chorus().from) * 1000 : DUR[clipId(b.id, i, j)] || estimateMs(blockText(b, i, j)) * 0.5);
 const clearOverlays = () => document.querySelectorAll('.overlay').forEach(o => o.remove());
 
 // Tests only (?debug=1 exposes window.__pq): what is happening right now, so a test can measure how long each
@@ -294,7 +296,7 @@ function view(b, title, sub = '', steps = 0) {
 // for a moment, the chime sounds, and it records until she stops. Without a microphone she taps the thumbs-up
 // (or it moves on by itself), so the practice still flows.
 // Resolves { heard, peakDb (null = no microphone), big, blob, noMic } or null if she left.
-async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000 }) {
+async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000, follow = null }) {
   if (lead) await lead();
   if (!alive(r)) return null;
   ctx.audio.stop();
@@ -311,15 +313,25 @@ async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000 }) {
     await wait(CHIME_MS);
     if (!alive(r)) return null;
     if (!m) {
-      // No microphone: she taps the thumbs-up (in the panel, where the microphone was) when she has finished. When
-      // she has probably finished, a soft chime and a bounce every 3 s, then it moves on by itself (never a long
-      // wait with nothing to hear or see).
+      // No microphone: she taps the thumbs-up (in the panel, where the microphone was) when she has finished. The
+      // pictures light one by one at the pace she should say them (a guide she can follow, like Luna's model); a
+      // soft chime at 3 s, as with the microphone; when she should be done, Luna says to tap the thumbs-up; a few
+      // seconds later it moves on by itself.
       const tapped = v.done();
       if (!r.toldDone) { r.toldDone = true; await say('Tap the thumbs up when you finish.'); if (!alive(r)) return null; }
-      const due = Math.max(3000, waitMs * 0.6);
-      const cues = [setTimeout(() => { if (alive(r)) { sfx().ding(); v.nudge(); } }, due), setTimeout(() => { if (alive(r)) { sfx().ding(); v.nudge(); } }, due + 3000)];
-      await Promise.race([wait(due + 6000), tapped]);
-      cues.forEach(clearTimeout);
+      const expect = Math.max(1500, follow ? expectFor(...follow) : waitMs * 0.5);
+      const remindAt = Math.max(NUDGE_MS + 1500, expect + 1500);
+      const timers = [
+        setTimeout(() => { if (alive(r)) { sfx().ding(); v.nudge(); } }, NUDGE_MS),
+        setTimeout(() => { if (alive(r)) { v.nudge(); say('Tap the thumbs up when you finish.'); } }, remindAt)
+      ];
+      if (follow) {
+        const [b, i, j] = follow;
+        followTimes(b.chunks.slice(i, j).map(c => c.say || c.text), expect).forEach((at, k) => timers.push(setTimeout(() => { if (alive(r)) v.now(i + k); }, at)));
+      }
+      await Promise.race([wait(remindAt + 4000), tapped]);
+      timers.forEach(clearTimeout);
+      v.now(-1);
       v.hideDone();
       return alive(r) ? { heard: true, noMic: true, peakDb: null, big: false, blob: null } : null;
     }
@@ -331,11 +343,12 @@ async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000 }) {
     });
     if (!alive(r)) return null;
     if (res.quietDb !== null && res.quietDb !== undefined) rooms.push(res.quietDb); // the room as heard during her take
-    // Set the microphone aside only when it delivers digital silence three turns running (muted or dead input). A
-    // quiet child or a noisy room is never a reason: she gets "say it nice and loud" instead.
+    // Set the microphone aside only when it delivers digital silence (a muted or dead input) two takes running, or
+    // once in a later activity of the same visit. A quiet child or a noisy room is never a reason: she gets "say it
+    // nice and loud" instead.
     deaf = deadMic(res) ? deaf + 1 : 0;
-    if (deaf >= 3) {
-      r.noMic = true; // this activity only; the next one tries the microphone again
+    if (deaf >= (micDead ? 1 : 2)) {
+      r.noMic = true; micDead = true; // the next activity tries the microphone once more
       toast('🎤 The microphone is not hearing anything. Practice goes on without it.', 5000);
       await say('Let\'s keep going without the microphone.');
       return alive(r) ? { ...res, heard: true, noMic: true, peakDb: null, big: false, blob: null } : null;
@@ -377,7 +390,7 @@ async function keepTake(id, res) {
 
 // Once a visit: "Hello, everybody!" as big as she can. Its loudness sets the bar for the big-voice star.
 async function warmUp(r) {
-  if (refDb !== null || !micOK || !canListen()) return;
+  if (refDb !== null || !micOK || micDead || !canListen()) return;
   const v = view(S.warmup, 'Warm up!', 'Get your stage voice ready.');
   v.light(0, 1);
   v.turn('luna');
@@ -429,7 +442,7 @@ async function practice(p) {
   const real = isSong && !!song && chorusOK && !ctx.audio.muted; // the cast recording is loaded and playable
   const v = view(p, p.title, isSong ? 'The orphans\' song' : 'The orphans\' line', (done ? 1 : 0) + 1 + (chain ? n : 1) + (real ? 1 : 0) + 1);
   let step = 0;
-  const soloOpts = lead => ({ lead, maxMs: p.maxMs, endSilenceMs: isSong ? 2500 : 1500, waitMs: estimateMs(blockText(p, 0, n)) });
+  const soloOpts = lead => ({ lead, maxMs: p.maxMs, endSilenceMs: isSong ? 2500 : 1500, waitMs: estimateMs(blockText(p, 0, n)), follow: [p, 0, n] });
   v.light(0, n);
   v.turn('luna');
   await say(p.intro);
@@ -467,7 +480,7 @@ async function practice(p) {
     await say(!chain ? 'Say it all after me.' : i === n - 1 ? 'Let\'s learn it from the end. Say it after me.' : 'Now a little more. Say it after me.');
     if (!alive(r)) return;
     const text = blockText(p, i, j);
-    const res = await turnAgain(r, v, { lead: () => model(p, i, j, v), maxMs: estimateMs(text), endSilenceMs: isSong ? 1500 : 1200, waitMs: estimateMs(text) * 0.6 });
+    const res = await turnAgain(r, v, { lead: () => model(p, i, j, v), maxMs: estimateMs(text), endSilenceMs: isSong ? 1500 : 1200, waitMs: estimateMs(text) * 0.6, follow: [p, i, j] });
     await cheer(r, v, res);
     v.progress(++step);
   }
@@ -561,11 +574,14 @@ async function hear() {
     if (my !== token) return; // a newer play took over (and tallied this one)
     if (!alive(r)) return;
     tally();
-    if (whole && how === 'ended') markHeard(r);
+    // ended: credit only if most of it was heard (a damaged file can jump to its end after a few seconds)
+    const early = whole && how === 'ended' && heardMs < Math.min(45000, dur * 800);
+    if (whole && how === 'ended' && !early) markHeard(r);
     playing = false; big.textContent = '▶';
     mark('waiting');
     rest();
     if (how === 'error') { say('The song will not play. Ask a grown-up to check it in Parent Corner.'); return; }
+    if (early) { await say('The song stopped early. Ask a grown-up to check it in Parent Corner.'); if (alive(r) && !playing) idleNudge('Tap the big button to hear it again, or tap the yellow button when you are done.'); return; }
     if (how === 'ended' && !range.to) await say('Great listening!'); // the menu says what is next
     else if (how === 'ended') await say('That is your part!');
     if (alive(r) && !playing) idleNudge('Tap the big button to hear it again, or tap the yellow button when you are done.');
@@ -619,7 +635,7 @@ async function audition() {
     v.turn('luna');
     await say(st.intro);
     if (!alive(r)) return;
-    const res = await turnAgain(r, v, { lead: st.model ? () => model(st.b, 0, n, v) : null, maxMs: st.maxMs, endSilenceMs: st.endSilenceMs, waitMs: estimateMs(blockText(st.b, 0, n)) });
+    const res = await turnAgain(r, v, { lead: st.model ? () => model(st.b, 0, n, v) : null, maxMs: st.maxMs, endSilenceMs: st.endSilenceMs, waitMs: estimateMs(blockText(st.b, 0, n)), follow: [st.b, 0, n] });
     if (!alive(r)) return;
     if (res && res.peakDb !== null) measured = true;
     if (res && res.big) { bigs++; v.turn('big'); }
@@ -686,7 +702,7 @@ async function anotherLine() {
     if (!alive(r)) return;
     v.light(i, i + 1);
     const text = blockText(b, i, i + 1);
-    const res = await turnAgain(r, v, { lead: () => model(b, i, i + 1, v), maxMs: estimateMs(text), endSilenceMs: 1200, waitMs: estimateMs(text) * 0.6 });
+    const res = await turnAgain(r, v, { lead: () => model(b, i, i + 1, v), maxMs: estimateMs(text), endSilenceMs: 1200, waitMs: estimateMs(text) * 0.6, follow: [b, i, i + 1] });
     await cheer(r, v, res);
     v.progress(++step);
   }
@@ -699,7 +715,7 @@ async function anotherLine() {
   await say('Now say the whole line after me.');
   if (!alive(r)) return;
   const whole = blockText(b, 0, n);
-  const res = await turnAgain(r, v, { lead: () => model(b, 0, n, v), maxMs: estimateMs(whole) + 2000, endSilenceMs: 1500, waitMs: estimateMs(whole) * 0.6 });
+  const res = await turnAgain(r, v, { lead: () => model(b, 0, n, v), maxMs: estimateMs(whole) + 2000, endSilenceMs: 1500, waitMs: estimateMs(whole) * 0.6, follow: [b, 0, n] });
   await cheer(r, v, res);
   await keepTake('other', res);
   if (!alive(r)) return;
@@ -727,7 +743,7 @@ async function dayOf() {
   v.turn('luna');
   await say('Say your line one time, from memory.');
   if (!alive(r)) return;
-  let res = await turnAgain(r, v, { maxMs: line.maxMs, endSilenceMs: 1500, waitMs: estimateMs(blockText(line, 0, line.chunks.length)) });
+  let res = await turnAgain(r, v, { maxMs: line.maxMs, endSilenceMs: 1500, waitMs: estimateMs(blockText(line, 0, line.chunks.length)), follow: [line, 0, line.chunks.length] });
   await cheer(r, v, res);
   if (!alive(r)) return;
   v = view(songPiece, 'Your song', 'Audition day', 3);
@@ -740,7 +756,7 @@ async function dayOf() {
   } else {
     await say('Sing your song one time, in your big stage voice.');
     if (!alive(r)) return;
-    res = await turnAgain(r, v, { maxMs: songPiece.maxMs, endSilenceMs: 2500, waitMs: estimateMs(blockText(songPiece, 0, songPiece.chunks.length)) });
+    res = await turnAgain(r, v, { maxMs: songPiece.maxMs, endSilenceMs: 2500, waitMs: estimateMs(blockText(songPiece, 0, songPiece.chunks.length)), follow: [songPiece, 0, songPiece.chunks.length] });
     await cheer(r, v, res);
   }
   if (!alive(r)) return;
@@ -779,6 +795,7 @@ function showMenu({ quiet = false } = {}) {
   mutedShown = false;
   const my = ++menuToken;
   let launched = false; // two fingers on two buttons at once start one activity, not two
+  const shownAt = performance.now(); // a double tap on "Yay!" or ✅ lands here: the second tap is not a choice
   const s = stage(), today = ctx.economy.today(), done = s.days[today] || {};
   const days = daysUntil(today, S.auditionDate);
   const sub = days > 1 ? 'Your Annie audition is in ' + days + ' days.' : days === 1 ? 'Your Annie audition is tomorrow!' : days === 0 ? 'Audition day! You can do it!' : 'Keep shining for the Annie show!';
@@ -802,7 +819,7 @@ function showMenu({ quiet = false } = {}) {
     // today's plan as pictures with a tick on each one done
     plan.length > 1 ? el('div', { class: 'plan-strip', 'aria-label': 'Today' }, plan.map(id => el('div', { class: 'plan-item' + (done[id] ? ' done' : '') + (id === next ? ' next' : '') }, [el('span', { text: ICON[id] }), done[id] ? el('b', { text: '✓' }) : null]))) : null,
     el('div', { class: 'encounters' }, tiles.map(m => el('button', { class: 'encounter-btn' + (m.id === next ? ' next-up' : '') + (m.wide ? ' primary' : '') + (m.off ? ' off' : ''), type: 'button', onclick: () => {
-      if (launched) return;
+      if (launched || performance.now() - shownAt < 700) return;
       // the grey tile starts nothing: Luna explains, and the reminder about the glowing tile carries on
       if (m.off) { stopIdle(); m.run().then(() => { if (my === menuToken && !run && next) idleNudge(hint); }); return; }
       stopIdle(); launched = true; m.run();
@@ -828,7 +845,7 @@ export async function mount(h, c) {
   probe = globalThis.__pq ? (globalThis.__pqStage = { state: 'menu', song: false, events: [] }) : null;
   [S, DUR] = await Promise.all([ctx.content.load('stage'), ctx.content.load('stage-audio').catch(() => ({}))]);
   if (gone()) return;
-  refDb = null; greeted = false; chorusOK = false; micOpened = false;
+  refDb = null; greeted = false; chorusOK = false; micOpened = false; micDead = false;
   const rec = ctx.store && ctx.store.get('stage', 'song-audio');
   let player = rec ? createSongPlayer(rec) : null;
   if (player) {
