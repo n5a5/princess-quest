@@ -111,7 +111,7 @@ function stopRun() {
   if (probe) probe.song = false;
   rest();
 }
-function leave() { stopRun(); clearOverlays(); ctx.nav && ctx.nav.pop(); showMenu(); }
+function leave() { stopRun(); clearOverlays(); ctx.nav && ctx.nav.pop(); showMenu({ afterTap: true }); }
 // The screen stays awake while an activity runs by itself, and may sleep again whenever it waits for a tap.
 async function keepAwake() {
   if (wake || !navigator.wakeLock) return;
@@ -787,15 +787,17 @@ function noSong() {
   return say('Ask a grown-up to add the song.');
 }
 
-// quiet: draw it without a word (the app just went into the background)
-function showMenu({ quiet = false } = {}) {
+// quiet: draw it without a word (the app just went into the background). afterTap: a button just closed the
+// screen above it ("Yay!", ✅), so the second tap of a double tap would land on a tile: taps in the first 0.45 s
+// are not choices.
+function showMenu({ quiet = false, afterTap = false } = {}) {
   if (!host || !S) return;
   stopIdle();
   if (ctx.audio.muted) return showMuted();
   mutedShown = false;
   const my = ++menuToken;
   let launched = false; // two fingers on two buttons at once start one activity, not two
-  const shownAt = performance.now(); // a double tap on "Yay!" or ✅ lands here: the second tap is not a choice
+  const shownAt = afterTap ? Date.now() : 0;
   const s = stage(), today = ctx.economy.today(), done = s.days[today] || {};
   const days = daysUntil(today, S.auditionDate);
   const sub = days > 1 ? 'Your Annie audition is in ' + days + ' days.' : days === 1 ? 'Your Annie audition is tomorrow!' : days === 0 ? 'Audition day! You can do it!' : 'Keep shining for the Annie show!';
@@ -819,7 +821,7 @@ function showMenu({ quiet = false } = {}) {
     // today's plan as pictures with a tick on each one done
     plan.length > 1 ? el('div', { class: 'plan-strip', 'aria-label': 'Today' }, plan.map(id => el('div', { class: 'plan-item' + (done[id] ? ' done' : '') + (id === next ? ' next' : '') }, [el('span', { text: ICON[id] }), done[id] ? el('b', { text: '✓' }) : null]))) : null,
     el('div', { class: 'encounters' }, tiles.map(m => el('button', { class: 'encounter-btn' + (m.id === next ? ' next-up' : '') + (m.wide ? ' primary' : '') + (m.off ? ' off' : ''), type: 'button', onclick: () => {
-      if (launched || performance.now() - shownAt < 700) return;
+      if (launched || Date.now() - shownAt < 450) return;
       // the grey tile starts nothing: Luna explains, and the reminder about the glowing tile carries on
       if (m.off) { stopIdle(); m.run().then(() => { if (my === menuToken && !run && next) idleNudge(hint); }); return; }
       stopIdle(); launched = true; m.run();
