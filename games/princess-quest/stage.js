@@ -164,7 +164,7 @@ function micGone(e) {
 // Already allowed (or opened before in this visit) but slow to start: nothing for 2.5 s, then "ask a grown-up to
 // turn on the microphone" (a device stuck opening it), never "tap Allow".
 async function askMic(r, { scene = true } = {}) {
-  let pending = true, spoke = false;
+  let pending = true, saying = null;
   const p = openMic();
   p.then(() => { micOpened = true; }, () => {});
   (async () => {
@@ -179,10 +179,12 @@ async function askMic(r, { scene = true } = {}) {
       el('div', { class: 'scene-head' }, [svgFrom(lunaSVG({ state: 'think', glow: ctx.economy.companion().level })), el('div', {}, [el('div', { class: 'title', text: 'Microphone' })])]),
       el('div', { class: 'ask-mic', 'aria-label': 'Ask a grown-up to allow the microphone', text: '🎤🧑' })
     ]));
-    while (pending && alive(r)) { spoke = true; mark('luna'); await say(line); if (pending) await wait(1500); }
+    while (pending && alive(r)) { mark('luna'); saying = say(line); await saying; if (pending) await wait(1500); }
   })();
+  // the microphone opened while Luna was asking: she finishes her sentence (never cut off by the chime, and never
+  // in the room reading or her take)
   try { return await p; }
-  finally { pending = false; if (spoke) ctx.audio.stop(); }
+  finally { pending = false; if (saying) await saying; }
 }
 
 // The room's quiet level at the start of an activity, while nothing plays (another reading comes before each
