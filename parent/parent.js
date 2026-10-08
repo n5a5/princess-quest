@@ -274,7 +274,7 @@ function render() {
 // words first in the Well) without switching anything else off.
 // Star Stage (Annie audition practice): what she did each day, and her takes (the first and the latest of
 // each) so a grown-up can hear how it is going without sitting next to her.
-const STAGE_TAKES = [['line', 'Line, practice'], ['song', 'Song, practice'], ['audition-slate', 'Audition: hello'], ['audition-line', 'Audition: line'], ['audition-song', 'Audition: song'], ['audition-thanks', 'Audition: thank you']];
+const STAGE_TAKES = [['line', 'Line, practice'], ['song', 'Song, practice'], ['other', 'Another line'], ['audition-slate', 'Audition: hello'], ['audition-line', 'Audition: line'], ['audition-song', 'Audition: song'], ['audition-thanks', 'Audition: thank you']];
 const STAGE_WORDS = { line: 'line', song: 'song', watch: 'watched the clip', hear: 'heard the song', audition: 'mock audition', other: 'another line', dayof: 'audition-day warm-up' };
 function stageSection() {
   const st = economy.save.stage;
@@ -294,7 +294,7 @@ function stageSection() {
     ...(takes.length ? takes : [el('p', { class: 'muted', text: 'Her recordings appear here after her first practice.' })]),
     songBlock(),
     micTest(),
-    el('p', { class: 'muted', text: 'The microphone only checks that she spoke and how loud (the star), never the words. Watch the orphans plays the film clip from YouTube and needs the internet; everything else works offline. Recordings stay on this device and play here exactly as loud as she was.' })
+    el('p', { class: 'muted', text: 'The microphone only checks that she spoke and how loud (the star), never the words. Hear the orphans plays the recording loaded below, which stays on this device; everything works offline. Recordings stay on this device and play here exactly as loud as she was.' })
   ]);
 }
 
@@ -319,7 +319,7 @@ function songBlock() {
     render();
   } });
   if (!rec) return el('div', { class: 'song-setup' }, [
-    el('p', {}, [el('strong', { text: 'The real song: ' }), 'not loaded. Load the movie clip audio (the "It\'s the Hard Knock Life" Full Clip MP3) and My Song plays the orphans singing her part, offline; Watch becomes Hear the orphans, with no YouTube. The file stays on this device.']),
+    el('p', {}, [el('strong', { text: 'The real song: ' }), 'not loaded. Load the movie clip audio (the "It\'s the Hard Knock Life" Full Clip MP3): My Song then plays the orphans singing her part and Hear the orphans plays the whole number, offline. The file stays on this device.']),
     el('label', { class: 'toggle' }, ['Load the song ', load])
   ]);
   if (!songPlayer) songPlayer = createSongPlayer(rec);
@@ -341,10 +341,15 @@ function songBlock() {
       el('button', { type: 'button', text: '⏹ Stop', onclick: () => songPlayer.stop() }),
       label
     ]),
+    // start and end on rows of their own (they never wrap apart), the remove button away from them
     el('div', { class: 'row', style: 'justify-content:flex-start' }, [
-      el('span', { text: 'Start' }), el('button', { type: 'button', text: '−½ s', onclick: nudge('start', -0.5) }), el('button', { type: 'button', text: '+½ s', onclick: nudge('start', 0.5) }),
-      el('span', { text: 'End' }), el('button', { type: 'button', text: '−½ s', onclick: nudge('end', -0.5) }), el('button', { type: 'button', text: '+½ s', onclick: nudge('end', 0.5) }),
-      el('button', { type: 'button', text: 'Reset', onclick: () => { s.songCut = null; economy.persist(); show(); } }),
+      el('span', { text: 'Start', style: 'min-width:3em' }), el('button', { type: 'button', text: '−½ s', onclick: nudge('start', -0.5) }), el('button', { type: 'button', text: '+½ s', onclick: nudge('start', 0.5) })
+    ]),
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+      el('span', { text: 'End', style: 'min-width:3em' }), el('button', { type: 'button', text: '−½ s', onclick: nudge('end', -0.5) }), el('button', { type: 'button', text: '+½ s', onclick: nudge('end', 0.5) }),
+      el('button', { type: 'button', text: 'Reset', onclick: () => { s.songCut = null; economy.persist(); show(); } })
+    ]),
+    el('div', { class: 'row', style: 'justify-content:flex-start; margin-top:12px' }, [
       el('button', { type: 'button', class: 'danger', text: 'Remove the song', onclick: async () => { if (!confirm('Remove the song from this device?')) return; songPlayer.release(); songPlayer = null; await store.remove('stage', 'song-audio'); render(); } })
     ])
   ]);

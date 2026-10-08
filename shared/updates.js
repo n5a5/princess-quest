@@ -3,12 +3,14 @@
 // { type: 'install-progress', done, total } as it goes, then takes over the page (skipWaiting + claim).
 //   downloading                      a pill at the bottom: "Updating Princess Quest… 42%"
 //   arrived, still on the splash     reload now; after the reload the pill says "Updated!" for a few seconds
+//   arrived on the map               reload now (nothing open to cut off; a place opened later would load new files
+//                                    into the old app)
 //   arrived while she is playing     "Update ready. It starts when you go back to the map."; reloadIfReady()
 //                                    (shell.js, when she leaves a place) reloads
 // The very first install is not an update (there is nothing to replace), so it shows nothing.
 const FLAG = 'arcade.updated';
 
-export function watchUpdates({ onSplash = () => false } = {}) {
+export function watchUpdates({ onSplash = () => false, onMap = () => false } = {}) {
   const sw = navigator.serviceWorker;
   // false only until the very first install takes over this page; every later new version is an update
   let controlled = !!sw.controller;
@@ -46,7 +48,7 @@ export function watchUpdates({ onSplash = () => false } = {}) {
   });
   sw.addEventListener('controllerchange', () => {
     if (!controlled) { controlled = true; return; }
-    if (onSplash()) return reloadNow();
+    if (onSplash() || onMap()) return reloadNow();
     ready = true;
     show('✨ Update ready. It starts when you go back to the map.', undefined);
   });

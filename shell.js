@@ -11,7 +11,7 @@ import { createSfx } from './shared/sfx.js';
 import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick } from './shared/ui.js';
 import { lunaSVG, gemSVG, chestSVG, placeArtSVG, svgFrom, starFieldEl } from './shared/characters.js';
 import { flyGems } from './shared/encounter.js';
-import { daysUntil, countdownHint } from './shared/stage-plan.js';
+import { daysUntil, countdownHint, countdownSay } from './shared/stage-plan.js';
 import { watchUpdates, installedVersion } from './shared/updates.js';
 
 // If the browser refuses to store the save, say so once instead of losing progress silently.
@@ -38,7 +38,12 @@ let updates = null;   // shared/updates.js: a new version installed while she pl
 const NAV_SID = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const nav = {
   stack: [], ignore: 0, waited: 0,
-  push(handler) { nav.stack.push(handler); history.pushState({ depth: nav.stack.length, sid: NAV_SID }, ''); },
+  // A push right after a pop (Star Stage stops its activity, then the PIN pad opens) waits for that pop's popstate,
+  // or the pop would land on the new entry and drop it.
+  push(handler, tries = 0) {
+    if (nav.ignore > 0 && tries < 8) { setTimeout(() => nav.push(handler, tries + 1), 60); return; }
+    nav.stack.push(handler); history.pushState({ depth: nav.stack.length, sid: NAV_SID }, '');
+  },
   pop() { if (!nav.stack.length) return; nav.ignore++; history.back(); },
   // A tap on Back while a pop is still in flight (e.g. right after "Yay!") waits briefly for that popstate.
   toMap() {
@@ -204,7 +209,13 @@ function showPin() {
         else { entry = ''; render(); toast('Try again'); }
       }
     } }));
-  const o = sheet([el('h2', { text: 'Parent corner' }), dots, el('div', { class: 'pin-grid' }, keys), bigButton('Cancel', () => o.remove(), 'soft')]);
+  // a nav level of its own: the phone's Back (or Escape) closes the pad and leaves her where she was
+  let open = true;
+  const close = () => { if (!open) return; open = false; o.remove(); };
+  const o = sheet([el('h2', { text: 'Parent corner' }), dots, el('div', { class: 'pin-grid' }, keys), bigButton('✖ Cancel', () => { if (open) { close(); nav.pop(); } }, 'soft')]);
+  o.classList.add('pin-pad');
+  nav.push(close);
+  audio.say('This is for grown-ups. Tap cancel to keep playing.');
 }
 
 // Keyboard play (Chromebooks and laptops): number keys pick the 1st, 2nd, 3rd… thing to tap on screen,
@@ -216,7 +227,7 @@ function keyTargets() {
   const scope = overlay || document;
   const groups = overlay ? ['button'] : [
     document.querySelector('.tile.picked') ? '.slot' : null,
-    '.choice', '.tile', '.pat', '.sword', '.gem-box', '.ten-frame .cell', '.number-line button', '.rune', '.encounter-btn', '.place', '.garden-spot'
+    '.choice', '.tile', '.pat', '.sword', '.gem-box', '.ten-frame .cell', '.number-line button', '.rune', '.turn-done', '.encounter-btn', '.place', '.garden-spot'
   ].filter(Boolean);
   for (const sel of groups) {
     const list = [...scope.querySelectorAll(sel)].filter(visible);
@@ -243,13 +254,19 @@ function onKey(e) {
     return;
   }
   if (e.key === 'Enter' && (!t || t === document.body)) {
-    const done = [...document.querySelectorAll('.overlay .big-btn, .big-btn')].find(visible);
+    // the main button first (gold, e.g. "Yay!" or Star Stage's ✅), and Star Stage's thumbs-up when it waits
+    const done = [...document.querySelectorAll('.overlay .big-btn.gold, .overlay .big-btn, .turn-done:not([hidden]), .big-btn.gold, .big-btn')].find(visible);
     if (done) { e.preventDefault(); done.click(); }
     return;
   }
   if (e.key === 'Escape') {
+    // like the phone's Back: one level (out of an activity to its place's menu), then the map; a sheet that sits
+    // under the top bar (Star Stage's finish sheets) does not block it
+    if (document.querySelector('.overlay.pin-pad')) { e.preventDefault(); history.back(); return; }
     const back = $('back-btn');
-    if (!back.hidden && !document.querySelector('.overlay')) { e.preventDefault(); back.click(); }
+    if (back.hidden || document.querySelector('.overlay:not(.below-bar)')) return;
+    e.preventDefault();
+    if (nav.stack.length > 1) history.back(); else back.click();
   }
 }
 
@@ -282,7 +299,10 @@ async function boot() {
     $('topbar').hidden = false;
     renderHome();
     await audioReady;
-    audio.say(withName(pick(praise.greeting), economy.save.child.name));
+    await audio.say(withName(pick(praise.greeting), economy.save.child.name));
+    // the audition week: Luna says where to go (the card's countdown is text she cannot read)
+    const spot = available().filter(r => r.ready && r.spotlight).map(r => countdownSay(daysUntil(economy.today(), r.spotlight.until))).find(Boolean);
+    if (spot && !current && !opening && !document.querySelector('.overlay')) audio.say(spot);
   });
   $('back-btn').addEventListener('click', () => nav.toMap());
   $('mute-btn').addEventListener('click', () => { speech.toggleMuted(); if (speech.muted) audio.stop(); updateBar(); });
@@ -292,7 +312,7 @@ async function boot() {
   document.addEventListener('keydown', onKey);
   // ?nosw=1 skips the service worker (local testing only: no cache-first surprises while editing files).
   if ('serviceWorker' in navigator && !/[?&]nosw=1/.test(location.search)) {
-    updates = watchUpdates({ onSplash: () => !!$('splash') });
+    updates = watchUpdates({ onSplash: () => !!$('splash'), onMap: () => !current && !opening && !document.querySelector('.overlay') });
     // the version on this device, small at the bottom of the splash (a grown-up checking an update)
     navigator.serviceWorker.ready.then(() => installedVersion()).then(v => { const n = $('app-version'); if (v && n) n.textContent = 'Version ' + v; }).catch(() => {});
   }

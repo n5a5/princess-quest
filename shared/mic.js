@@ -38,11 +38,11 @@ export async function openMic({ timeoutMs = 10000 } = {}) {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   let closed = false;
   return {
-    // The room's quiet level over the next ms (shared/stage-plan.js roomLevel).
-    async floor(ms = 400) {
+    // The room's quiet level over the next ms (shared/stage-plan.js roomLevel); `fallback` when no reading was usable.
+    async floor(ms = 400, fallback = -60) {
       const readings = [];
       for (let t = 0; t < ms; t += 50) { readings.push(level()); await sleep(50); }
-      return roomLevel(readings);
+      return roomLevel(readings, fallback);
     },
     // Records until the gate closes or live() turns false. Resolves { blob, heard, peakDb, ms, reason }.
     // nudgeMs: with no voice yet by then, onNudge() runs once (the "your turn" reminder) and the gate ignores the

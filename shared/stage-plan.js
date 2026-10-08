@@ -51,6 +51,14 @@ export function countdownHint(days, label) {
   return days === 0 ? label + ' today!' : days === 1 ? label + ' tomorrow!' : label + ' in ' + days + ' days';
 }
 
+// What Luna says on the map in the last week before the audition, so the place to go is spoken, not only written on
+// its card. Whole sentences, so each one has a story-voice clip (tools/collect-lines.py). null outside that week.
+const COUNTDOWN_SAY = ['Your Annie audition is today! Tap Star Stage.', 'Your Annie audition is tomorrow! Tap Star Stage.',
+  'Your Annie audition is in two days! Tap Star Stage.', 'Your Annie audition is in three days! Tap Star Stage.',
+  'Your Annie audition is in four days! Tap Star Stage.', 'Your Annie audition is in five days! Tap Star Stage.',
+  'Your Annie audition is in six days! Tap Star Stage.', 'Your Annie audition is in seven days! Tap Star Stage.'];
+export const countdownSay = days => (Number.isInteger(days) && days >= 0 && COUNTDOWN_SAY[days]) || null;
+
 // ---------- practice log (save.stage) ----------
 // days: { 'YYYY-MM-DD': { line, song, watch, audition } } counts; solos: { line, song } finished practices;
 // watched: times the clip played 45 s or more; auditions: full run-throughs; songCut: where the audition
@@ -106,33 +114,45 @@ export function rmsDb(samples) {
 export function bigVoiceThreshold(refDb) { return refDb === null || refDb === undefined ? -26 : Math.max(refDb, -30) - 6; }
 
 // Voice gate, fed one level reading (dB) every ~50 ms. Speech starts when the smoothed level rises 12 dB above
-// the room (at least -50 dB, at most -12 dB); it ends after endSilenceMs below that, at maxMs, or after noVoiceMs
-// with no voice at all. The first graceMs are ignored (the start chime). A voice rises and falls with every
-// syllable; a steady sound (a fan, a hum, a TV's music bed) above the start level does not, so a take whose loud
-// part varies by less than 4 dB (10th to 90th percentile) counts as not heard. step() returns null while
-// listening, then { reason: 'end' | 'max' | 'novoice', heard, peakDb, ms }.
+// the room (at least -50 dB, at most -12 dB) and at least minVoiced raw readings in that stretch are above it too,
+// so a tap or a thud near the microphone (one loud reading that the smoothing drags out) is not her voice. It ends
+// after endSilenceMs below the start level, at maxMs, or after noVoiceMs with no voice at all. The first graceMs
+// are ignored (the start chime). A voice rises and falls with every syllable and the gaps between words; a steady
+// sound (a fan, a hum, a TV's music bed) above the start level does not. So every smoothed reading from her first
+// word on is kept, gaps included, and a take whose readings vary by less than 4 dB (10th to 90th percentile) counts
+// as not heard. (Measuring only the readings above the start level cut a soft voice's range off at that level, so
+// a quiet but clear voice was called steady.) step() returns null while listening, then
+// { reason: 'end' | 'max' | 'novoice' | 'steady', heard, peakDb, maxDb, ms }; maxDb is the loudest smoothed reading
+// (null if none), so a caller can tell a quiet voice (some sound) from a dead microphone (nothing at all).
 // ignore(untilMs): skip readings until then (the "your turn" reminder chime played mid-take).
-export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12000, noVoiceMs = 7000, graceMs = 300 } = {}) {
+export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12000, noVoiceMs = 7000, graceMs = 300, minVoiced = 3 } = {}) {
   const startDb = Math.min(Math.max(floorDb + 12, -50), -12);
-  let smooth = null, heard = false, peakDb = -120, lastVoice = 0, done = null, ignoreUntil = 0;
-  const loud = []; // smoothed levels while above the start level
-  const varies = () => { if (loud.length < 8) return true; const s = [...loud].sort((a, b) => a - b); return s[Math.floor(s.length * 0.9)] - s[Math.floor(s.length * 0.1)] >= 4; };
+  let smooth = null, heard = false, peakDb = -120, maxDb = -120, lastVoice = 0, done = null, ignoreUntil = 0;
+  let voiced = 0, runPeak = -120, loudN = 0; // this loud stretch: raw readings above the start level, its peak
+  const since = []; // every smoothed level from her first word on
+  const varies = () => { if (since.length < 8) return true; const s = [...since].sort((a, b) => a - b); return s[Math.floor(s.length * 0.9)] - s[Math.floor(s.length * 0.1)] >= 4; };
+  const round = v => Math.round(v * 10) / 10;
   return {
     startDb,
     get heard() { return heard; },
     ignore(untilMs) { ignoreUntil = Math.max(ignoreUntil, untilMs); smooth = null; },
     step(db, t) {
       if (done) return done;
+      const finish = reason => { const v = heard && varies(); return (done = { reason: heard && !v ? 'steady' : reason, heard: v, peakDb: v ? round(peakDb) : null, maxDb: maxDb > -120 ? round(maxDb) : null, ms: t }); };
       // the chime: not fed to the smoothing at all, or its tail would count as her voice
-      if (t < graceMs || t < ignoreUntil) return t >= maxMs ? (done = { reason: 'max', heard, peakDb: heard ? Math.round(peakDb * 10) / 10 : null, ms: t }) : null;
+      if (t < graceMs || t < ignoreUntil) return t >= maxMs ? finish('max') : null;
       const lin = Math.pow(10, db / 20);
       smooth = smooth === null ? lin : smooth * 0.6 + lin * 0.4;
       const s = 20 * Math.log10(smooth + 1e-12);
-      if (s >= startDb) { heard = true; lastVoice = t; loud.push(s); }
-      if (heard) peakDb = Math.max(peakDb, s);
-      const finish = reason => { const v = heard && varies(); return (done = { reason: heard && !v ? 'steady' : reason, heard: v, peakDb: v ? Math.round(peakDb * 10) / 10 : null, ms: t }); };
+      maxDb = Math.max(maxDb, s);
+      if (s >= startDb) {
+        if (db >= startDb) voiced++;
+        runPeak = Math.max(runPeak, s);
+        if (voiced >= minVoiced) { heard = true; lastVoice = t; peakDb = Math.max(peakDb, runPeak); loudN++; }
+      } else { voiced = 0; runPeak = -120; }
+      if (heard) since.push(s);
       if (t >= maxMs) return finish('max');
-      if (loud.length >= 50 && !varies()) return finish('steady'); // 2.5 s of a steady sound: not her voice
+      if (loudN >= 50 && !varies()) return finish('steady'); // 2.5 s of a steady sound: not her voice
       if (heard && t - lastVoice >= endSilenceMs) return finish('end');
       if (!heard && t >= noVoiceMs) return finish('novoice');
       return null;
@@ -144,10 +164,24 @@ export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12
 // that has not received samples yet reads silence) and anything at or below -100 dB (dead air while the
 // microphone starts). The minimum used before made every room look silent, so a TV or a fan always counted as
 // her voice. No usable reading: -60.
-export function roomLevel(readings) {
+export function roomLevel(readings, fallback = -60) {
   const ok = readings.slice(2).filter(db => Number.isFinite(db) && db > -100).sort((a, b) => a - b);
-  return ok.length ? ok[Math.floor(ok.length / 2)] : -60;
+  return ok.length ? ok[Math.floor(ok.length / 2)] : fallback;
 }
+
+// The room level a turn's voice gate starts from: the lower median of the last five room readings (one at the
+// start of each activity, one just before each turn), so one loud moment (her "yay!" as she taps, a door) never
+// makes her inaudible, and a room that stays loud is followed after a couple of readings. Once her warm-up shout
+// is known (refDb), the start level stays at least 6 dB under it (floor + 12 <= refDb - 6). No readings: -60.
+export function quietFloor(readings, refDb = null) {
+  const s = readings.filter(Number.isFinite).slice(-5).sort((a, b) => a - b);
+  const f = s.length ? s[Math.floor((s.length - 1) / 2)] : -60;
+  return refDb === null || refDb === undefined ? f : Math.min(f, refDb - 18);
+}
+
+// A take in which the microphone delivered digital silence (a muted, blocked or dead input): a working microphone
+// always picks up some room noise, far above -90 dB, even when she says nothing.
+export const deadMic = res => !!res && !res.heard && (res.maxDb === null || res.maxDb === undefined || res.maxDb < -90);
 
 // When each chunk starts inside a clip that says chunks i..j-1, so its picture can light up as Luna says it:
 // offsets in ms, in proportion to each chunk's letters.

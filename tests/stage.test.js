@@ -207,3 +207,61 @@ test('voice gate: a steady sound above the start level is not her voice, and end
   assert.ok(steady.ms <= 3000, 'within about 2.5 s of the sound starting: ' + steady.ms);
   // (a steady tone under about a second is not caught: its rise and fall look like a syllable)
 });
+
+test('voice gate: a soft voice a little over the start level is heard, not called steady (review: a quiet child was never heard)', () => {
+  // syllables peaking 5 dB over the start level (-48), dipping toward the room between them
+  const env = [-60, -54, -48, -45, -43, -44, -47, -52, -58, -60];
+  const soft = Array.from({ length: 120 }, (_, k) => env[k % env.length]);
+  const r = run(createVoiceGate({ floorDb: -60, maxMs: 9000, endSilenceMs: 1500 }), [...soft, ...flat(-60, 2000)]);
+  assert.deepEqual([r.reason, r.heard], ['end', true]);
+  assert.ok(r.peakDb > -48 && r.peakDb < -42, String(r.peakDb));
+});
+
+test('voice gate: one bump near the microphone is not her turn (review: a tap earned "Big stage voice!")', () => {
+  for (const bump of [[-23], [-30, -34]]) {
+    const levels = flat(-60, 8000);
+    bump.forEach((db, k) => { levels[30 + k] = db; });
+    const r = run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000 }), levels);
+    assert.deepEqual([r.reason, r.heard, r.peakDb], ['novoice', false, null], JSON.stringify(bump));
+    assert.ok(r.maxDb > -48, 'the sound itself is reported (maxDb), so a caller knows the microphone works');
+  }
+  assert.equal(run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000 }), flat(-60, 8000)).maxDb < -59, true);
+});
+
+test('room level per turn: one loud reading never sets the floor; a room that stays loud does (review: deaf for the whole visit)', async () => {
+  const { quietFloor, deadMic } = await import('../shared/stage-plan.js');
+  assert.equal(quietFloor([]), -60);
+  assert.equal(quietFloor([-25]), -25, 'a single reading is all there is');
+  assert.equal(quietFloor([-25, -60]), -60, 'her "yay!" at the tap, then a quiet reading before her turn');
+  assert.equal(quietFloor([-60, -58, -25, -61, -59]), -59);
+  assert.equal(quietFloor([-60, -30, -29, -31]), -31, 'the TV went on and stayed on: followed within readings');
+  assert.equal(quietFloor([-60, -60, -60, -60, -60, -30, -30, -30]), -30, 'only the last five count');
+  assert.equal(quietFloor([-30], -20), -38, 'the start level stays 6 dB under her warm-up shout');
+  assert.equal(quietFloor([-60], -20), -60);
+  assert.equal(roomLevel([-120, -120, -120], null), null, 'no usable reading: the fallback');
+  assert.equal(deadMic({ heard: false, maxDb: -120 }), true);
+  assert.equal(deadMic({ heard: false, maxDb: null }), true);
+  assert.equal(deadMic({ heard: false, maxDb: -58 }), false, 'a quiet child in a quiet room: the microphone works');
+  assert.equal(deadMic({ heard: true, maxDb: -20 }), false);
+});
+
+test('Luna: the horn glow points at its own gradient (review: the id was never filled in, so the glow vanished)', async () => {
+  const { lunaSVG } = await import('../shared/characters.js');
+  const svg = lunaSVG({ state: 'idle', glow: 2 });
+  const def = svg.match(/id="(hornglow-[^"]+)"/);
+  assert.ok(def, 'the gradient is defined');
+  assert.ok(svg.includes(`fill="url(#${def[1]})"`), 'and used by the glow circle');
+  assert.ok(!svg.includes('${'), 'no template text left in the markup');
+});
+
+test('map countdown: Luna says where to go in the audition week only', async () => {
+  const { countdownSay } = await import('../shared/stage-plan.js');
+  assert.equal(countdownSay(0), 'Your Annie audition is today! Tap Star Stage.');
+  assert.equal(countdownSay(1), 'Your Annie audition is tomorrow! Tap Star Stage.');
+  assert.equal(countdownSay(6), 'Your Annie audition is in six days! Tap Star Stage.');
+  assert.equal(countdownSay(8), null);
+  assert.equal(countdownSay(-1), null);
+  const { readFileSync } = await import('node:fs');
+  const lines = JSON.parse(readFileSync(new URL('../content/lines-audio.json', import.meta.url), 'utf8')).lines;
+  for (let d = 0; d <= 7; d++) for (const part of countdownSay(d).match(/[^!.]+[!.]/g)) assert.ok(lines[part.trim().toLowerCase()], 'clip for ' + part);
+});

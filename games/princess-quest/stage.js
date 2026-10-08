@@ -41,22 +41,23 @@ import { lunaSVG, svgFrom } from '../../shared/characters.js';
 import { flyGems } from '../../shared/encounter.js';
 import { canListen, openMic } from '../../shared/mic.js';
 import { createSongPlayer } from '../../shared/songclip.js';
-import { clipId, chainSteps, daysUntil, logPractice, bigVoiceThreshold, followTimes, dayStrip, dailyPlan, hiddenFromEnd } from '../../shared/stage-plan.js';
+import { clipId, chainSteps, daysUntil, logPractice, bigVoiceThreshold, followTimes, dayStrip, dailyPlan, hiddenFromEnd, quietFloor, deadMic } from '../../shared/stage-plan.js';
 
 let host = null, ctx = null, S = null, DUR = {};
 let run = null;     // the activity in progress, { live, noMic }; Back, Home or leaving the place turns it off
-// This visit (reset in mount): her warm-up shout (the bar for a big voice), the room's quiet level, and whether
-// the microphone may be used at all (no device, or permission refused).
-let refDb = null, roomDb = null, micOK = true;
-let deaf = 0;       // turns in a row in this activity where the microphone heard nothing
+// This visit (reset in mount): her warm-up shout (the bar for a big voice), the room's quiet level readings
+// (shared/stage-plan.js quietFloor), and whether the microphone may be used at all (no device, or permission refused).
+let refDb = null, rooms = [], micOK = true;
+let deaf = 0;       // turns in a row in this activity where the microphone delivered digital silence (deadMic)
 let wake = null;    // screen wake lock while an activity runs (it is hands-free for minutes at a time)
 let song = null;    // the cast recording from Parent Corner (shared/songclip.js), or null when absent or unplayable
 let chorusOK = false; // the recording is long enough to hold the chorus (else My Song uses Luna's model)
-let idle = null, menuToken = 0, greeted = false; // the re-prompt when nothing is tapped; the long hello once a visit
+let idle = null, idleText = null, idleN = 0; // the re-prompt while a button waits (see idleNudge)
+let menuToken = 0, greeted = false, mutedShown = false; // the long hello once a visit; the sound-on screen is up
 let muteWatch = null; // muted in the middle of an activity: stop it (Luna cannot talk; nothing should record silently)
 const CHIME_MS = 350;  // the chime is over before recording starts, so it is never in her take or taken for her
 const NUDGE_MS = 3000; // her turn, no voice yet: a soft reminder (never more than 3 s of silence without a cue)
-const IDLE_MS = 8000;  // a button waiting: Luna says it again
+const IDLE_MS = 8000;  // a button waiting: Luna says it again after 8 s, then less and less often
 
 const THANKS = { id: 'thanks', chunks: [{ text: 'Thank you!', pic: '🙇' }] };
 const BIG = ['Big stage voice!', 'Wow, the back row heard you!', 'Loud and clear. Bravo!'];
@@ -77,7 +78,8 @@ const say = t => ctx.audio.say(t, { story: true }); // Luna's own voice, the one
 const sfx = () => ctx.audio.sfx || { sparkle() {}, yay() {}, ding() {}, applause() {} };
 const named = t => t.replace(/\{name\}/g, ctx.economy.save.child.name);
 const stage = () => ctx.economy.save.stage;
-const alive = r => !!r && r === run && r.live;
+// still running: not left, and not muted (Luna cannot talk, so nothing may go on or record unheard)
+const alive = r => !!r && r === run && r.live && !ctx.audio.muted;
 const piece = id => S.pieces.find(p => p.id === id);
 const blockText = (b, i, j) => named(b.chunks.slice(i, j).map(c => c.say || c.text).join(' '));
 const estimateMs = text => 3000 + text.split(/\s+/).length * 900;
@@ -98,6 +100,7 @@ function begin() {
   return r;
 }
 function stopRun() {
+  if (run && run.onStop) { try { run.onStop(); } catch (e) { console.warn(e); } } // e.g. credit for listening so far
   if (run) run.live = false;
   run = null;
   stopIdle();
@@ -118,26 +121,70 @@ async function keepAwake() {
   } catch {}
 }
 function rest() { if (wake) { wake.release().catch(() => {}); wake = null; } }
-// Home button, app switch or screen off in the middle of an activity: stop (no recording in the background)
-// and wait on the menu.
-function onVisibility() { if (document.hidden && run) leave(); }
-function stopIdle() { clearTimeout(idle); idle = null; }
-function idleNudge(text) { stopIdle(); idle = setTimeout(() => { idle = null; if (host) say(text); }, IDLE_MS); }
+// Home button, app switch or screen off: stop (no recording and no talking in the background) and wait on the
+// menu without a word; back in view, Luna says what is next.
+function onVisibility() {
+  if (!host) return;
+  if (document.hidden) {
+    stopIdle(); ctx.audio.stop();
+    if (run) { stopRun(); clearOverlays(); ctx.nav && ctx.nav.pop(); showMenu({ quiet: true }); }
+  } else if (!run) showMenu();
+}
+function stopIdle() { clearTimeout(idle); idle = null; idleText = null; }
+// A button waiting for her: Luna says what to tap after 8 s, then again less and less often (8, 12, 18, 27, 40,
+// 61 s; six times, about 3 minutes in all). A tap that starts nothing (a picture, the background) restarts the wait
+// and keeps the reminder; a button that does something calls stopIdle.
+function idleNudge(text) { stopIdle(); idleText = text; idleN = 0; armIdle(); }
+function armIdle() {
+  clearTimeout(idle); idle = null;
+  if (!idleText || idleN >= 6) return;
+  const text = idleText;
+  idle = setTimeout(() => {
+    idle = null;
+    if (!host || idleText !== text || document.hidden) return;
+    idleN++;
+    say(text).then(() => { if (idleText === text && !idle) armIdle(); });
+  }, Math.round(IDLE_MS * 1.5 ** idleN));
+}
+const onTap = () => { if (idleText) armIdle(); };
 
 function micGone(e) {
   micOK = false;
   console.warn('mic', e);
   toast('🎤 Ask a grown-up to allow the microphone.', 5000);
-  // the browser's question went unanswered, or the microphone is blocked or missing
-  return say(e && e.name === 'TimeoutError' ? 'Ask a grown-up to tap Allow for the microphone.' : 'Ask a grown-up to turn on the microphone.');
+  // nobody answered the browser's question (Luna already asked for a grown-up), or it is blocked or missing
+  return say(e && e.name === 'TimeoutError' ? 'Let\'s keep going without the microphone.' : 'Ask a grown-up to turn on the microphone.');
 }
 
-// The room's quiet level, read once at the start of an activity while nothing plays. The first time ever, this
-// is also where the browser asks for the microphone (Parent Corner's microphone test asks first).
+// Opens the microphone. When the browser has to ask (the first time on a device), its question is text she cannot
+// read: the screen shows a microphone and a grown-up, and Luna asks for one at once and again every few seconds,
+// so it is never silent; after 10 s with no answer it goes on without the microphone (openMic's timeout, micGone).
+async function askMic(r, { scene = true } = {}) {
+  let pending = true, spoke = false;
+  const p = openMic();
+  (async () => {
+    let state = null;
+    try { state = (await navigator.permissions.query({ name: 'microphone' })).state; } catch {}
+    if (state === 'granted' || state === 'denied') return;
+    if (state !== 'prompt') await Promise.race([p.catch(() => {}), wait(1200)]); // not known: only if it takes a while
+    if (!pending || !alive(r)) return;
+    if (scene) host.replaceChildren(el('div', { class: 'scene stage breath' }, [
+      el('div', { class: 'scene-head' }, [svgFrom(lunaSVG({ state: 'think', glow: ctx.economy.companion().level })), el('div', {}, [el('div', { class: 'title', text: 'Microphone' })])]),
+      el('div', { class: 'ask-mic', 'aria-label': 'Ask a grown-up to allow the microphone', text: '🎤🧑' })
+    ]));
+    while (pending && alive(r)) { spoke = true; mark('luna'); await say('Ask a grown-up to tap Allow for the microphone.'); if (pending) await wait(1500); }
+  })();
+  try { return await p; }
+  finally { pending = false; if (spoke) ctx.audio.stop(); }
+}
+
+// The room's quiet level at the start of an activity, while nothing plays (another reading comes before each
+// turn; see quietFloor). The first time ever, this is also where the browser asks for the microphone (Parent
+// Corner's microphone test asks first).
 async function readRoom(r) {
-  if (!micOK || !canListen() || roomDb !== null) return;
+  if (!micOK || !canListen()) return;
   let m = null;
-  try { m = await openMic(); roomDb = await m.floor(400); }
+  try { m = await askMic(r); if (alive(r)) { const f = await m.floor(400, null); if (f !== null) rooms.push(f); } }
   catch (e) { if (alive(r)) await micGone(e); }
   finally { if (m) m.close(); }
 }
@@ -159,13 +206,20 @@ async function model(b, i, j, v = null) {
 // The real singing: the audition chorus (where a grown-up set it, or content/stage.json songCut), or the whole number.
 const chorus = () => { const c = stage().songCut || S.songCut; return { from: c.start, to: c.end }; };
 // Resolves 'ended', 'stopped' or 'error' (this device would not play it; the caller falls back to Luna).
-async function playSong(r, v, range = {}, state = 'song') {
+// With a block `b` and a range, each picture lights as the orphans reach it: the same proportional timing as
+// Luna's clips (followTimes), over the chorus (found by analysis, not by ear).
+async function playSong(r, v, range = {}, state = 'song', b = null) {
   if (!song || ctx.audio.muted || !alive(r)) return 'error';
   ctx.audio.stop();
   if (v) v.turn(state);
   if (probe) probe.song = true;
-  try { return await song.play({ ...range, shouldStop: () => ctx.audio.muted || !alive(r) }); }
-  finally { if (probe) probe.song = false; }
+  let follow = null;
+  if (v && b && range.to) {
+    const at = followTimes(b.chunks.map(c => c.say || c.text), (range.to - range.from) * 1000);
+    follow = setInterval(() => { const ms = (song.currentTime() - range.from) * 1000; let k = -1; at.forEach((x, n) => { if (ms >= x) k = n; }); v.now(k); }, 100);
+  }
+  try { return await song.play({ ...range, shouldStop: () => !alive(r) }); }
+  finally { if (follow) { clearInterval(follow); v.now(-1); } if (probe) probe.song = false; }
 }
 
 // The practice screen: Luna, a title, progress dots, one picture per chunk, the turn panel (ear or microphone,
@@ -183,11 +237,12 @@ function view(b, title, sub = '', steps = 0) {
   const icon = el('div', { class: 'mic-icon', text: '👂' });
   const status = el('div', { class: 'mic-status', 'aria-live': 'polite' });
   const doneBtn = el('button', { class: 'turn-done', type: 'button', 'aria-label': 'I am done', text: '👍', hidden: '' });
-  const mic = el('div', { class: 'mic', 'data-state': 'idle' }, [icon, el('div', { class: 'vmeter' }, [fill]), star]);
+  // the thumbs-up sits in the panel, in place of the meter and star, so it is never below the fold
+  const mic = el('div', { class: 'mic', 'data-state': 'idle' }, [icon, el('div', { class: 'vmeter' }, [fill]), star, doneBtn]);
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level }));
   host.replaceChildren(el('div', { class: 'scene stage practice' }, [
     el('div', { class: 'scene-head' }, [luna, el('div', {}, [el('div', { class: 'title', text: title }), el('div', { class: 'line', text: sub })])]),
-    steps ? dots : null, cueRow, mic, status, doneBtn
+    steps ? dots : null, cueRow, mic, status
   ]));
   const v = {
     light(i, j) { cues.forEach((c, k) => { c.classList.toggle('lit', k >= i && k < j); c.classList.toggle('dim', k < i || k >= j); }); },
@@ -196,14 +251,15 @@ function view(b, title, sub = '', steps = 0) {
     // the last h pictures hidden (a question mark each); all of them: the curtain
     hideLast(h) { cues.forEach((c, k) => c.classList.toggle('gone', h > 0 && k >= cues.length - h)); cueRow.classList.toggle('curtain', h >= cues.length && h > 0); },
     progress(done) { dots.replaceChildren(...Array.from({ length: steps }, (_, n) => el('span', { class: n < done ? 'done' : n === done ? 'current' : '' }))); },
-    // 'luna' (listen), 'song' (listen to the orphans), 'sing' (sing along with them), 'you' (her turn),
+    // 'luna' (listen), 'song' (listen to the orphans), 'sing' (sing along with them), 'you' (her turn, the
+    // microphone on), 'tap' (her turn, no microphone: the thumbs-up), 'me' (her own take playing back),
     // 'big' / 'ok' (how her turn went), 'idle'
     turn(t) {
       mic.dataset.state = t;
       mic.classList.remove('nudge');
       status.classList.remove('act');
-      icon.textContent = t === 'you' ? '🎤' : t === 'big' ? '🌟' : t === 'song' || t === 'sing' ? '🎶' : '👂';
-      status.textContent = { you: '🎤 Your turn!', luna: '👂 Listen to Luna', song: '🎶 Listen to the orphans', sing: '🎶 Sing along!', big: '⭐ Big voice!', ok: 'Even bigger next time!' }[t] || '';
+      icon.textContent = { you: '🎤', tap: '🎤', sing: '🎤', big: '🌟', song: '🎶', me: '👧' }[t] || '👂';
+      status.textContent = { you: '🎤 Your turn!', tap: '🎤 Your turn!', luna: '👂 Listen to Luna', song: '🎶 Listen to the orphans', sing: '🎤🎶 Sing along!', me: '👂 That was you!', big: '⭐ Big voice!', ok: 'Even bigger next time!' }[t] || '';
       luna.classList.toggle('talking', t === 'luna');
       mark(t);
     },
@@ -225,43 +281,49 @@ function view(b, title, sub = '', steps = 0) {
   return v;
 }
 
-// One turn for her: Luna's `lead` (the model, or "Ready, set, go!"), then the microphone opens, the chime
-// sounds, and it records until she stops. Without a microphone it waits, so the practice still flows.
-// Resolves { heard, peakDb (null = no microphone), big, blob } or null if she left.
+// One turn for her: Luna's `lead` (the model, or "Ready, set, go!"), then the microphone opens, the room is read
+// for a moment, the chime sounds, and it records until she stops. Without a microphone she taps the thumbs-up
+// (or it moves on by itself), so the practice still flows.
+// Resolves { heard, peakDb (null = no microphone), big, blob, noMic } or null if she left.
 async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000 }) {
   if (lead) await lead();
   if (!alive(r)) return null;
   ctx.audio.stop();
   let m = null;
   if (micOK && !r.noMic && canListen()) {
-    try { m = await openMic(); }
+    try { m = await askMic(r, { scene: false }); } // the practice screen stays
     catch (e) { if (alive(r)) await micGone(e); }
   }
   try {
     if (!alive(r)) return null;
+    if (m) { const f = await m.floor(300, null); if (f !== null) rooms.push(f); if (!alive(r)) return null; }
     sfx().ding();
-    v.turn('you');
+    v.turn(m ? 'you' : 'tap');
     await wait(CHIME_MS);
     if (!alive(r)) return null;
     if (!m) {
-      // no microphone: she taps the thumbs-up when she has finished, or it moves on by itself
+      // no microphone: she taps the thumbs-up (in the panel, where the microphone was) when she has finished
+      const tapped = v.done();
       if (!r.toldDone) { r.toldDone = true; await say('Tap the thumbs up when you finish.'); if (!alive(r)) return null; }
-      await Promise.race([wait(waitMs), v.done()]);
+      await Promise.race([wait(waitMs), tapped]);
       v.hideDone();
       return alive(r) ? { heard: true, noMic: true, peakDb: null, big: false, blob: null } : null;
     }
     const thr = bigVoiceThreshold(refDb);
     const res = await m.listen({
-      floorDb: roomDb === null ? -60 : roomDb, maxMs, endSilenceMs, noVoiceMs: 7000,
+      floorDb: quietFloor(rooms, refDb), maxMs, endSilenceMs, noVoiceMs: 7000,
       nudgeMs: NUDGE_MS, onNudge: () => { sfx().ding(); v.nudge(); },
       onLevel: db => v.level(db, thr), live: () => alive(r)
     });
     if (!alive(r)) return null;
-    deaf = res.heard ? 0 : deaf + 1;
+    // Set the microphone aside only when it delivers digital silence three turns running (muted or dead input). A
+    // quiet child or a noisy room is never a reason: she gets "say it nice and loud" instead.
+    deaf = deadMic(res) ? deaf + 1 : 0;
     if (deaf >= 3) {
       r.noMic = true; // this activity only; the next one tries the microphone again
       toast('🎤 The microphone is not hearing anything. Practice goes on without it.', 5000);
       await say('Let\'s keep going without the microphone.');
+      return alive(r) ? { ...res, heard: true, noMic: true, peakDb: null, big: false, blob: null } : null;
     }
     return { ...res, big: res.heard && res.peakDb !== null && res.peakDb >= thr };
   } finally {
@@ -320,7 +382,7 @@ async function warmUp(r) {
 // five or six can learn slow breathing (Zuanazzi Cruz et al. 2020, Altern Ther Health Med 26:14).
 async function braveBreath(r) {
   const bubble = el('div', { class: 'bubble' });
-  const label = el('div', { class: 'mic-status', text: '🫧' });
+  const label = el('div', { class: 'breath-cue', text: '🫧' });
   host.replaceChildren(el('div', { class: 'scene stage breath' }, [
     el('div', { class: 'scene-head' }, [svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level })), el('div', {}, [el('div', { class: 'title', text: 'Brave breath' })])]),
     bubble, label
@@ -329,12 +391,10 @@ async function braveBreath(r) {
   await say('Let\'s take three brave breaths.');
   for (let i = 0; i < 3 && alive(r); i++) {
     bubble.style.transitionDuration = '3000ms'; bubble.classList.remove('out'); bubble.classList.add('in'); label.textContent = '🌸';
-    say('Smell the flower.');
-    await wait(3000);
+    await Promise.all([say('Smell the flower.'), wait(3000)]); // ~2 s of quiet breathing after each cue, never more
     if (!alive(r)) return;
     bubble.style.transitionDuration = '3200ms'; bubble.classList.remove('in'); bubble.classList.add('out'); label.textContent = '🕯️';
-    say('Blow out the candle.');
-    await wait(3200);
+    await Promise.all([say('Blow out the candle.'), wait(3200)]);
   }
   if (alive(r)) await say('Nice slow breaths. You can do this before every audition.');
 }
@@ -375,7 +435,7 @@ async function practice(p) {
   if (!alive(r)) return;
   v.turn('luna');
   if (real) await say('Listen to the orphans sing it.');
-  if (!real || (alive(r) && await playSong(r, v, chorus()) === 'error')) {
+  if (!real || (alive(r) && await playSong(r, v, chorus(), 'song', p) === 'error')) {
     if (alive(r)) await say('Listen.');
     if (!alive(r)) return;
     await model(p, 0, n, v);
@@ -403,7 +463,7 @@ async function practice(p) {
   // 10:67: at 5-7 the words come well before the pitch; Persellin 2006, Bull Counc Res Music Educ 169:39).
   if (real && alive(r)) {
     await say('Now sing along with the orphans!');
-    await playSong(r, v, chorus(), 'sing');
+    await playSong(r, v, chorus(), 'sing', p);
     v.progress(++step);
   } else if (isSong && !song && alive(r)) await say('Sing it your way. A grown-up can add the real song for you.');
   if (!alive(r)) return;
@@ -420,10 +480,10 @@ async function practice(p) {
   if (res && res.blob && res.heard && alive(r)) {
     v.turn('luna');
     await say('Listen to you!');
-    if (alive(r)) await ctx.audio.clip(res.blob);
-    if (real && alive(r)) { await say('Here are the orphans.'); if (await playSong(r, v, chorus()) === 'error' && alive(r)) await model(p, 0, n, v); }
+    if (alive(r)) { v.turn('me'); await ctx.audio.clip(res.blob); }
+    if (real && alive(r)) { v.turn('luna'); await say('Here are the orphans.'); if (await playSong(r, v, chorus(), 'song', p) === 'error' && alive(r)) await model(p, 0, n, v); }
     else {
-      if (alive(r)) await say(isSong ? 'Here are the words again.' : 'And here is Luna.');
+      if (alive(r)) { v.turn('luna'); await say(isSong ? 'Here are the words again.' : 'And here is Luna.'); }
       if (alive(r)) await model(p, 0, n, v);
     }
   }
@@ -445,6 +505,7 @@ function finish(r, gems, line) {
     el('div', { class: 'sub', text: line }),
     bigButton('Yay!', () => { o.remove(); leave(); }, 'gold')
   ]);
+  o.classList.add('below-bar');
   confetti(60); flyGems(gems); sfx().yay();
   mark('waiting');
   rest();
@@ -460,19 +521,23 @@ async function hear() {
   const bar = el('div', { class: 'song-bar' }, [fill]);
   let playing = false;
   const big = el('button', { class: 'song-play', type: 'button', 'aria-label': 'Play the song', text: '▶' });
-  const part = bigButton('🎵 Just my part', () => go(chorus()), 'soft');
+  // "just my part" only when the recording holds the chorus (else it would play nothing, or half of it)
+  const part = chorusOK ? bigButton('🎵', () => go(chorus()), 'soft') : null;
+  if (part) part.setAttribute('aria-label', 'Just my part');
   host.replaceChildren(el('div', { class: 'scene stage' }, [
     el('div', { class: 'scene-head' }, [svgFrom(lunaSVG({ state: 'happy', glow: ctx.economy.companion().level })), el('div', {}, [el('div', { class: 'title', text: 'Hear the orphans' }), el('div', { class: 'line', text: 'Annie and the orphans sing It\'s the Hard-Knock Life.' })])]),
-    el('div', { class: 'song-box' }, [big, bar]), el('div', { class: 'row' }, [part, bigButton('All done', leave, 'gold')])
+    el('div', { class: 'song-box' }, [big, bar]), el('div', { class: 'row hear-row' }, [part, bigButton('✅', leave, 'gold')])
   ]));
-  let token = 0, dur = 1;
+  let token = 0, dur = 1, since = 0, whole = false;
+  // 45 s of the whole song counts as heard, however she leaves (Back, Home, the ✅)
+  r.onStop = () => { if (playing && whole && Date.now() - since >= 45000) markHeard(r); };
   const go = async (range, toggle = false) => {
     if (toggle && playing) { song.stop(); return; }
     stopIdle();
     const my = ++token;
     playing = true; big.textContent = '⏹';
     keepAwake();
-    const t0 = Date.now();
+    since = Date.now(); whole = !range.to;
     const how = await playSong(r, null, range);
     if (my !== token) return; // a newer play took over
     playing = false; big.textContent = '▶';
@@ -480,7 +545,7 @@ async function hear() {
     mark('waiting');
     rest();
     if (how === 'error') { say('The song will not play. Ask a grown-up to check it in Parent Corner.'); return; }
-    if (!range.to && (how === 'ended' || Date.now() - t0 > 45000)) markHeard(r);
+    if (whole && (how === 'ended' || Date.now() - since >= 45000)) markHeard(r);
     if (how === 'ended' && !range.to) await say('Great listening! Now practice your song.');
     else if (how === 'ended') await say('That is your part!');
     if (alive(r) && !playing) idleNudge('Tap the big button to hear it again, or tap the yellow button when you are done.');
@@ -489,10 +554,11 @@ async function hear() {
   dur = await song.duration() || 1;
   const tick = setInterval(() => { if (!alive(r)) return clearInterval(tick); fill.style.width = Math.min(100, song.currentTime() / dur * 100) + '%'; }, 250);
   await say('Listen to the orphans sing the whole song! Sing along when you know the words.');
+  if (part && alive(r)) await say('Tap the music note to hear just your part.');
   if (alive(r) && !playing) go({});
 }
 function markHeard(r) {
-  if (r.counted || !alive(r)) return;
+  if (r.counted) return;
   r.counted = true; stage().watched++; logPractice(stage(), ctx.economy.today(), 'hear'); ctx.economy.persist();
 }
 
@@ -500,14 +566,14 @@ function markHeard(r) {
 async function audition() {
   const r = begin();
   const s = stage(), firstTimes = s.auditions < 2;
+  await readRoom(r); // first: the browser may have to ask for the microphone
+  if (!alive(r)) return;
   const curtain = el('div', { class: 'stage-curtain' }, [el('div', { class: 'cl' }), el('div', { class: 'cr' }), el('div', { class: 'spot', text: '⭐' })]);
   host.replaceChildren(el('div', { class: 'scene stage' }, [el('div', { class: 'scene-head' }, [el('div', { class: 'title', text: 'Audition time!' })]), curtain]));
   mark('luna');
   await wait(80);
   if (!alive(r)) return;
   curtain.classList.add('open');
-  await readRoom(r);
-  if (!alive(r)) return;
   await say('Audition time! This is just like the real one. Walk to the middle, stand tall, and smile!');
   if (!alive(r)) return;
   await warmUp(r);
@@ -549,12 +615,14 @@ async function audition() {
   ctx.refreshBar && ctx.refreshBar();
   sfx().applause(); confetti(90); flyGems(3);
   let playing = false;
-  const hearBtn = bigButton('▶ Hear my audition', async () => {
+  const playTakes = async () => {
     if (playing) return;
     playing = true; stopIdle();
     for (const b of takes) { if (!alive(r)) break; await ctx.audio.clip(b); await wait(350); }
     playing = false;
-  }, 'soft');
+  };
+  const hearBtn = bigButton('▶ 👧', playTakes, 'soft');
+  hearBtn.setAttribute('aria-label', 'Hear my audition');
   const o = sheet([
     svgFrom(lunaSVG({ state: 'yay', glow: e.companion().level })),
     el('h2', { text: 'Bravo!' }),
@@ -562,9 +630,12 @@ async function audition() {
     takes.length ? hearBtn : null,
     bigButton('Yay!', () => { o.remove(); leave(); }, 'gold')
   ]);
+  o.classList.add('below-bar');
   mark('waiting');
   rest();
   await say('Take a bow! You did the whole audition!');
+  // her whole audition, played straight back (the replay button stays for later)
+  if (takes.length && alive(r)) { await say('Listen to you!'); if (alive(r)) await playTakes(); }
   if (alive(r)) idleNudge('Tap the yellow button!');
 }
 
@@ -641,7 +712,7 @@ async function dayOf() {
   v.turn('luna');
   if (song && chorusOK && !ctx.audio.muted) {
     await say('Sing along with the orphans one time.');
-    await playSong(r, v, chorus(), 'sing');
+    await playSong(r, v, chorus(), 'sing', songPiece);
   } else {
     await say('Sing your song one time, in your big stage voice.');
     if (!alive(r)) return;
@@ -661,6 +732,8 @@ async function dayOf() {
 // ---------- menu ----------
 // Muted: Luna cannot talk, so the menu is replaced by one big "sound on" button.
 function showMuted() {
+  stopIdle();
+  mutedShown = true;
   host.replaceChildren(el('div', { class: 'scene stage' }, [
     el('div', { class: 'scene-head' }, [svgFrom(lunaSVG({ state: 'think', glow: ctx.economy.companion().level })), el('div', {}, [el('div', { class: 'title', text: 'Star Stage' }), el('div', { class: 'line', text: 'Luna needs the sound on.' })])]),
     el('button', { class: 'unmute', type: 'button', 'aria-label': 'Turn the sound on', text: '🔇 ➜ 🔊', onclick: () => { ctx.speech.setMuted(false); ctx.refreshBar && ctx.refreshBar(); showMenu(); } })
@@ -673,10 +746,12 @@ function noSong() {
   say('Ask a grown-up to add the song.');
 }
 
-function showMenu() {
+// quiet: draw it without a word (the app just went into the background)
+function showMenu({ quiet = false } = {}) {
   if (!host || !S) return;
   stopIdle();
   if (ctx.audio.muted) return showMuted();
+  mutedShown = false;
   const my = ++menuToken;
   let launched = false; // two fingers on two buttons at once start one activity, not two
   const s = stage(), today = ctx.economy.today(), done = s.days[today] || {};
@@ -700,21 +775,24 @@ function showMenu() {
     el('div', { class: 'scene-head' }, [svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level })), el('div', {}, [el('div', { class: 'title', text: 'Star Stage' }), el('div', { class: 'line', text: sub })])]),
     strip.length ? el('div', { class: 'day-strip', 'aria-label': sub }, strip.map(d => el('div', { class: 'day ' + d.kind + (d.today ? ' is-today' : ''), text: DAY[d.kind] }))) : null,
     // today's plan as pictures with a tick on each one done
-    plan.length ? el('div', { class: 'plan-strip', 'aria-label': 'Today' }, plan.map(id => el('div', { class: 'plan-item' + (done[id] ? ' done' : '') + (id === next ? ' next' : '') }, [el('span', { text: ICON[id] }), done[id] ? el('b', { text: '✓' }) : null]))) : null,
+    plan.length > 1 ? el('div', { class: 'plan-strip', 'aria-label': 'Today' }, plan.map(id => el('div', { class: 'plan-item' + (done[id] ? ' done' : '') + (id === next ? ' next' : '') }, [el('span', { text: ICON[id] }), done[id] ? el('b', { text: '✓' }) : null]))) : null,
     el('div', { class: 'encounters' }, tiles.map(m => el('button', { class: 'encounter-btn' + (m.id === next ? ' next-up' : '') + (m.wide ? ' primary' : '') + (m.off ? ' off' : ''), type: 'button', onclick: () => { if (launched) return; stopIdle(); if (!m.off) launched = true; m.run(); } }, [
       el('div', { class: 'icon', text: ICON[m.id] }), el('div', { text: m.name }), done[m.id] ? el('div', { class: 'tick', text: '✓ today' }) : null
     ])))
   ]));
   mark('waiting');
+  const glow = host.querySelector('.next-up');
+  if (glow && glow.scrollIntoView) glow.scrollIntoView({ block: 'nearest' }); // the glowing tile is always on screen
   const hello = days > 0 ? 'Welcome to Star Stage! Let\'s get ready for your Annie audition.' : days === 0 ? 'Today is audition day! You can do it!' : 'Welcome to Star Stage!';
   const hint = HINT[next || (days < 0 ? 'free' : 'none')];
+  if (quiet) return;
   const first = !greeted; greeted = true; // the long hello once a visit; back from an activity, just what is next
   say(first ? hello + ' ' + hint : hint).then(() => { if (my === menuToken && !run && next) idleNudge(hint); });
 }
 
 export async function mount(h, c) {
   host = h; ctx = c;
-  refDb = null; roomDb = null; micOK = true; deaf = 0;
+  refDb = null; rooms = []; micOK = true; deaf = 0; mutedShown = false;
   probe = globalThis.__pq ? (globalThis.__pqStage = { state: 'menu', song: false, events: [] }) : null;
   [S, DUR] = await Promise.all([ctx.content.load('stage'), ctx.content.load('stage-audio').catch(() => ({}))]);
   refDb = null; greeted = false; chorusOK = false;
@@ -727,8 +805,14 @@ export async function mount(h, c) {
     else chorusOK = d >= chorus().to;
   }
   document.addEventListener('visibilitychange', onVisibility);
-  document.addEventListener('pointerdown', stopIdle);
-  muteWatch = setInterval(() => { if (run && ctx.audio.muted) leave(); }, 300);
+  document.addEventListener('pointerdown', onTap);
+  // the sound turned off (the top bar's button): stop what runs (alive() already stops it at its next step) and
+  // show the sound-on screen; turned back on from the top bar: the menu again
+  muteWatch = setInterval(() => {
+    if (!host) return;
+    if (ctx.audio.muted) { if (run) leave(); else if (!mutedShown) showMuted(); }
+    else if (mutedShown) showMenu();
+  }, 300);
   showMenu();
 }
 // Parent Corner's PIN pad opened over an activity: stop it, so nothing keeps talking or recording underneath.
@@ -737,7 +821,7 @@ export function unmount() {
   stopRun();
   clearInterval(muteWatch); muteWatch = null;
   document.removeEventListener('visibilitychange', onVisibility);
-  document.removeEventListener('pointerdown', stopIdle);
+  document.removeEventListener('pointerdown', onTap);
   if (song) { song.release(); song = null; }
   host = null;
 }

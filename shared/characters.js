@@ -27,7 +27,7 @@ export function lunaSVG({ state = 'idle', glow = 0 } = {}) {
     <radialGradient id="hornglow-${u}" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFF3C4" stop-opacity="0.9"/><stop offset="1" stop-color="#FFF3C4" stop-opacity="0"/></radialGradient>
   </defs>
   <g class="body">
-    ${g >= 1 ? '<circle cx="66" cy="22" r="18" fill="url(#hornglow-${u})"/>' : ''}
+    ${g >= 1 ? `<circle cx="66" cy="22" r="18" fill="url(#hornglow-${u})"/>` : ''}
     ${g >= 2 ? '<path d="M26 70 C10 60 12 42 30 44 C22 56 26 64 34 68 Z" fill="#E4D6FF" stroke="#B9A7E6" stroke-width="2"/><path d="M94 70 C110 60 108 42 90 44 C98 56 94 64 86 68 Z" fill="#E4D6FF" stroke="#B9A7E6" stroke-width="2"/>' : ''}
     <ellipse cx="60" cy="112" rx="34" ry="5" fill="#33254F" opacity="0.08"/>
     <path d="M30 100 L30 84 Q30 62 52 60 L86 60 Q100 62 100 78 L100 100 Q100 106 94 106 L92 106 Q88 106 88 100 L88 90 L72 90 L72 100 Q72 106 66 106 L64 106 Q60 106 60 100 L60 92 L46 92 L46 100 Q46 106 40 106 L36 106 Q30 106 30 100 Z" fill="${c.body}" stroke="#D8CCEB" stroke-width="2.5"/>

@@ -27,9 +27,12 @@ export function createSongPlayer(blob) {
       if (ok === false) return Promise.resolve('error');
       return new Promise(resolve => {
         done = resolve;
+        const mine = resolve;
         try { a.currentTime = from; } catch {}
         a.volume = 0;
-        a.play().catch(() => settle('error'));
+        // A newer play() (a second tap) pauses this one before it starts, which rejects this play() with an
+        // AbortError: that belongs to the old call and must not end the new one.
+        a.play().catch(e => { if (done !== mine || (e && e.name === 'AbortError')) return; a.pause(); settle('error'); });
         timer = setInterval(() => {
           if (shouldStop()) { a.pause(); return settle('stopped'); }
           const t = a.currentTime, end = to === null ? a.duration : Math.min(to, a.duration || to);
