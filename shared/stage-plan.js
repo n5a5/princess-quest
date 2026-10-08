@@ -134,7 +134,15 @@ export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12
   let voiced = 0, runPeak = -120, loudN = 0, total = 0; // this stretch: raw readings above the start level, its peak; all of them
   let since = []; // every smoothed level from her first word on
   let loudRaw = [], inOnset = false; // raw readings above the start level since the room was last quiet (the rise before the smoothed level crosses included); the stretch that started her
-  const impact = a => a.length > 0 && a.every((x, k) => k === 0 || x < a[k - 1]); // loudest first, then only falling
+  // an impact: loudest within its first two readings (the analyser's window can catch the start of it half), then
+  // only falling, and steeply (room echo, about 7 dB per reading; a voice sustains, then fades more slowly)
+  const impact = a => {
+    let i = 0;
+    a.forEach((x, k) => { if (x > a[i]) i = k; });
+    if (i > 1 || a.length - i < 4) return false;
+    for (let k = i + 1; k < a.length; k++) if (a[k] >= a[k - 1]) return false;
+    return (a[i] - a[i + 3]) / 3 >= 5;
+  };
   const forget = () => { heard = false; peakDb = -120; loudN = 0; total = 0; since = []; };
   const varies = () => { if (since.length < 8) return true; const s = [...since].sort((a, b) => a - b); return s[Math.floor(s.length * 0.9)] - s[Math.floor(s.length * 0.1)] >= 4; };
   const round = v => Math.round(v * 10) / 10;

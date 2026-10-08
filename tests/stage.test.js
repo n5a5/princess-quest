@@ -308,6 +308,12 @@ test('voice gate: a knock with a room tail is not her turn, and her voice after 
   // a hard knock with a long room tail (six readings over the start level): loudest first, then only decaying
   const hard = flat(-60, 8000); [-8.7, -16.6, -23.9, -31.3, -39.1, -46.0, -53.1, -57.3, -59.6].forEach((db, k) => { hard[20 + k] = db; });
   assert.deepEqual(run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), hard).heard, false);
+  // the same knock with the analyser's window catching only the start of it in the first reading
+  const half = flat(-60, 8000); [-14, -8.7, -16.6, -23.9, -31.3, -39.1, -46.0, -53.1].forEach((db, k) => { half[20 + k] = db; });
+  assert.deepEqual(run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), half).heard, false);
+  // a short word with a hard start ("Big!") is still her: it sustains before it fades
+  const big = [...flat(-60, 600), -20, -15, -16, -18, -25, -35, -45, ...flat(-60, 2000)];
+  assert.equal(run(createVoiceGate({ floorDb: -60, endSilenceMs: 900 }), big).heard, true);
   // a short real word ("Hi!", about 350 ms) still counts
   const hi = [...flat(-60, 600), -40, -30, -26, -25, -27, -32, -38, ...flat(-60, 2000)];
   assert.equal(run(createVoiceGate({ floorDb: -60, endSilenceMs: 900 }), hi).heard, true);
