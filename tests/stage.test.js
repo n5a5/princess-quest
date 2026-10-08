@@ -318,3 +318,14 @@ test('voice gate: a knock with a room tail is not her turn, and her voice after 
   const hi = [...flat(-60, 600), -40, -30, -26, -25, -27, -32, -38, ...flat(-60, 2000)];
   assert.equal(run(createVoiceGate({ floorDb: -60, endSilenceMs: 900 }), hi).heard, true);
 });
+
+test('voice gate: soft short phrases are heard (round 3: the 300 ms minimum dropped a quiet "Hey there." and "It ain\'t fair!")', () => {
+  // Luna's own clips of these lines, as analyser readings, scaled to a quiet child's voice in a quiet room
+  const hey = [-34.3, -17.1, -14.2, -13.4, -13.4, -13.7, -12.7, -14.5, -16.9, -19.6, -20.5, -19.9];
+  const fair = [-19.2, -13.4, -12.5, -12.9, -10.2, -12.4, -24.8, -22.7, -26.8, -19.2, -15.4, -17.3, -19.2, -22.0, -23.8, -22.2];
+  for (const [clip, peak] of [[hey, -44], [fair, -41]]) {
+    const top = Math.max(...clip), lv = clip.map(db => Math.max(-60, db - top + peak));
+    const r = run(createVoiceGate({ floorDb: -60, endSilenceMs: 1200 }), [...flat(-60, 600), ...lv, ...flat(-60, 2000)]);
+    assert.equal(r.heard, true, `peak ${peak} dB`);
+  }
+});

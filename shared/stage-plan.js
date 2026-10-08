@@ -118,7 +118,7 @@ export function bigVoiceThreshold(refDb) { return refDb === null || refDb === un
 // so a tap or a thud near the microphone (one loud reading that the smoothing drags out) is not her voice. A knock
 // is forgotten when it stops, so the take keeps listening for her: a first sound that is loudest at its very first
 // reading and then only decays (an impact and its room echo; a voice rises before it falls), or a take with fewer
-// than minTotal raw readings above the start level in all (300 ms). It ends
+// than minTotal raw readings above the start level in all (200 ms; a soft "Thank you!" is about that). It ends
 // after endSilenceMs below the start level, at maxMs, or after noVoiceMs with no voice at all. The first graceMs
 // are ignored (the start chime). A voice rises and falls with every syllable and the gaps between words; a steady
 // sound (a fan, a hum, a TV's music bed) above the start level does not. So every smoothed reading from her first
@@ -128,7 +128,7 @@ export function bigVoiceThreshold(refDb) { return refDb === null || refDb === un
 // { reason: 'end' | 'max' | 'novoice' | 'steady', heard, peakDb, maxDb, ms }; maxDb is the loudest smoothed reading
 // (null if none), so a caller can tell a quiet voice (some sound) from a dead microphone (nothing at all).
 // ignore(untilMs): skip readings until then (the "your turn" reminder chime played mid-take).
-export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12000, noVoiceMs = 7000, graceMs = 300, minVoiced = 3, minTotal = 6 } = {}) {
+export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12000, noVoiceMs = 7000, graceMs = 300, minVoiced = 3, minTotal = 4 } = {}) {
   const startDb = Math.min(Math.max(floorDb + 12, -50), -12);
   let smooth = null, heard = false, peakDb = -120, maxDb = -120, lastVoice = 0, done = null, ignoreUntil = 0;
   let voiced = 0, runPeak = -120, loudN = 0, total = 0; // this stretch: raw readings above the start level, its peak; all of them
@@ -139,9 +139,10 @@ export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12
   const impact = a => {
     let i = 0;
     a.forEach((x, k) => { if (x > a[i]) i = k; });
-    if (i > 1 || a.length - i < 4) return false;
+    const m = Math.min(3, a.length - 1 - i); // the fall over (up to) three readings after the peak
+    if (i > 1 || m < 2) return false;
     for (let k = i + 1; k < a.length; k++) if (a[k] >= a[k - 1]) return false;
-    return (a[i] - a[i + 3]) / 3 >= 5;
+    return (a[i] - a[i + m]) / m >= 5;
   };
   const forget = () => { heard = false; peakDb = -120; loudN = 0; total = 0; since = []; };
   const varies = () => { if (since.length < 8) return true; const s = [...since].sort((a, b) => a - b); return s[Math.floor(s.length * 0.9)] - s[Math.floor(s.length * 0.1)] >= 4; };

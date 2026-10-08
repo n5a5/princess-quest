@@ -47,7 +47,7 @@ let host = null, ctx = null, S = null, DUR = {};
 let run = null;     // the activity in progress, { live, noMic }; Back, Home or leaving the place turns it off
 // This visit (reset in mount): her warm-up shout (the bar for a big voice), the room's quiet level readings
 // (shared/stage-plan.js quietFloor), and whether the microphone may be used at all (no device, or permission refused).
-let refDb = null, rooms = [], micOK = true, micOpened = false, micDead = false; // micDead: set aside once this visit
+let refDb = null, rooms = [], micOK = true, micOpened = false, micDead = false, slowTold = false; // micDead: set aside once this visit
 let deaf = 0;       // turns in a row in this activity where the microphone delivered digital silence (deadMic)
 let wake = null;    // screen wake lock while an activity runs (it is hands-free for minutes at a time)
 let song = null;    // the cast recording from Parent Corner (shared/songclip.js), or null when absent or unplayable
@@ -164,8 +164,9 @@ function micGone(e) {
 // read: the screen shows a microphone and a grown-up, and Luna asks for one at once and again every few seconds,
 // so it is never silent; after 10 s with no answer it goes on without the microphone (openMic's timeout, micGone).
 // Already allowed (or opened before in this visit) but slow to start: nothing for 2.5 s, then "ask a grown-up to
-// turn on the microphone" (a device stuck opening it), never "tap Allow".
-async function askMic(r, { scene = true } = {}) {
+// turn on the microphone" (a device stuck opening it), never "tap Allow"; once a visit, and after that only
+// onSlow() (the turn panel's microphone bounces) while it opens.
+async function askMic(r, { scene = true, onSlow = () => {} } = {}) {
   let pending = true, saying = null;
   const p = openMic();
   p.then(() => { micOpened = true; }, () => {});
@@ -176,6 +177,8 @@ async function askMic(r, { scene = true } = {}) {
     const asking = state === 'prompt' || (state === null && !micOpened); // not known: the first time is likely a question
     if (state !== 'prompt') await Promise.race([p.catch(() => {}), wait(asking ? 1200 : 2500)]);
     if (!pending || !alive(r)) return;
+    if (!asking && slowTold) { while (pending && alive(r)) { onSlow(); await wait(1500); } return; }
+    if (!asking) slowTold = true;
     const line = asking ? 'Ask a grown-up to tap Allow for the microphone.' : 'Ask a grown-up to turn on the microphone.';
     if (scene) host.replaceChildren(el('div', { class: 'scene stage breath' }, [
       el('div', { class: 'scene-head' }, [svgFrom(lunaSVG({ state: 'think', glow: ctx.economy.companion().level })), el('div', {}, [el('div', { class: 'title', text: 'Microphone' })])]),
@@ -302,7 +305,7 @@ async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000, fol
   ctx.audio.stop();
   let m = null;
   if (micOK && !r.noMic && canListen()) {
-    try { m = await askMic(r, { scene: false }); } // the practice screen stays
+    try { m = await askMic(r, { scene: false, onSlow: () => v.nudge() }); } // the practice screen stays
     catch (e) { if (alive(r)) await micGone(e); }
   }
   try {
@@ -398,11 +401,11 @@ async function warmUp(r) {
   if (!alive(r)) return;
   const res = await turnAgain(r, v, { lead: () => model(S.warmup, 0, 1, v), maxMs: 5000, endSilenceMs: 900 });
   if (!alive(r) || !res || !res.heard || res.peakDb === null) return;
-  refDb = res.peakDb;
-  // praise the loudness only when it was loud (the same bar bigVoiceThreshold uses); a quiet warm-up is still
-  // praised for trying, and asked for more
-  if (res.peakDb >= -30) { v.turn('big'); sfx().sparkle(); await say('What a big voice! That is your stage voice.'); }
-  else { v.turn('ok'); await say('Good warm-up! Let\'s make it even bigger on stage.'); }
+  // Praise the loudness only when it was loud (-30 dB: a warm-up quieter than that does not lift the star's bar,
+  // see bigVoiceThreshold). A quiet warm-up is praised for trying and asked for more, and on stage the star then
+  // needs at least her warm-up's loudness (bar = her peak), never less than she was asked to beat.
+  if (res.peakDb >= -30) { refDb = res.peakDb; v.turn('big'); sfx().sparkle(); await say('What a big voice! That is your stage voice.'); }
+  else { refDb = res.peakDb + 6; v.turn('ok'); await say('Good warm-up! Let\'s make it even bigger on stage.'); }
 }
 
 // Three slow breaths, smell the flower and blow out the candle, with a bubble that grows and shrinks: a short calm
@@ -847,7 +850,7 @@ export async function mount(h, c) {
   probe = globalThis.__pq ? (globalThis.__pqStage = { state: 'menu', song: false, events: [] }) : null;
   [S, DUR] = await Promise.all([ctx.content.load('stage'), ctx.content.load('stage-audio').catch(() => ({}))]);
   if (gone()) return;
-  refDb = null; greeted = false; chorusOK = false; micOpened = false; micDead = false;
+  refDb = null; greeted = false; chorusOK = false; micOpened = false; micDead = false; slowTold = false;
   const rec = ctx.store && ctx.store.get('stage', 'song-audio');
   let player = rec ? createSongPlayer(rec) : null;
   if (player) {
