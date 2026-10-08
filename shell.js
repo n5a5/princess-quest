@@ -82,6 +82,10 @@ function renderHome() {
   const questDone = adaptive.questDone();
   const questStars = quest.stops.map(st => st.done ? '⭐' : '☆').join('');
   const streak = economy.streak();
+  // The audition week: until Star Stage has been practiced today, Luna waits there (one place to go, the one she
+  // hears about), and the reading quest comes after.
+  const today = economy.today();
+  const spotFirst = available().find(r => r.ready && spotlightHint(r) && r.place === 'stage' && !Object.keys((economy.save.stage.days || {})[today] || {}).length) || null;
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: comp.level }));
   luna.addEventListener('click', () => { luna.className.baseVal = 'companion happy'; setTimeout(() => { luna.className.baseVal = 'companion idle'; }, 1400); audio.say(withName(pick(praise.greeting), name)); });
 
@@ -91,7 +95,7 @@ function renderHome() {
         luna,
         el('div', { class: 'greeting' }, [
           el('div', { class: 'hello', text: 'Hello, ' + name + '!' }),
-          el('div', { class: 'sub', text: quest.claimed ? 'Quest done! Play anywhere you like.' : questDone ? 'The chest is ready to open!' : 'Luna is waiting at ' + (req ? req.name : 'the meadow') + '.' }),
+          el('div', { class: 'sub', text: spotFirst ? 'Luna is waiting at ' + spotFirst.name + '.' : quest.claimed ? 'Quest done! Play anywhere you like.' : questDone ? 'The chest is ready to open!' : 'Luna is waiting at ' + (req ? req.name : 'the meadow') + '.' }),
           el('div', { class: 'meter', 'aria-label': 'Luna glow' }, [el('span', { class: 'star', text: '⭐' }), el('div', { class: 'track' }, [el('div', { class: 'fill', style: 'width:' + Math.round(comp.fraction * 100) + '%' })])]),
           el('div', { class: 'streak', 'aria-label': 'Days played this week' }, [el('span', { text: '🔥' }), ...streak.last7.map(on => el('span', { class: 'dot' + (on ? ' on' : '') }))])
         ])
@@ -107,7 +111,7 @@ function renderHome() {
         el('div', { class: 'path' }),
         ...available().map(r => ({ r, spot: spotlightHint(r) })).sort((a, b) => !!b.spot - !!a.spot).map(({ r, spot }) => {
           const rescued = economy.rescuedAt(r.place, SQUISHIES[r.place] || []);
-          const isToday = !quest.claimed && !!next && r.id === next.cabinet;
+          const isToday = spotFirst ? r === spotFirst : !quest.claimed && !!next && r.id === next.cabinet;
           const onTrail = !quest.claimed && quest.stops.some(st => st.cabinet === r.id && !st.done);
           const btn = el('button', { class: 'place ' + r.place + (isToday ? ' today' : onTrail ? ' next' : '') + (spot ? ' spotlight' : '') + (r.ready ? '' : ' soon'), type: 'button', 'aria-label': r.name, onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
             el('div', { class: 'art', html: placeArtSVG(r.place) }),
@@ -255,8 +259,10 @@ function onKey(e) {
   }
   if (e.key === 'Enter' && (!t || t === document.body)) {
     // the main button first (gold, e.g. "Yay!" or Star Stage's ✅), and Star Stage's thumbs-up when it waits
-    const done = [...document.querySelectorAll('.overlay .big-btn.gold, .overlay .big-btn, .turn-done:not([hidden]), .big-btn.gold, .big-btn')].find(visible);
-    if (done) { e.preventDefault(); done.click(); }
+    for (const sel of ['.overlay .big-btn.gold', '.overlay .big-btn', '.turn-done:not([hidden])', '.big-btn.gold', '.big-btn']) {
+      const done = [...document.querySelectorAll(sel)].find(visible);
+      if (done) { e.preventDefault(); done.click(); break; }
+    }
     return;
   }
   if (e.key === 'Escape') {

@@ -280,3 +280,15 @@ test('room level from her takes: one loud reading is outvoted by the next take (
   // a steady TV is not quiet: its level is the room
   assert.equal(quietLevel(Array(100).fill(-30)), -30);
 });
+
+test('voice gate: once she has started, a soft syllable keeps the take open (review: a soft voice was cut off mid-line)', () => {
+  // a clear start, then soft syllables whose smoothed level crosses the start level (-48) with only one or two raw
+  // readings above it each: they are still her voice
+  const start = [-60, -40, -38, -38, -40, -60];
+  const soft = [-60, -47, -44, -60, -60];
+  const levels = [...flat(-60, 500), ...start, ...Array(6).fill(soft).flat(), ...flat(-60, 3000)];
+  const r = run(createVoiceGate({ floorDb: -60, endSilenceMs: 1200, maxMs: 12000 }), levels);
+  const lastSoft = (10 + start.length + 6 * soft.length) * 50;
+  assert.equal(r.reason, 'end');
+  assert.ok(r.ms >= lastSoft + 1000, `the take ran past her last soft syllable (${r.ms} ms vs ${lastSoft} ms)`);
+});

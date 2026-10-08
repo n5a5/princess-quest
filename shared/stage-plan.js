@@ -148,7 +148,8 @@ export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12
       if (s >= startDb) {
         if (db >= startDb) voiced++;
         runPeak = Math.max(runPeak, s);
-        if (voiced >= minVoiced) { heard = true; lastVoice = t; peakDb = Math.max(peakDb, runPeak); loudN++; }
+        if (voiced >= minVoiced) { heard = true; peakDb = Math.max(peakDb, runPeak); } // a bump never sets the peak
+        if (heard) { lastVoice = t; loudN++; } // once she has started, every soft syllable keeps the take open
       } else { voiced = 0; runPeak = -120; }
       if (heard) since.push(s);
       if (t >= maxMs) return finish('max');
