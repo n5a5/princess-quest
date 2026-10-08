@@ -311,6 +311,9 @@ test('voice gate: a knock with a room tail is not her turn, and her voice after 
   // the same knock with the analyser's window catching only the start of it in the first reading
   const half = flat(-60, 8000); [-14, -8.7, -16.6, -23.9, -31.3, -39.1, -46.0, -53.1].forEach((db, k) => { half[20 + k] = db; });
   assert.deepEqual(run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), half).heard, false);
+  // a knock split evenly across two analyser readings (round 3 red team: praised as "Big stage voice!")
+  const split = flat(-60, 8000); [-14.19, -14.83, -20.64, -27.12, -32.86, -38.9, -44.7, -50.6].forEach((db, k) => { split[20 + k] = db; });
+  assert.deepEqual(run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), split).heard, false);
   // a short word with a hard start ("Big!") is still her: it sustains before it fades
   const big = [...flat(-60, 600), -20, -15, -16, -18, -25, -35, -45, ...flat(-60, 2000)];
   assert.equal(run(createVoiceGate({ floorDb: -60, endSilenceMs: 900 }), big).heard, true);

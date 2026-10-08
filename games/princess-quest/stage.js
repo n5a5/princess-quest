@@ -53,7 +53,11 @@ let wake = null;    // screen wake lock while an activity runs (it is hands-free
 let song = null;    // the cast recording from Parent Corner (shared/songclip.js), or null when absent or unplayable
 let chorusOK = false; // the recording is long enough to hold the chorus (else My Song uses Luna's model)
 let idle = null, idleText = null, idleN = 0; // the re-prompt while a button waits (see idleNudge)
-let menuToken = 0, greeted = false, mutedShown = false, mountToken = 0; // the long hello once a visit; the sound-on screen is up
+let menuToken = 0, greeted = false, mutedShown = false, mountToken = 0;
+// Double taps: a second tap within 0.45 s of a tap on a sheet or pad ("Yay!", ✅, the PIN pad's Cancel) or of the
+// tile that opened a screen is not a choice: it would land on whatever just appeared under her finger.
+let overlayTapAt = 0, guardUntil = 0;
+const guarded = () => Date.now() < guardUntil; // the long hello once a visit; the sound-on screen is up
 let muteWatch = null; // muted in the middle of an activity: stop it (Luna cannot talk; nothing should record silently)
 const CHIME_MS = 350;  // the chime is over before recording starts, so it is never in her take or taken for her
 const NUDGE_MS = 3000; // her turn, no voice yet: a soft reminder (never more than 3 s of silence without a cue)
@@ -149,7 +153,7 @@ function armIdle() {
     say(text).then(() => { if (idleText === text && !idle) armIdle(); });
   }, Math.round(IDLE_MS * 1.5 ** idleN));
 }
-const onTap = () => { if (idleText) armIdle(); };
+const onTap = e => { if (e && e.target && e.target.closest && e.target.closest('.overlay')) overlayTapAt = Date.now(); if (idleText) armIdle(); };
 const padOpen = () => !!document.querySelector('.overlay.pin-pad');
 
 function micGone(e) {
@@ -554,11 +558,11 @@ async function hear() {
   let playing = false;
   const big = el('button', { class: 'song-play', type: 'button', 'aria-label': 'Play the song', text: '▶' });
   // "just my part" only when the recording holds the chorus (else it would play nothing, or half of it)
-  const part = chorusOK ? bigButton('🎵', () => go(chorus()), 'soft') : null;
+  const part = chorusOK ? bigButton('🎵', () => { if (!guarded()) go(chorus()); }, 'soft') : null;
   if (part) part.setAttribute('aria-label', 'Just my part');
   host.replaceChildren(el('div', { class: 'scene stage' }, [
     el('div', { class: 'scene-head' }, [svgFrom(lunaSVG({ state: 'happy', glow: ctx.economy.companion().level })), el('div', {}, [el('div', { class: 'title', text: 'Hear the orphans' }), el('div', { class: 'line', text: 'Annie and the orphans sing It\'s the Hard-Knock Life.' })])]),
-    el('div', { class: 'song-box' }, [big, bar]), el('div', { class: 'row hear-row' }, [part, bigButton('✅', leave, 'gold')])
+    el('div', { class: 'song-box' }, [big, bar]), el('div', { class: 'row hear-row' }, [part, bigButton('✅', () => { if (!guarded()) leave(); }, 'gold')])
   ]));
   let token = 0, dur = 1, since = 0, whole = false, heardMs = 0;
   // 45 s of the whole song in all counts as heard, however she leaves (Back, Home, the ✅) and whatever she taps
@@ -589,7 +593,7 @@ async function hear() {
     else if (how === 'ended') await say('That is your part!');
     if (alive(r) && !playing) idleNudge('Tap the big button to hear it again, or tap the yellow button when you are done.');
   };
-  big.addEventListener('click', () => go({}, true));
+  big.addEventListener('click', () => { if (!guarded()) go({}, true); });
   dur = await song.duration() || 1;
   const tick = setInterval(() => { if (!alive(r)) return clearInterval(tick); fill.style.width = Math.min(100, song.currentTime() / dur * 100) + '%'; }, 250);
   await say('Listen to the orphans sing the whole song! Sing along when you know the words.');
@@ -824,10 +828,10 @@ function showMenu({ quiet = false, afterTap = false } = {}) {
     // today's plan as pictures with a tick on each one done
     plan.length > 1 ? el('div', { class: 'plan-strip', 'aria-label': 'Today' }, plan.map(id => el('div', { class: 'plan-item' + (done[id] ? ' done' : '') + (id === next ? ' next' : '') }, [el('span', { text: ICON[id] }), done[id] ? el('b', { text: '✓' }) : null]))) : null,
     el('div', { class: 'encounters' }, tiles.map(m => el('button', { class: 'encounter-btn' + (m.id === next ? ' next-up' : '') + (m.wide ? ' primary' : '') + (m.off ? ' off' : ''), type: 'button', onclick: () => {
-      if (launched || Date.now() - shownAt < 450) return;
+      if (launched || Date.now() - Math.max(shownAt, overlayTapAt) < 450) return;
       // the grey tile starts nothing: Luna explains, and the reminder about the glowing tile carries on
       if (m.off) { stopIdle(); m.run().then(() => { if (my === menuToken && !run && next) idleNudge(hint); }); return; }
-      stopIdle(); launched = true; m.run();
+      stopIdle(); launched = true; guardUntil = Date.now() + 450; m.run();
     } }, [
       el('div', { class: 'icon', text: ICON[m.id] }), el('div', { text: m.name }), done[m.id] ? el('div', { class: 'tick', text: '✓ today' }) : null
     ])))
@@ -837,7 +841,8 @@ function showMenu({ quiet = false, afterTap = false } = {}) {
   if (glow && glow.scrollIntoView) glow.scrollIntoView({ block: 'nearest' }); // the glowing tile is always on screen
   const hello = days > 0 ? 'Welcome to Star Stage! Let\'s get ready for your Annie audition.' : days === 0 ? 'Today is audition day! You can do it!' : 'Welcome to Star Stage!';
   const hint = HINT[next || (days < 0 ? 'free' : 'none')];
-  if (quiet || padOpen()) return;
+  if (quiet) return;
+  if (padOpen()) { if (next) idleNudge(hint); return; } // held while the grown-ups' pad is up, said once it is gone
   const first = !greeted; greeted = true; // the long hello once a visit; back from an activity, just what is next
   say(first ? hello + ' ' + hint : hint).then(() => { if (my === menuToken && !run && next) idleNudge(hint); });
 }

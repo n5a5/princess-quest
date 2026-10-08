@@ -308,7 +308,8 @@ async function boot() {
     await audio.say(withName(pick(praise.greeting), economy.save.child.name));
     // the audition week: Luna says where to go (the card's countdown is text she cannot read)
     const spot = available().filter(r => r.ready && r.spotlight).map(r => countdownSay(daysUntil(economy.today(), r.spotlight.until))).find(Boolean);
-    if (spot && !current && !opening && !document.querySelector('.overlay')) audio.say(spot);
+    const stageToDo = !Object.keys((economy.save.stage.days || {})[economy.today()] || {}).length; // as spotFirst in renderHome
+    if (spot && stageToDo && !current && !opening && !document.querySelector('.overlay')) audio.say(spot);
   });
   $('back-btn').addEventListener('click', () => nav.toMap());
   $('mute-btn').addEventListener('click', () => { speech.toggleMuted(); if (speech.muted) audio.stop(); updateBar(); });
