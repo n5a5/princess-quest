@@ -554,3 +554,12 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
   .scene.stage .encounter-btn .icon { font-size: 28px; }
 }
 .overlay.below-bar .sheet { max-height: calc(100vh - var(--bar) - 24px); overflow-y: auto; }
+/* the grown-ups' PIN pad on a landscape phone: the keypad beside the title and Cancel, so Cancel is never below the fold */
+@media (orientation: landscape) and (max-height: 600px) {
+  .overlay.pin-pad .sheet { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "title keys" "dots keys" "cancel keys"; align-items: center; gap: 8px 20px; width: min(100%, 620px); }
+  .overlay.pin-pad .sheet h2 { grid-area: title; }
+  .overlay.pin-pad .pin-dots { grid-area: dots; }
+  .overlay.pin-pad .pin-grid { grid-area: keys; gap: 6px; }
+  .overlay.pin-pad .pin-key { min-height: 52px; }
+  .overlay.pin-pad .big-btn { grid-area: cancel; }
+}

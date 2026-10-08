@@ -386,9 +386,10 @@ async function warmUp(r) {
   const res = await turnAgain(r, v, { lead: () => model(S.warmup, 0, 1, v), maxMs: 5000, endSilenceMs: 900 });
   if (!alive(r) || !res || !res.heard || res.peakDb === null) return;
   refDb = res.peakDb;
-  v.turn('big');
-  sfx().sparkle();
-  await say('What a big voice! That is your stage voice.');
+  // praise the loudness only when it was loud (the same bar bigVoiceThreshold uses); a quiet warm-up is still
+  // praised for trying, and asked for more
+  if (res.peakDb >= -30) { v.turn('big'); sfx().sparkle(); await say('What a big voice! That is your stage voice.'); }
+  else { v.turn('ok'); await say('Good warm-up! Let\'s make it even bigger on stage.'); }
 }
 
 // Three slow breaths, smell the flower and blow out the candle, with a bubble that grows and shrinks: a short calm
@@ -565,7 +566,7 @@ async function hear() {
     mark('waiting');
     rest();
     if (how === 'error') { say('The song will not play. Ask a grown-up to check it in Parent Corner.'); return; }
-    if (how === 'ended' && !range.to) await say('Great listening! Now practice your song.');
+    if (how === 'ended' && !range.to) await say('Great listening!'); // the menu says what is next
     else if (how === 'ended') await say('That is your part!');
     if (alive(r) && !playing) idleNudge('Tap the big button to hear it again, or tap the yellow button when you are done.');
   };
@@ -678,6 +679,9 @@ async function anotherLine() {
   if (!alive(r)) return;
   await model(b, 0, n, v);
   v.progress(++step);
+  if (!alive(r)) return;
+  v.turn('luna');
+  await say('Now say it after me, one little piece at a time.');
   for (let i = 0; i < n; i++) {
     if (!alive(r)) return;
     v.light(i, i + 1);
