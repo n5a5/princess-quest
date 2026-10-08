@@ -116,8 +116,9 @@ export function bigVoiceThreshold(refDb) { return refDb === null || refDb === un
 // Voice gate, fed one level reading (dB) every ~50 ms. Speech starts when the smoothed level rises 12 dB above
 // the room (at least -50 dB, at most -12 dB) and at least minVoiced raw readings in that stretch are above it too,
 // so a tap or a thud near the microphone (one loud reading that the smoothing drags out) is not her voice. A knock
-// with a room tail (three or four loud readings) is forgotten when the sound stops: a take needs minTotal raw
-// readings above the start level in all (300 ms) before it can end, so it keeps listening for her. It ends
+// is forgotten when it stops, so the take keeps listening for her: a first sound that is loudest at its very first
+// reading and then only decays (an impact and its room echo; a voice rises before it falls), or a take with fewer
+// than minTotal raw readings above the start level in all (300 ms). It ends
 // after endSilenceMs below the start level, at maxMs, or after noVoiceMs with no voice at all. The first graceMs
 // are ignored (the start chime). A voice rises and falls with every syllable and the gaps between words; a steady
 // sound (a fan, a hum, a TV's music bed) above the start level does not. So every smoothed reading from her first
@@ -132,6 +133,9 @@ export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12
   let smooth = null, heard = false, peakDb = -120, maxDb = -120, lastVoice = 0, done = null, ignoreUntil = 0;
   let voiced = 0, runPeak = -120, loudN = 0, total = 0; // this stretch: raw readings above the start level, its peak; all of them
   let since = []; // every smoothed level from her first word on
+  let loudRaw = [], inOnset = false; // raw readings above the start level since the room was last quiet (the rise before the smoothed level crosses included); the stretch that started her
+  const impact = a => a.length > 0 && a.every((x, k) => k === 0 || x < a[k - 1]); // loudest first, then only falling
+  const forget = () => { heard = false; peakDb = -120; loudN = 0; total = 0; since = []; };
   const varies = () => { if (since.length < 8) return true; const s = [...since].sort((a, b) => a - b); return s[Math.floor(s.length * 0.9)] - s[Math.floor(s.length * 0.1)] >= 4; };
   const round = v => Math.round(v * 10) / 10;
   return {
@@ -147,19 +151,24 @@ export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12
       smooth = smooth === null ? lin : smooth * 0.6 + lin * 0.4;
       const s = 20 * Math.log10(smooth + 1e-12);
       maxDb = Math.max(maxDb, s);
+      if (db >= startDb) loudRaw.push(db);
       if (s >= startDb) {
         if (db >= startDb) { voiced++; total++; }
         runPeak = Math.max(runPeak, s);
-        if (voiced >= minVoiced) { heard = true; peakDb = Math.max(peakDb, runPeak); } // a bump never sets the peak
+        if (voiced >= minVoiced) { if (!heard) inOnset = true; heard = true; peakDb = Math.max(peakDb, runPeak); } // a bump never sets the peak
         if (heard) { lastVoice = t; loudN++; } // once she has started, every soft syllable keeps the take open
-      } else { voiced = 0; runPeak = -120; if (!heard) total = 0; } // only stretches from her first word on count
+      } else {
+        if (inOnset && impact(loudRaw)) forget(); // a knock and its echo started this: not her
+        inOnset = false; voiced = 0; runPeak = -120;
+        if (db < startDb) loudRaw = [];
+        if (!heard) total = 0; // only stretches from her first word on count
+      }
       if (heard) since.push(s);
       if (t >= maxMs) return finish('max');
       if (loudN >= 50 && !varies()) return finish('steady'); // 2.5 s of a steady sound: not her voice
       if (heard && t - lastVoice >= endSilenceMs) {
         if (total >= minTotal) return finish('end');
-        // too short to be her (a knock and its echo): forget it and keep listening
-        heard = false; peakDb = -120; loudN = 0; total = 0; since = [];
+        forget(); // too short to be her: keep listening
       }
       if (!heard && t >= noVoiceMs) return finish('novoice');
       return null;
