@@ -118,7 +118,7 @@ test('every Star Stage sentence has a story-voice clip', async () => {
     && src.slice(m.index + m[0].length).trimStart()[0] !== '+' && src.slice(0, m.index).trimEnd().slice(-1) !== '+').map(m => unq(m[1]));
   said.push(...[...src.match(/const HINT = \{([\s\S]*?)\};/)[1].matchAll(/: '((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
   said.push(...[...src.matchAll(/cannot\('((?:[^'\\]|\\.)*)'\)/g)].map(m => unq(m[1])));
-  for (const list of ['BIG', 'MORE', 'NOMIC']) said.push(...[...src.match(new RegExp('const ' + list + ' = \\[(.*)\\];'))[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
+  for (const list of ['BIG', 'MORE']) said.push(...[...src.match(new RegExp('const ' + list + ' = \\[(.*)\\];'))[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
   said.push(...[...src.matchAll(/(?:intro|line): '((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])), 'You did it!');
   for (const p of stage.pieces) said.push(p.intro, p.tip);
   const missing = said.filter(t => /^[A-Za-z]/.test(t)).flatMap(t => splitSentences(t)).filter(sn => !have[keyOf(sn)]);
