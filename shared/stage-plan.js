@@ -1,0 +1,104 @@
+// shared/stage-plan.js — pure helpers for Star Stage (games/princess-quest/stage.js): which model clips exist,
+// the backward-chaining order, the audition countdown, the practice log in the save, and the voice gate that
+// decides from microphone levels when she started and stopped talking and how loud she was.
+// No DOM, so all of it runs under node --test.
+
+export const clipId = (blockId, i, j) => `${blockId}-${i}-${j}`;
+
+// Every range of chunks that has a model clip: each chunk alone (a tapped picture) and each tail, chunk i to
+// the end (backward chaining). Mirrors ranges() in tools/build-stage-audio.py.
+export function clipRanges(n) {
+  const seen = new Set(), out = [];
+  for (let i = 0; i < n; i++) for (const r of [[i, i + 1], [i, n]]) { const k = r.join(); if (!seen.has(k)) { seen.add(k); out.push(r); } }
+  return out.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+}
+
+// Backward chaining: the last chunk first, then the last two, and so on to the whole line, so every new
+// piece leads into words she already knows and the end is the part she has said most.
+export function chainSteps(n) { return Array.from({ length: n }, (_, k) => [n - 1 - k, n]); }
+
+const dayNum = d => { const [y, m, dd] = String(d).split('-').map(Number); return Date.UTC(y, m - 1, dd) / 86400000; };
+export function daysUntil(today, date) { return Math.round(dayNum(date) - dayNum(today)); }
+
+// The map card's hint while the audition is coming; null once it has passed.
+export function countdownHint(days, label) {
+  if (!(days >= 0)) return null;
+  return days === 0 ? label + ' today!' : days === 1 ? label + ' tomorrow!' : label + ' in ' + days + ' days';
+}
+
+// ---------- practice log (save.stage) ----------
+// days: { 'YYYY-MM-DD': { line, song, watch, audition } } counts; solos: { line, song } finished practices;
+// watched: times the clip played 45 s or more; auditions: full run-throughs.
+export const stageDefaults = () => ({ days: {}, watched: 0, auditions: 0, solos: {} });
+const count = v => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
+const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+export function cleanStage(x) {
+  const out = stageDefaults();
+  if (!isObj(x)) return out;
+  if (isObj(x.days)) for (const [d, row] of Object.entries(x.days)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !isObj(row)) continue;
+    const r = {};
+    for (const [k, v] of Object.entries(row)) if (count(v)) r[k] = count(v);
+    out.days[d] = r;
+  }
+  out.watched = count(x.watched); out.auditions = count(x.auditions);
+  if (isObj(x.solos)) for (const [k, v] of Object.entries(x.solos)) if (count(v)) out.solos[k] = count(v);
+  return out;
+}
+
+export function logPractice(stage, day, kind) {
+  const row = stage.days[day] || (stage.days[day] = {});
+  row[kind] = (row[kind] || 0) + 1;
+  return row;
+}
+
+// Two devices: every count keeps the larger of the two, so merging twice changes nothing.
+export function mergeStage(a, b) {
+  const x = cleanStage(a), y = cleanStage(b);
+  for (const [d, row] of Object.entries(y.days)) {
+    const mine = x.days[d] || (x.days[d] = {});
+    for (const [k, v] of Object.entries(row)) mine[k] = Math.max(mine[k] || 0, v);
+  }
+  x.watched = Math.max(x.watched, y.watched); x.auditions = Math.max(x.auditions, y.auditions);
+  for (const [k, v] of Object.entries(y.solos)) x.solos[k] = Math.max(x.solos[k] || 0, v);
+  return x;
+}
+
+// ---------- loudness ----------
+export function rmsDb(samples) {
+  let s = 0;
+  for (let i = 0; i < samples.length; i++) s += samples[i] * samples[i];
+  return 10 * Math.log10(s / Math.max(1, samples.length) + 1e-12);
+}
+
+// A "big stage voice" is within 6 dB of her own warm-up shout (half its loudness), so it works with any
+// microphone. A whispered warm-up cannot set the bar below -36 dB; with no warm-up the bar is -26 dB.
+export function bigVoiceThreshold(refDb) { return refDb === null || refDb === undefined ? -26 : Math.max(refDb, -30) - 6; }
+
+// Voice gate, fed one level reading (dB) every ~50 ms. Speech starts when the smoothed level rises 12 dB above
+// the room (and above -50 dB); it ends after endSilenceMs below that, at maxMs, or after noVoiceMs with no
+// voice at all. The first graceMs are ignored (the start chime). step() returns null while listening, then
+// { reason: 'end' | 'max' | 'novoice', heard, peakDb, ms }.
+export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12000, noVoiceMs = 7000, graceMs = 300 } = {}) {
+  const startDb = Math.max(Math.min(floorDb, -40) + 12, -50);
+  let smooth = null, heard = false, peakDb = -120, lastVoice = 0, done = null;
+  return {
+    startDb,
+    step(db, t) {
+      if (done) return done;
+      // the chime: not fed to the smoothing at all, or its tail would count as her voice
+      if (t < graceMs) return null;
+      const lin = Math.pow(10, db / 20);
+      smooth = smooth === null ? lin : smooth * 0.6 + lin * 0.4;
+      const s = 20 * Math.log10(smooth + 1e-12);
+      if (s >= startDb) { heard = true; lastVoice = t; }
+      if (heard) peakDb = Math.max(peakDb, s);
+      const finish = reason => (done = { reason, heard, peakDb: heard ? Math.round(peakDb * 10) / 10 : null, ms: t });
+      if (t >= maxMs) return finish('max');
+      if (heard && t - lastVoice >= endSilenceMs) return finish('end');
+      if (!heard && t >= noVoiceMs) return finish('novoice');
+      return null;
+    }
+  };
+}

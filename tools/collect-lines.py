@@ -62,6 +62,8 @@ def from_json(name):
     for k, pool in J('praise.json').items():
         for p in pool: lines += sentences(p.replace('{name}', name))
     for s in J('sentences.json')['sentences']: lines.append(s['text'])
+    st = J('stage.json')
+    for p in st['pieces']: lines += sentences(p['intro']) + sentences(p['tip'])
     for b in J('books.json')['books']:
         lines.append(b['title'] + '.'); lines.append(b['question']['prompt'])
         for p in b['pages']: lines += sentences(p['text'])

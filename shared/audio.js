@@ -231,6 +231,15 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
       await speech.speakText(text, { rate: 0.85 });
       return true;
     },
+    // A ready-made clip outside the four channels (a URL or a recorded Blob): Star Stage's model lines and her
+    // own takes. Results as the player: true = played, 'stopped' = interrupted, false = muted or would not load.
+    async clip(src) {
+      if (api.muted) return false;
+      api.stop();
+      const my = ++seq;
+      const r = await player.play(src);
+      return my === seq ? r : 'stopped';
+    },
     async say(text, { interrupt = true } = {}) {
       if (api.muted) return;
       if (interrupt) api.stop();
@@ -302,6 +311,7 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
     }
   };
   api.say = track(api.say);
+  api.clip = track(api.clip);
   api.sequence = track(api.sequence);
   return api;
 }

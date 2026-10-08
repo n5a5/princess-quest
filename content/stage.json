@@ -1,0 +1,45 @@
+{
+  "auditionDate": "2026-10-14",
+  "showDate": "2027-02-21",
+  "show": "Annie",
+  "warmup": { "id": "warmup", "chunks": [{ "text": "Hello, everybody!", "pic": "👋" }] },
+  "slate": {
+    "id": "slate",
+    "chunks": [
+      { "text": "Hi! I'm {name}.", "pic": "👋" },
+      { "text": "I'm in kindergarten.", "pic": "🏫" },
+      { "text": "I'll be singing, It's the Hard-Knock Life!", "pic": "🎵" }
+    ]
+  },
+  "pieces": [
+    {
+      "id": "line",
+      "title": "My Line",
+      "icon": "🗣️",
+      "intro": "This is the orphans' line. Miss Hannigan just woke them up, and it is still dark outside!",
+      "tip": "Rub your eyes and say it like you are so, so sleepy. Then say Yes, Miss Hannigan, slow and grumpy.",
+      "maxMs": 12000,
+      "chunks": [
+        { "text": "Oh my goodness, oh my goodness.", "pic": "😱" },
+        { "text": "It's four o'clock", "pic": "🕓" },
+        { "text": "in the morning!", "pic": "🌙" },
+        { "text": "Yes, Miss Hannigan.", "pic": "🙄" }
+      ]
+    },
+    {
+      "id": "song",
+      "title": "My Song",
+      "icon": "🎵",
+      "intro": "These are the words to the orphans' song. First we say them like a chant. You learn the tune when you watch the orphans sing.",
+      "tip": "Sing it strong, like you are scrubbing the floor! Stomp your foot when you sing hard knock.",
+      "maxMs": 30000,
+      "chunks": [
+        { "text": "It's the hard-knock life for us! It's the hard-knock life for us!", "pic": "🧹" },
+        { "text": "'Steada treated, we get tricked!", "pic": "🍭🎃" },
+        { "text": "'Steada kisses, we get kicked!", "pic": "😘🦶" },
+        { "text": "It's the hard-knock life!", "pic": "🪣" }
+      ]
+    }
+  ],
+  "videos": ["LH6MstVxehQ", "j95fGroRjhw", "xh0YzOZrniQ"]
+}

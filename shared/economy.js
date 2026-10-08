@@ -1,5 +1,6 @@
 // shared/economy.js — save/load, gems, stars, badges, day streak, result log.
 // DOM-free. Storage is injected so it runs under node --test.
+import { stageDefaults, cleanStage, mergeStage } from './stage-plan.js';
 export const SCHEMA_VERSION = 3;
 export const SAVE_KEY = 'arcade.v3';
 export const LOG_DAYS = 60;
@@ -40,6 +41,7 @@ export function defaultSave() {
     questHistory: [],
     feelingsLog: [],    // Calm Tower check-ins: { day, feeling }
     scenariosSeen: [],  // Uh-Oh Courtyard scenario ids already shown
+    stage: stageDefaults(), // Star Stage practice log (shared/stage-plan.js)
     // voice: 'device' = the device's text-to-speech for instructions; 'luna' = the pre-recorded story voice
     // (the same voice as the words and letter sounds). Stays 'device' until the parent picks in Parent Corner.
     // focus: what the parent asked the app to lean on for a week: { sound, words: [], until: 'YYYY-MM-DD' } or null
@@ -89,6 +91,7 @@ export function migrate(raw) {
   out.kingdom.gifts = capGifts(Array.isArray(out.kingdom.gifts) ? out.kingdom.gifts : []);
   out.feelingsLog = out.feelingsLog.filter(f => isObj(f) && typeof f.day === 'string');
   out.scenariosSeen = out.scenariosSeen.filter(x => typeof x === 'string');
+  out.stage = cleanStage(out.stage);
   // saves from before the wallet: everything she has now counts as earned
   if (!isObj(raw.wallet)) out.wallet = { legacy: { earned: out.gems, spent: 0 } };
   for (const [id, w] of Object.entries(out.wallet)) if (!isObj(w) || typeof w.earned !== 'number' || typeof w.spent !== 'number') delete out.wallet[id];
@@ -266,6 +269,7 @@ export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date(),
       a.log.sort((x, y) => (x.day < y.day ? -1 : x.day > y.day ? 1 : (x.t || 0) - (y.t || 0)));
       a.feelingsLog = unionRows(a.feelingsLog, b.feelingsLog);
       a.scenariosSeen = [...new Set([...a.scenariosSeen, ...b.scenariosSeen])];
+      a.stage = mergeStage(a.stage, b.stage);
       for (const [k, v] of Object.entries(b.books)) if (!a.books[k] || (v.reads || 0) > (a.books[k].reads || 0)) a.books[k] = v;
       for (const [k, v] of Object.entries(b.demos)) if (!a.demos[k]) a.demos[k] = v;
       trimLog();

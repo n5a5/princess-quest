@@ -11,6 +11,7 @@ import { createSfx } from './shared/sfx.js';
 import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick } from './shared/ui.js';
 import { lunaSVG, gemSVG, chestSVG, placeArtSVG, svgFrom, starFieldEl } from './shared/characters.js';
 import { flyGems } from './shared/encounter.js';
+import { daysUntil, countdownHint } from './shared/stage-plan.js';
 
 // If the browser refuses to store the save, say so once instead of losing progress silently.
 const economy = createEconomy({ storage: localStorage, onSaveError: () => toast('Progress could not be saved on this device. Ask a grown-up to check Parent Corner.', 6000) });
@@ -54,6 +55,8 @@ window.addEventListener('popstate', e => {
 let praise = { praise: ['Great job!'], greeting: ['Hello, {name}!'], retry: [], reveal: [] };
 
 function available() { return REGISTRY.filter(r => !economy.save.settings.modulesOff.includes(r.id)); }
+// A place with an event coming (Star Stage before the audition) goes to the top of the map with a countdown.
+const spotlightHint = r => r.spotlight ? countdownHint(daysUntil(economy.today(), r.spotlight.until), r.spotlight.label) : null;
 function readyIds() { return available().filter(r => r.ready).map(r => r.id); }
 
 function updateBar() {
@@ -95,13 +98,13 @@ function renderHome() {
       ]),
       el('div', { class: 'places' }, [
         el('div', { class: 'path' }),
-        ...available().map(r => {
+        ...available().map(r => ({ r, spot: spotlightHint(r) })).sort((a, b) => !!b.spot - !!a.spot).map(({ r, spot }) => {
           const rescued = economy.rescuedAt(r.place, SQUISHIES[r.place] || []);
           const isToday = !quest.claimed && !!next && r.id === next.cabinet;
           const onTrail = !quest.claimed && quest.stops.some(st => st.cabinet === r.id && !st.done);
-          const btn = el('button', { class: 'place ' + r.place + (isToday ? ' today' : onTrail ? ' next' : '') + (r.ready ? '' : ' soon'), type: 'button', 'aria-label': r.name, onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
+          const btn = el('button', { class: 'place ' + r.place + (isToday ? ' today' : onTrail ? ' next' : '') + (spot ? ' spotlight' : '') + (r.ready ? '' : ' soon'), type: 'button', 'aria-label': r.name, onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
             el('div', { class: 'art', html: placeArtSVG(r.place) }),
-            el('div', {}, [el('div', { class: 'name', text: r.name }), el('div', { class: 'hint', text: r.ready ? r.hint : 'Coming soon' })]),
+            el('div', {}, [el('div', { class: 'name', text: r.name }), el('div', { class: 'hint', text: !r.ready ? 'Coming soon' : spot || r.hint })]),
             el('div', { class: 'side' }, [
               el('div', { class: 'bubbles' }, (SQUISHIES[r.place] || []).map(id => el('span', { class: rescued.includes(id) ? 'free' : '', text: rescued.includes(id) ? '😊' : '' })))
             ])
@@ -145,7 +148,7 @@ async function openCabinet(r) {
     $('home').hidden = true; $('cabinet').hidden = false; $('back-btn').hidden = false;
     $('title').textContent = r.name.split(' ').pop();
     window.scrollTo(0, 0);
-    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, exit: () => nav.toMap(), praise, place: r.place, cabinetId: r.id, refreshBar: updateBar, nav: { push: nav.push, pop: nav.pop } });
+    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, store, exit: () => nav.toMap(), praise, place: r.place, cabinetId: r.id, refreshBar: updateBar, nav: { push: nav.push, pop: nav.pop } });
   } catch (e) {
     console.error(e);
     toast('This place needs one visit online first.');

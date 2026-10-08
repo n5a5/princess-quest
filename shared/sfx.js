@@ -2,6 +2,8 @@
 //   tap      soft pop when a tile or choice is pressed
 //   sparkle  rising shimmer when a word blends or an answer is right
 //   yay      three-note chime for a finished round
+//   ding     two-note "your turn" chime (Star Stage, right before the microphone listens)
+//   applause a crowd clapping (Star Stage, the end of an audition)
 // Respects settings.muted. Silently does nothing where AudioContext is missing or locked.
 export function createSfx({ settings }) {
   let ctx = null;
@@ -19,6 +21,20 @@ export function createSfx({ settings }) {
     unlock() { context(); },
     tap() { tone(520, { dur: 0.08, type: 'triangle', gain: 0.08, slide: 380 }); },
     sparkle() { [880, 1175, 1568, 2093].forEach((f, i) => tone(f, { at: i * 0.07, dur: 0.22, gain: 0.07 })); },
-    yay() { [523, 659, 784].forEach((f, i) => tone(f, { at: i * 0.14, dur: 0.3, type: 'triangle', gain: 0.1 })); tone(1047, { at: 0.42, dur: 0.5, gain: 0.08 }); }
+    yay() { [523, 659, 784].forEach((f, i) => tone(f, { at: i * 0.14, dur: 0.3, type: 'triangle', gain: 0.1 })); tone(1047, { at: 0.42, dur: 0.5, gain: 0.08 }); },
+    ding() { tone(988, { dur: 0.14, gain: 0.09 }); tone(1319, { at: 0.1, dur: 0.22, gain: 0.08 }); },
+    // claps: short band-passed noise bursts, dense at first and thinning out over about three seconds
+    applause() {
+      const c = context(); if (!c || settings.muted) return;
+      const n = Math.round(c.sampleRate * 0.04), noise = c.createBuffer(1, n, c.sampleRate), d = noise.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+      for (let k = 0; k < 90; k++) {
+        const at = c.currentTime + 0.05 + Math.pow(Math.random(), 1.6) * 3;
+        const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+        src.buffer = noise; f.type = 'bandpass'; f.frequency.value = 900 + Math.random() * 1600; f.Q.value = 1.2;
+        g.gain.value = 0.35 * (1 - (at - c.currentTime) / 3.4);
+        src.connect(f).connect(g).connect(c.destination); src.start(at);
+      }
+    }
   };
 }

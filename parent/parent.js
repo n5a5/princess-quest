@@ -23,7 +23,7 @@ const speech = createSpeech({ settings: economy.save.settings, onChange: () => e
 const player = createWebAudioPlayer();
 const audio = createAudio({ speech, store, player, manifest: null, sounds: {}, settings: economy.save.settings, base: '../assets/audio/' });
 const app = document.getElementById('app');
-let SOUNDS = [], SW = null, AUDITION = null;
+let SOUNDS = [], SW = null, AUDITION = null, STAGE = null;
 
 // Fall 2026 formal results, typed from the school reports (i-Ready Inform 1, Aug 18/20; Star, Aug 25 / Sep 1).
 // Strand → the app skills that practise it. 'read' is the plain-language interpretation used to set tiers.
@@ -163,6 +163,7 @@ function render() {
   const mastered = sw.filter(([, v]) => v.box >= 5 && v.firstTryDays.length >= 3).length;
   app.replaceChildren(
     weekSection(),
+    stageSection(),
     focusSection(),
     el('section', {}, [
       el('h2', { text: 'Is it working?' }),
@@ -269,6 +270,29 @@ function render() {
 // Focus this week: the parent picks a sound and some wish words; for seven days the planner leans on them
 // (more of that letter stone and its words in the Meadow, that sound as the target in the Woods, those
 // words first in the Well) without switching anything else off.
+// Star Stage (Annie audition practice): what she did each day, and her takes (the first and the latest of
+// each) so a grown-up can hear how it is going without sitting next to her.
+const STAGE_TAKES = [['line', 'Line, practice'], ['song', 'Song, practice'], ['audition-slate', 'Audition: hello'], ['audition-line', 'Audition: line'], ['audition-song', 'Audition: song'], ['audition-thanks', 'Audition: thank you']];
+const STAGE_WORDS = { line: 'line', song: 'song', watch: 'watched the clip', audition: 'full audition' };
+function stageSection() {
+  const st = economy.save.stage;
+  const days = Object.keys(st.days).sort();
+  const when = STAGE ? (([y, m, d]) => `${+m}/${+d}/${y}`)(STAGE.auditionDate.split('-')) : '';
+  const play = id => { player.stop(); player.play(store.get('stage', id)); };
+  const takes = STAGE_TAKES.filter(([id]) => store.has('stage', id)).map(([id, name]) => el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+    el('span', { text: name, style: 'min-width:150px' }),
+    store.has('stage', id + '-first') ? el('button', { type: 'button', text: '▶ First take', onclick: () => play(id + '-first') }) : null,
+    el('button', { type: 'button', text: '▶ Latest', onclick: () => play(id) })
+  ]));
+  return el('section', {}, [
+    el('h2', { text: 'Star Stage: Annie audition practice' + (when ? ' (audition ' + when + ')' : '') }),
+    el('div', { class: 'kpis' }, [kpi('Days practiced', days.length), kpi('Line practices', st.solos.line || 0), kpi('Song practices', st.solos.song || 0), kpi('Full auditions', st.auditions), kpi('Watched the clip', st.watched)]),
+    el('p', {}, [el('strong', { text: 'By day: ' }), days.slice(-10).map(d => d.slice(5) + ' ' + Object.entries(st.days[d]).map(([k, n]) => (STAGE_WORDS[k] || k) + (n > 1 ? ' ×' + n : '')).join(', ')).join(' · ') || 'nothing yet.']),
+    ...(takes.length ? takes : [el('p', { class: 'muted', text: 'Her recordings appear here after her first practice.' })]),
+    el('p', { class: 'muted', text: 'First time: open Star Stage on the map yourself and tap Allow when the browser asks for the microphone; then she can practice alone. The microphone only checks that she spoke and how loud (the star), never the words. Watch the orphans plays the film clip from YouTube and needs the internet; everything else works offline. Recordings stay on this device.' })
+  ]);
+}
+
 function focusSection() {
   const s = economy.save;
   const section = el('section', {}, [el('h2', { text: 'Focus this week' })]);
@@ -519,6 +543,7 @@ async function start() {
   try { audio.setManifest(await content.load('audio-manifest')); } catch (e) { console.warn('no manifest', e); }
   try { audio.setLines(await content.load('lines-audio')); } catch (e) { console.warn('no lines', e); }
   try { AUDITION = await content.load('audition'); } catch (e) { AUDITION = null; }
+  try { STAGE = await content.load('stage'); } catch (e) { STAGE = null; }
   try { SW = await content.load('sight-words'); } catch (e) { console.warn(e); }
   await store.load();
   let unlocked = false;

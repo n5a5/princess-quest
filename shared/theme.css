@@ -364,3 +364,36 @@ button:focus-visible, .choice:focus-visible, .tile:focus-visible, .place:focus-v
 .mouth-small svg { width: 44px; height: 44px; }
 .chip-toggle { border: 2px solid var(--lilac, #C7B4F0); background: #fff; border-radius: 999px; padding: 4px 12px; font-size: 16px; }
 .chip-toggle.on { background: var(--lilac, #C7B4F0); font-weight: 700; }
+
+/* Star Stage: practice for the Annie audition (games/princess-quest/stage.js) */
+.place.stage { background: linear-gradient(135deg, #FFE3E8, #F7C3CF); }
+.place.spotlight { border-color: var(--gold); box-shadow: var(--glow-gold), var(--shadow); }
+.place.spotlight .hint { font-weight: 800; color: var(--rose-deep); }
+.scene.stage { background: linear-gradient(180deg, #FFF1F4, #FBD9E1); }
+.scene.stage .encounter-btn { position: relative; }
+.scene.stage .encounter-btn.next-up { border-color: var(--gold); box-shadow: var(--glow-gold); animation: breathe 2.4s ease-in-out infinite; }
+.scene.stage .encounter-btn .tick { position: absolute; top: 6px; right: 10px; font-size: 13px; color: var(--mint-deep); }
+.scene.stage .cues { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 12px; border-radius: var(--radius); background: rgba(255,255,255,0.55); transition: background 0.4s; }
+.scene.stage .cue { min-width: 96px; min-height: 96px; padding: 6px 10px; border-radius: 20px; background: var(--cream); border: 3px solid transparent; box-shadow: var(--shadow-soft); font-size: 52px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s, transform 0.3s, border-color 0.3s; }
+.scene.stage .cue.lit { border-color: var(--gold); transform: scale(1.04); }
+.scene.stage .cue.dim { opacity: 0.3; }
+.scene.stage .cues.curtain { background: linear-gradient(90deg, #B83A5E, #E2688F 20%, #B83A5E 40%, #E2688F 60%, #B83A5E 80%, #E2688F); }
+.scene.stage .cues.curtain .cue { background: rgba(255,255,255,0.15); box-shadow: none; }
+.scene.stage .cues.curtain .cue span { visibility: hidden; }
+.scene.stage .mic { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: var(--radius); background: rgba(255,255,255,0.75); box-shadow: var(--shadow-soft); }
+.scene.stage .mic-icon { font-size: 40px; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--lavender); transition: background 0.2s; }
+.scene.stage .mic[data-state="live"] .mic-icon { background: #F87171; animation: pulse 0.9s ease-in-out infinite; }
+.scene.stage .vmeter { flex: 1; height: 22px; border-radius: 12px; background: #F3E8EE; overflow: hidden; }
+.scene.stage .vmeter .fill { width: 0; height: 100%; border-radius: 12px; background: linear-gradient(90deg, var(--mint), var(--gold), var(--rose)); transition: width 0.08s linear; }
+.scene.stage .vstar { font-size: 44px; filter: grayscale(1); opacity: 0.35; transition: filter 0.15s, opacity 0.15s, transform 0.15s; }
+.scene.stage .vstar.on, .scene.stage .mic[data-state="big"] .vstar { filter: none; opacity: 1; transform: scale(1.25); }
+.scene.stage .mic-status { min-height: 28px; text-align: center; font-family: var(--display); font-size: 22px; font-weight: 700; color: var(--plum); }
+.scene.stage .yt { width: 100%; aspect-ratio: 16 / 9; min-height: 200px; border-radius: var(--radius-sm); overflow: hidden; background: #000; }
+.scene.stage .yt iframe { width: 100%; height: 100%; border: 0; }
+.stage-curtain { position: relative; height: 260px; border-radius: var(--radius); overflow: hidden; background: radial-gradient(60% 50% at 50% 85%, #FFF1C9, #F9D77B 40%, #5B3E8F 100%); }
+.stage-curtain .cl, .stage-curtain .cr { position: absolute; top: 0; bottom: 0; width: 50%; background: repeating-linear-gradient(90deg, #B83A5E 0 18px, #E2688F 18px 36px); transition: transform 1.6s ease-in-out; z-index: 1; }
+.stage-curtain .cl { left: 0; }
+.stage-curtain .cr { right: 0; }
+.stage-curtain.open .cl { transform: translateX(-88%); }
+.stage-curtain.open .cr { transform: translateX(88%); }
+.stage-curtain .spot { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 96px; animation: pulse 1.6s ease-in-out infinite; }
