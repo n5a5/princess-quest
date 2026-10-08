@@ -12,6 +12,7 @@ import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick 
 import { lunaSVG, gemSVG, chestSVG, placeArtSVG, svgFrom, starFieldEl } from './shared/characters.js';
 import { flyGems } from './shared/encounter.js';
 import { daysUntil, countdownHint } from './shared/stage-plan.js';
+import { watchUpdates } from './shared/updates.js';
 
 // If the browser refuses to store the save, say so once instead of losing progress silently.
 const economy = createEconomy({ storage: localStorage, onSaveError: () => toast('Progress could not be saved on this device. Ask a grown-up to check Parent Corner.', 6000) });
@@ -28,7 +29,7 @@ if (/[?&](debug|nosw)=1/.test(location.search)) window.__pq = { audio, economy, 
 
 const $ = id => document.getElementById(id);
 let current = null;   // { entry, module }
-let updateReady = false; // a new version is installed; load it when she is next back on the map
+let updates = null;   // shared/updates.js: a new version installed while she played loads when she is back on the map
 
 // Back-button navigation: every screen below the map pushes a history entry with a handler that
 // restores the screen above it. The phone's back button pops one level; from the map it exits.
@@ -163,7 +164,7 @@ function closeCabinet() {
   if (current && current.module.unmount) { try { current.module.unmount(); } catch (e) { console.warn(e); } }
   current = null;
   $('cabinet').replaceChildren();
-  if (updateReady) { location.reload(); return; }
+  if (updates && updates.reloadIfReady()) return;
   renderHome();
   if (clock.due()) showShaper();
 }
@@ -289,17 +290,6 @@ async function boot() {
   document.addEventListener('pointerdown', () => clock.touch(), { passive: true });
   document.addEventListener('keydown', onKey);
   // ?nosw=1 skips the service worker (local testing only: no cache-first surprises while editing files).
-  if ('serviceWorker' in navigator && !/[?&]nosw=1/.test(location.search)) {
-    // A new version finished installing in the background (sw.js skips waiting and takes over this page).
-    // Without this the page kept running the old copy until the app was opened again. Still on the splash:
-    // reload now. Playing: reload when she is next back on the map, so nothing is cut off. The very first
-    // install also takes over the page; that one needs no reload.
-    const hadController = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!hadController) return;
-      if ($('splash')) location.reload(); else updateReady = true;
-    });
-    navigator.serviceWorker.register('sw.js').catch(e => console.warn('sw', e));
-  }
+  if ('serviceWorker' in navigator && !/[?&]nosw=1/.test(location.search)) updates = watchUpdates({ onSplash: () => !!$('splash') });
 }
 boot();

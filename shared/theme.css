@@ -397,3 +397,12 @@ button:focus-visible, .choice:focus-visible, .tile:focus-visible, .place:focus-v
 .stage-curtain.open .cl { transform: translateX(-88%); }
 .stage-curtain.open .cr { transform: translateX(88%); }
 .stage-curtain .spot { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 96px; animation: pulse 1.6s ease-in-out infinite; }
+
+/* Update notice (shared/updates.js): above everything, the splash included */
+/* left/right + auto margins, not left: 50% + translate: that halves the width it may use and the pop animation's transform would undo the centring */
+.update-pill { position: fixed; left: 12px; right: 12px; margin: 0 auto; width: fit-content; max-width: 480px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 300; display: flex; align-items: center; justify-content: center; gap: 12px; text-align: center; font-variant-numeric: tabular-nums; padding: 10px 18px; border-radius: 999px; border: 2px solid rgba(233, 185, 73, 0.7); background: var(--night); color: var(--tint-gold); font-family: var(--display); font-size: 16px; font-weight: 700; box-shadow: 0 6px 20px rgba(42, 30, 69, 0.4); animation: pop 0.3s ease-out; }
+.update-pill .bar { flex: none; width: 72px; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.2); overflow: hidden; }
+.update-pill .bar i { display: block; width: 0; height: 100%; border-radius: 4px; background: var(--gold); transition: width 0.3s; }
+.update-pill.indeterminate .bar i { width: 35%; animation: update-slide 1.2s ease-in-out infinite; }
+.update-pill.no-bar .bar { display: none; }
+@keyframes update-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }

@@ -1,5 +1,5 @@
 // sw.js — cache-first with a versioned precache. Bump VERSION on every release.
-const VERSION = 'arcade-v4.5.1';
+const VERSION = 'arcade-v4.5.2';
 const ASSETS = [
   '',
   'CLAUDE.md',
@@ -1517,11 +1517,34 @@ const ASSETS = [
   'shared/stage-plan.js',
   'shared/theme.css',
   'shared/ui.js',
+  'shared/updates.js',
   'shell.js'
 ];
 
+// Install: download every file (eight at a time, past the HTTP cache) and tell open pages how far along it is
+// (shared/updates.js shows it). Any file that fails fails the install; the old version keeps working and the
+// next visit tries again.
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(ASSETS.map(a => new Request(a, { cache: 'reload' })))).then(() => self.skipWaiting()));
+  e.waitUntil((async () => {
+    const cache = await caches.open(VERSION);
+    const queue = ASSETS.slice(), total = ASSETS.length;
+    let done = 0, told = 0;
+    const tell = async () => {
+      for (const c of await self.clients.matchAll({ includeUncontrolled: true, type: 'window' })) c.postMessage({ type: 'install-progress', done, total });
+    };
+    const worker = async () => {
+      while (queue.length) {
+        const req = new Request(queue.shift(), { cache: 'reload' });
+        const res = await fetch(req);
+        if (!res.ok) throw new Error('precache ' + req.url + ' ' + res.status);
+        await cache.put(req, res);
+        done++;
+        if (done - told >= 20 || done === total) { told = done; tell(); }
+      }
+    };
+    await Promise.all(Array.from({ length: 8 }, worker));
+    await self.skipWaiting();
+  })());
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
