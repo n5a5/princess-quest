@@ -286,7 +286,8 @@ async function boot() {
   });
   $('back-btn').addEventListener('click', () => nav.toMap());
   $('mute-btn').addEventListener('click', () => { speech.toggleMuted(); if (speech.muted) audio.stop(); updateBar(); });
-  $('gear-btn').addEventListener('click', showPin);
+  // a place may be in the middle of something (Star Stage records her): let it stop before the PIN pad opens
+  $('gear-btn').addEventListener('click', () => { if (current && current.module.interrupt) current.module.interrupt(); showPin(); });
   document.addEventListener('pointerdown', () => clock.touch(), { passive: true });
   document.addEventListener('keydown', onKey);
   // ?nosw=1 skips the service worker (local testing only: no cache-first surprises while editing files).

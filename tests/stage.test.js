@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, readJSON } from './helpers.js';
-import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate, roomLevel, followTimes, dayStrip, addDays, dailyPlan, cueLevel } from '../shared/stage-plan.js';
+import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate, roomLevel, followTimes, dayStrip, addDays, dailyPlan, hiddenFromEnd } from '../shared/stage-plan.js';
 import { REGISTRY } from '../games/registry.js';
 import { migrate, defaultSave } from '../shared/economy.js';
 
@@ -85,12 +85,17 @@ test('voice gate: hears speech, waits for her to stop, reports the peak', () => 
 test('voice gate: silence ends at noVoiceMs, a chime in the grace period is ignored, maxMs caps a take', () => {
   const quiet = run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000 }), [-20, -20, -20, -20, ...flat(-62, 8000)]);
   assert.deepEqual([quiet.reason, quiet.heard, quiet.peakDb], ['novoice', false, null]);
-  const long = run(createVoiceGate({ floorDb: -60, maxMs: 3000 }), flat(-20, 5000));
+  const syll = ms => Array.from({ length: Math.round(ms / 50) }, (_, k) => -22 - 12 * Math.abs(Math.sin(k / 2.4))); // a voice: up and down every syllable
+  const long = run(createVoiceGate({ floorDb: -60, maxMs: 3000 }), syll(5000));
   assert.equal(long.reason, 'max');
+  assert.equal(long.heard, true);
   // a noisy room raises the start level; room noise alone is not her voice
   const noisy = createVoiceGate({ floorDb: -38 });
-  assert.equal(noisy.startDb, -28);
+  assert.equal(noisy.startDb, -26);
   assert.equal(run(noisy, flat(-36, 8000)).reason, 'novoice');
+  // a loud TV or fan (red team: -25 dB counted as her voice): the room level is no longer capped at -40
+  assert.equal(createVoiceGate({ floorDb: -25 }).startDb, -13);
+  assert.equal(createVoiceGate({ floorDb: -5 }).startDb, -12, 'never above -12 dB');
 });
 
 test('big voice: relative to her warm-up, with sane limits', () => {
@@ -132,8 +137,9 @@ test('room level: median of real readings, not the silent first ones', () => {
 test('follow-along: each picture lights in proportion to its words', () => {
   assert.deepEqual(followTimes(['abcd', 'abcd'], 1000), [0, 500]);
   assert.deepEqual(followTimes(['Yes, Miss Hannigan.'], 1300), [0]);
-  const t = followTimes(stage.pieces[0].chunks.map(c => c.text), 5327);
-  assert.equal(t.length, 4); assert.equal(t[0], 0); assert.ok(t.every((x, k) => k === 0 || x > t[k - 1]) && t[3] < 5327);
+  const chunks = stage.pieces[0].chunks.map(c => c.text);
+  const t = followTimes(chunks, 5327);
+  assert.equal(t.length, chunks.length); assert.equal(t[0], 0); assert.ok(t.every((x, k) => k === 0 || x > t[k - 1]) && t[t.length - 1] < 5327);
 });
 
 test('day strip: a circle per day to the audition, stars on practice days', () => {
@@ -168,8 +174,10 @@ test('daily plan: hear first, then line and song, mock auditions in the last thr
   assert.deepEqual(dailyPlan('2026-10-15', A, {}), []);
 });
 
-test('cue fading: pictures, then faded with recall first, then the curtain', () => {
-  assert.deepEqual([0, 1, 2, 5].map(cueLevel), [0, 1, 2, 2]);
+test('cue fading: one more picture hidden from the end each practice, then all of them', () => {
+  assert.deepEqual([0, 1, 2, 3, 9].map(k => hiddenFromEnd(k, 3)), [0, 1, 2, 3, 3]);
+  assert.deepEqual([0, 1, 4, 5].map(k => hiddenFromEnd(k, 4)), [0, 1, 4, 4]);
+  assert.equal(stage.pieces.find(x => x.id === 'line').chunks.length, 3, 'the line in three clauses');
 });
 
 test('voice gate: the reminder chime mid-take is not taken for her voice', () => {
@@ -191,4 +199,11 @@ test('voice gate: the reminder chime mid-take is not taken for her voice', () =>
 
 test('echo-only clips: each chunk and the whole', () => {
   assert.deepEqual(clipRanges(4, false), [[0, 1], [0, 4], [1, 2], [2, 3], [3, 4]]);
+});
+
+test('voice gate: a steady sound above the start level is not her voice, and ends the take early', () => {
+  const steady = run(createVoiceGate({ floorDb: -60, maxMs: 30000 }), flat(-25, 30000));
+  assert.deepEqual([steady.reason, steady.heard, steady.peakDb], ['steady', false, null]);
+  assert.ok(steady.ms <= 3000, 'within about 2.5 s of the sound starting: ' + steady.ms);
+  // (a steady tone under about a second is not caught: its rise and fall look like a syllable)
 });

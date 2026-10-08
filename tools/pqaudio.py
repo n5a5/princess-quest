@@ -21,6 +21,30 @@ def from_file(path, sr=SR):
     return np.frombuffer(run_ff(['-i', str(path), '-f', 'f32le', '-ac', '1', '-ar', str(sr), '-']), dtype=np.float32).copy()
 
 
+def true_peak_db(path):
+    """True peak (dBTP, 4x oversampled) of an encoded file, as ffmpeg's EBU R128 meter reports it."""
+    import re
+    err = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-i', str(path), '-af', 'ebur128=peak=true', '-f', 'null', '-'],
+                         capture_output=True, text=True).stderr
+    m = re.search(r'Peak:\s+(-?[\d.]+|-inf) dBFS', err[err.rfind('Summary:'):])
+    return float(m.group(1)) if m and m.group(1) != '-inf' else -120.0
+
+
+def encode_checked(x, out, kbps, target=None, tp_max=-1.0):
+    """Encodes, measures the true peak of the result, and if Opus pushed it over tp_max (low bitrates overshoot
+    by up to ~2.5 dB) limits harder and encodes again, keeping the loudness. Returns the final true peak."""
+    ceiling = -2.0
+    y = x if target is None else normalise_loudness(x, target, ceiling)
+    for _ in range(5):
+        encode_opus(y, out, kbps)
+        tp = true_peak_db(out)
+        if tp <= tp_max:
+            return tp
+        ceiling -= (tp - tp_max) + 0.3
+        y = normalise_loudness(x, target or LOUDNESS_LUFS, ceiling)
+    return tp
+
+
 def encode_opus(x, out, kbps=32):
     wav = TMP / (Path(out).stem + '.enc.wav')
     to_wav(x, wav)
@@ -82,17 +106,22 @@ def limit_peaks(x, ceiling_db=-2.0, hold_ms=8, release_ms=80):
     return (x * np.minimum(out, need)).astype(np.float32)
 
 
-def normalise_loudness(x, target=LOUDNESS_LUFS, ceiling_db=-2.0):
-    """Gain to `target` integrated loudness (EBU R128 / BS.1770) with the peaks limited to ceiling_db, so the
-    true peak after Opus encoding stays near -1 dBTP. Needs pyloudnorm (it brings scipy). Clips shorter than
-    the 400 ms gate are only peak-normalised."""
+def loudness(x):
+    """Integrated loudness (EBU R128 / BS.1770, pyloudnorm). A clip shorter than 3 s is measured looped to 3 s:
+    the 400 ms gating blocks make a single word's reading swing by a dB or more (or fail under 0.4 s)."""
     import pyloudnorm
-    if len(x) < SR * 0.45:
-        return normalise_peak(x, ceiling_db)
-    meter = pyloudnorm.Meter(SR)
+    y = np.asarray(x, dtype=np.float64)
+    if len(y) < SR * 3:
+        y = np.tile(y, int(np.ceil(SR * 3 / max(1, len(y)))))
+    return pyloudnorm.Meter(SR).integrated_loudness(y)
+
+
+def normalise_loudness(x, target=LOUDNESS_LUFS, ceiling_db=-2.0):
+    """Gain to `target` integrated loudness with the peaks limited to ceiling_db. Needs pyloudnorm (it brings
+    scipy). encode_checked() then makes sure the encoded file's true peak stays at or under -1 dBTP."""
     y = x.astype(np.float64)
-    for _ in range(3):  # limiting lowers the loudness a little; converge in a few passes
-        lufs = meter.integrated_loudness(y)
+    for _ in range(4):  # limiting lowers the loudness a little; converge in a few passes
+        lufs = loudness(y)
         if not np.isfinite(lufs):
             return x
         if abs(lufs - target) < 0.1:

@@ -39,9 +39,8 @@ def main():
             if old == ms:
                 continue
             print(f'retrim {text[:40]!r}: was {old} ms, now {ms} ms')
-        # new lines get the common loudness; lines rendered before it existed keep their peak-normalised level
-        x = pa.normalise_loudness(pa.fade(pa.trim_silence(x, -45, 20), 5, 25))
-        pa.encode_opus(x, out, 24)
+        # one loudness for every line, true peak at or under -1 dBTP after encoding
+        pa.encode_checked(pa.fade(pa.trim_silence(x, -45, 20), 5, 25), out, 24, target=pa.LOUDNESS_LUFS)
         made += 1
         if made % 50 == 0: print(made, 'rendered')
     keep = set(index.values())

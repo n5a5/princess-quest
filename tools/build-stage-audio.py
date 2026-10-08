@@ -44,8 +44,8 @@ def main():
             first = text.split()[0].strip('"\'')
             raw = pa.trim_silence(v.say(text, speed=args.speed), -45, 5)
             x, _ = pa.trim_lead_murmur(raw, first, window_ms=450, max_ms=140)
-            x = pa.normalise_loudness(pa.fade(pa.trim_silence(x, -45, 20), 5, 25))
-            pa.encode_opus(x, OUT / f'{fid}.ogg', 32)
+            x = pa.fade(pa.trim_silence(x, -45, 20), 5, 25)
+            pa.encode_checked(x, OUT / f'{fid}.ogg', 32, target=pa.LOUDNESS_LUFS)
             dur[fid] = round(len(x) / pa.SR * 1000)
             print(f'{fid}: {len(x) / pa.SR:.2f}s  {text}')
     for f in OUT.glob('*.ogg'):

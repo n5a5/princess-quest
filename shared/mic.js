@@ -7,12 +7,22 @@ import { rmsDb, createVoiceGate, roomLevel } from './stage-plan.js';
 
 export const canListen = () => !!(globalThis.navigator && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && globalThis.MediaRecorder);
 
-export async function openMic() {
+// A permission question nobody answers (a child alone) must not hang the app: after timeoutMs this throws a
+// TimeoutError, and a stream that arrives later is stopped at once.
+function withTimeout(p, ms) {
+  let late = false;
+  return Promise.race([
+    p.then(s => { if (late) s.getTracks().forEach(t => t.stop()); return s; }),
+    new Promise((_, reject) => setTimeout(() => { late = true; const e = new Error('microphone permission not answered'); e.name = 'TimeoutError'; reject(e); }, ms))
+  ]);
+}
+
+export async function openMic({ timeoutMs = 10000 } = {}) {
   let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { autoGainControl: false, noiseSuppression: false, echoCancellation: false } }); }
+  try { stream = await withTimeout(navigator.mediaDevices.getUserMedia({ audio: { autoGainControl: false, noiseSuppression: false, echoCancellation: false } }), timeoutMs); }
   catch (e) {
-    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) throw e;
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError' || e.name === 'TimeoutError')) throw e;
+    stream = await withTimeout(navigator.mediaDevices.getUserMedia({ audio: true }), timeoutMs);
   }
   const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
   let ac = null, an;

@@ -28,13 +28,18 @@ export function dailyPlan(today, auditionDate, { heard = false, canHear = false 
   return plan;
 }
 
-// How much picture help a piece gets, from how many times she has practised it (prompt fading):
-// 0 = pictures all the way; 1 = she first tries it from memory with the pictures showing, and her solo has faded
-// pictures; 2 = she first tries it from memory behind the curtain, and her solo is behind the curtain.
-export function cueLevel(practices) { return practices >= 2 ? 2 : practices === 1 ? 1 : 0; }
+// How many of a piece's pictures are hidden, counted from the end, after `practices` finished practices: one more
+// each time, so the last chunk is the first she says from memory and the pictures go before the mock auditions.
+// Script fading from the end backwards (Krantz & McClannahan 1993, JABA 26:121; review: Topuz & Ülke
+// Kürkçüoğlu 2022, Rev J Autism Dev Disord 9:366) and fading pictures rather than keeping them (Corey & Shamow
+// 1972, JABA 5:311, children 4-5).
+export function hiddenFromEnd(practices, n) { return Math.max(0, Math.min(n, practices)); }
 
-// Backward chaining: the last chunk first, then the last two, and so on to the whole line, so every new
-// piece leads into words she already knows and the end is the part she has said most.
+// Backward chaining: the last chunk first, then the last two, and so on to the whole line, so every attempt ends
+// on words she already knows. Only a light scaffold for the first two practices: in children the evidence does
+// not favour it over forward or whole-task practice (Slocum & Tiger 2011, JABA 44:793; no consistent winner), and
+// it leaves the start of a sequence weakest (Smith 1999, Percept Mot Skills 89:951), so every session also has
+// whole runs from the first word.
 export function chainSteps(n) { return Array.from({ length: n }, (_, k) => [n - 1 - k, n]); }
 
 const dayNum = d => { const [y, m, dd] = String(d).split('-').map(Number); return Date.UTC(y, m - 1, dd) / 86400000; };
@@ -101,13 +106,17 @@ export function rmsDb(samples) {
 export function bigVoiceThreshold(refDb) { return refDb === null || refDb === undefined ? -26 : Math.max(refDb, -30) - 6; }
 
 // Voice gate, fed one level reading (dB) every ~50 ms. Speech starts when the smoothed level rises 12 dB above
-// the room (and above -50 dB); it ends after endSilenceMs below that, at maxMs, or after noVoiceMs with no
-// voice at all. The first graceMs are ignored (the start chime). step() returns null while listening, then
-// { reason: 'end' | 'max' | 'novoice', heard, peakDb, ms }.
+// the room (at least -50 dB, at most -12 dB); it ends after endSilenceMs below that, at maxMs, or after noVoiceMs
+// with no voice at all. The first graceMs are ignored (the start chime). A voice rises and falls with every
+// syllable; a steady sound (a fan, a hum, a TV's music bed) above the start level does not, so a take whose loud
+// part varies by less than 4 dB (10th to 90th percentile) counts as not heard. step() returns null while
+// listening, then { reason: 'end' | 'max' | 'novoice', heard, peakDb, ms }.
 // ignore(untilMs): skip readings until then (the "your turn" reminder chime played mid-take).
 export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12000, noVoiceMs = 7000, graceMs = 300 } = {}) {
-  const startDb = Math.max(Math.min(floorDb, -40) + 12, -50);
+  const startDb = Math.min(Math.max(floorDb + 12, -50), -12);
   let smooth = null, heard = false, peakDb = -120, lastVoice = 0, done = null, ignoreUntil = 0;
+  const loud = []; // smoothed levels while above the start level
+  const varies = () => { if (loud.length < 8) return true; const s = [...loud].sort((a, b) => a - b); return s[Math.floor(s.length * 0.9)] - s[Math.floor(s.length * 0.1)] >= 4; };
   return {
     startDb,
     get heard() { return heard; },
@@ -119,10 +128,11 @@ export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12
       const lin = Math.pow(10, db / 20);
       smooth = smooth === null ? lin : smooth * 0.6 + lin * 0.4;
       const s = 20 * Math.log10(smooth + 1e-12);
-      if (s >= startDb) { heard = true; lastVoice = t; }
+      if (s >= startDb) { heard = true; lastVoice = t; loud.push(s); }
       if (heard) peakDb = Math.max(peakDb, s);
-      const finish = reason => (done = { reason, heard, peakDb: heard ? Math.round(peakDb * 10) / 10 : null, ms: t });
+      const finish = reason => { const v = heard && varies(); return (done = { reason: heard && !v ? 'steady' : reason, heard: v, peakDb: v ? Math.round(peakDb * 10) / 10 : null, ms: t }); };
       if (t >= maxMs) return finish('max');
+      if (loud.length >= 50 && !varies()) return finish('steady'); // 2.5 s of a steady sound: not her voice
       if (heard && t - lastVoice >= endSilenceMs) return finish('end');
       if (!heard && t >= noVoiceMs) return finish('novoice');
       return null;

@@ -454,7 +454,7 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
 .scene.stage.breath .bubble { width: clamp(180px, 40vw, 300px); height: clamp(180px, 40vw, 300px); }
 
 /* Phones on their side: compact head, pictures beside the turn panel, everything on one screen */
-@media (orientation: landscape) and (max-height: 520px) {
+@media (orientation: landscape) and (max-height: 600px) {
   main:has(> #cabinet .scene.stage) { max-width: 980px; }
   .scene.stage { gap: 8px; padding: 8px 12px; }
   .scene.stage .scene-head .companion { width: 52px; height: 52px; }
@@ -481,3 +481,13 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
   .scene.stage.breath .bubble { width: 38vh; height: 38vh; }
   .scene.stage .song-play { width: 96px; height: 96px; font-size: 48px; }
 }
+.scene.stage .turn-done { align-self: center; width: clamp(96px, 22vw, 140px); height: clamp(96px, 22vw, 140px); border-radius: 50%; font-size: clamp(52px, 12vw, 76px); background: linear-gradient(180deg, var(--mint), var(--mint-deep)); box-shadow: 0 8px 0 #1F6E62, var(--shadow); animation: breathe 2s ease-in-out infinite; }
+@media (orientation: landscape) and (max-height: 600px) {
+  .overlay .sheet { max-height: calc(100vh - 16px); overflow-y: auto; padding: 14px 18px; gap: 8px; }
+  .overlay .sheet .companion { width: 84px; height: 84px; }
+  .scene.stage.practice > .turn-done { grid-area: status; width: 76px; height: 76px; font-size: 40px; }
+}
+.scene.stage .cue { position: relative; }
+.scene.stage .cue.gone { background: rgba(255,255,255,0.4); border-style: dashed; border-color: #E2A3B6; }
+.scene.stage .cue.gone span { visibility: hidden; }
+.scene.stage .cue.gone::after { content: '❓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.7em; opacity: 0.7; }

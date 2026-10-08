@@ -309,9 +309,13 @@ function songBlock() {
   const fmt = t => Math.floor(t / 60) + ':' + (t % 60).toFixed(1).padStart(4, '0');
   const load = el('input', { type: 'file', accept: 'audio/*', onchange: async e => {
     const f = e.target.files[0]; if (!f) return;
+    const probe = createSongPlayer(f);
+    const d = await probe.duration();
+    probe.release();
+    if (!d) { alert('This device cannot play that file. Use the MP3 of the clip.'); e.target.value = ''; return; }
     await store.save('stage', 'song-audio', f);
-    const d = await createSongPlayer(f).duration();
-    if (base && d && Math.abs(d - base.duration) > 2) alert('This recording is ' + fmt(d) + ' long, not ' + fmt(base.duration) + ' like the clip the times were set for. Use "Play my part" and the buttons to find "It\'s the hard-knock life for us" … "It\'s the hard-knock life!".');
+    if (base && d < base.end) alert('This recording is only ' + fmt(d) + ' long, so her part (' + fmt(base.start) + ' to ' + fmt(base.end) + ') is not in it. My Song will use Luna\'s chant; Hear the orphans still plays it.');
+    else if (base && Math.abs(d - base.duration) > 2) alert('This recording is ' + fmt(d) + ' long, not ' + fmt(base.duration) + ' like the clip the times were set for. Use "Play my part" and the buttons to find "It\'s the hard-knock life for us" … "It\'s the hard-knock life!".');
     render();
   } });
   if (!rec) return el('div', { class: 'song-setup' }, [
@@ -320,12 +324,18 @@ function songBlock() {
   ]);
   if (!songPlayer) songPlayer = createSongPlayer(rec);
   const cut = () => s.songCut || { start: base.start, end: base.end };
+  const warn = el('p', { class: 'reteach', style: 'display:none' });
+  songPlayer.duration().then(d => {
+    if (!d) { warn.textContent = '⚠ This device cannot play the stored song. Remove it and load the MP3 again.'; warn.style.display = ''; }
+    else if (d < cut().end) { warn.textContent = '⚠ The recording is ' + fmt(d) + ' long; her part ends at ' + fmt(cut().end) + '. Move the end earlier, or load the full clip.'; warn.style.display = ''; }
+  });
   const label = el('span', { text: '' });
   const show = () => { const c = cut(); label.textContent = 'Her part: ' + fmt(c.start) + ' to ' + fmt(c.end) + (s.songCut ? ' (adjusted)' : ''); };
   const nudge = (key, by) => () => { const c = { ...cut() }; c[key] = Math.max(0, Math.round((c[key] + by) * 10) / 10); if (c.end - c.start < 3) return; s.songCut = c; economy.persist(); show(); };
   show();
   return el('div', { class: 'song-setup' }, [
     el('p', {}, [el('strong', { text: 'The real song: ' }), '✓ loaded on this device. Play her part once: it should start at "It\'s the hard-knock life for us" and end after "It\'s the hard-knock life!".']),
+    warn,
     el('div', { class: 'row', style: 'justify-content:flex-start' }, [
       el('button', { type: 'button', text: '▶ Play my part', onclick: () => { const c = cut(); songPlayer.play({ from: c.start, to: c.end }); } }),
       el('button', { type: 'button', text: '⏹ Stop', onclick: () => songPlayer.stop() }),
