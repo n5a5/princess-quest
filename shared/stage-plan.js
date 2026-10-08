@@ -5,13 +5,33 @@
 
 export const clipId = (blockId, i, j) => `${blockId}-${i}-${j}`;
 
-// Every range of chunks that has a model clip: each chunk alone (a tapped picture) and each tail, chunk i to
-// the end (backward chaining). Mirrors ranges() in tools/build-stage-audio.py.
-export function clipRanges(n) {
+// Every range of chunks that has a model clip: each chunk alone and each tail, chunk i to the end (backward
+// chaining). A block that is only echoed, never chained (Try another line), has its chunks and the whole.
+// Mirrors ranges() in tools/build-stage-audio.py.
+export function clipRanges(n, chain = true) {
   const seen = new Set(), out = [];
-  for (let i = 0; i < n; i++) for (const r of [[i, i + 1], [i, n]]) { const k = r.join(); if (!seen.has(k)) { seen.add(k); out.push(r); } }
+  for (let i = 0; i < n; i++) for (const r of [[i, i + 1], chain ? [i, n] : [0, n]]) { const k = r.join(); if (!seen.has(k)) { seen.add(k); out.push(r); } }
   return out.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
 }
+
+// The plan for one day, in order (Star Stage glows the first one not yet done today). Spaced practice: a little
+// every day rather than a lot at once. Four or more days out: hear the real song (until she has heard it), the
+// line, the song. The last three days add a mock audition. Audition day: only the short warm-up. After it: none.
+// `canHear`: the cast recording is loaded on this device.
+export function dailyPlan(today, auditionDate, { heard = false, canHear = false } = {}) {
+  const d = daysUntil(today, auditionDate);
+  if (d < 0) return [];
+  if (d === 0) return ['dayof'];
+  const plan = canHear && !heard ? ['hear'] : [];
+  plan.push('line', 'song');
+  if (d <= 3) plan.push('audition');
+  return plan;
+}
+
+// How much picture help a piece gets, from how many times she has practised it (prompt fading):
+// 0 = pictures all the way; 1 = she first tries it from memory with the pictures showing, and her solo has faded
+// pictures; 2 = she first tries it from memory behind the curtain, and her solo is behind the curtain.
+export function cueLevel(practices) { return practices >= 2 ? 2 : practices === 1 ? 1 : 0; }
 
 // Backward chaining: the last chunk first, then the last two, and so on to the whole line, so every new
 // piece leads into words she already knows and the end is the part she has said most.
@@ -84,15 +104,18 @@ export function bigVoiceThreshold(refDb) { return refDb === null || refDb === un
 // the room (and above -50 dB); it ends after endSilenceMs below that, at maxMs, or after noVoiceMs with no
 // voice at all. The first graceMs are ignored (the start chime). step() returns null while listening, then
 // { reason: 'end' | 'max' | 'novoice', heard, peakDb, ms }.
+// ignore(untilMs): skip readings until then (the "your turn" reminder chime played mid-take).
 export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12000, noVoiceMs = 7000, graceMs = 300 } = {}) {
   const startDb = Math.max(Math.min(floorDb, -40) + 12, -50);
-  let smooth = null, heard = false, peakDb = -120, lastVoice = 0, done = null;
+  let smooth = null, heard = false, peakDb = -120, lastVoice = 0, done = null, ignoreUntil = 0;
   return {
     startDb,
+    get heard() { return heard; },
+    ignore(untilMs) { ignoreUntil = Math.max(ignoreUntil, untilMs); smooth = null; },
     step(db, t) {
       if (done) return done;
       // the chime: not fed to the smoothing at all, or its tail would count as her voice
-      if (t < graceMs) return null;
+      if (t < graceMs || t < ignoreUntil) return t >= maxMs ? (done = { reason: 'max', heard, peakDb: heard ? Math.round(peakDb * 10) / 10 : null, ms: t }) : null;
       const lin = Math.pow(10, db / 20);
       smooth = smooth === null ? lin : smooth * 0.6 + lin * 0.4;
       const s = 20 * Math.log10(smooth + 1e-12);

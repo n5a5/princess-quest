@@ -275,7 +275,7 @@ function render() {
 // Star Stage (Annie audition practice): what she did each day, and her takes (the first and the latest of
 // each) so a grown-up can hear how it is going without sitting next to her.
 const STAGE_TAKES = [['line', 'Line, practice'], ['song', 'Song, practice'], ['audition-slate', 'Audition: hello'], ['audition-line', 'Audition: line'], ['audition-song', 'Audition: song'], ['audition-thanks', 'Audition: thank you']];
-const STAGE_WORDS = { line: 'line', song: 'song', watch: 'watched the clip', audition: 'full audition' };
+const STAGE_WORDS = { line: 'line', song: 'song', watch: 'watched the clip', hear: 'heard the song', audition: 'mock audition', other: 'another line', dayof: 'audition-day warm-up' };
 function stageSection() {
   const st = economy.save.stage;
   const days = Object.keys(st.days).sort();
@@ -289,7 +289,7 @@ function stageSection() {
   ]));
   return el('section', {}, [
     el('h2', { text: 'Star Stage: Annie audition practice' + (when ? ' (audition ' + when + ')' : '') }),
-    el('div', { class: 'kpis' }, [kpi('Days practiced', days.length), kpi('Line practices', st.solos.line || 0), kpi('Song practices', st.solos.song || 0), kpi('Full auditions', st.auditions), kpi('Watched the clip', st.watched)]),
+    el('div', { class: 'kpis' }, [kpi('Days practiced', days.length), kpi('Line practices', st.solos.line || 0), kpi('Song practices', st.solos.song || 0), kpi('Mock auditions', st.auditions), kpi('Heard the song', st.watched), kpi('Other lines tried', st.solos.other || 0)]),
     el('p', {}, [el('strong', { text: 'By day: ' }), days.slice(-10).map(d => d.slice(5) + ' ' + Object.entries(st.days[d]).map(([k, n]) => (STAGE_WORDS[k] || k) + (n > 1 ? ' ×' + n : '')).join(', ')).join(' · ') || 'nothing yet.']),
     ...(takes.length ? takes : [el('p', { class: 'muted', text: 'Her recordings appear here after her first practice.' })]),
     songBlock(),

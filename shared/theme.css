@@ -411,11 +411,6 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
 .scene.stage .vstar { flex: none; font-size: clamp(44px, 10vw, 76px); filter: grayscale(1); opacity: 0.35; transition: filter 0.15s, opacity 0.15s, transform 0.1s; }
 .scene.stage .vstar.on, .scene.stage .mic[data-state="big"] .vstar { filter: none; opacity: 1; }
 .scene.stage .mic-status { min-height: 1.4em; text-align: center; font-family: var(--display); font-size: clamp(22px, 4.6vw, 32px); font-weight: 700; color: var(--plum); }
-.scene.stage .yt { position: relative; width: 100%; aspect-ratio: 16 / 9; min-height: 200px; border-radius: var(--radius-sm); overflow: hidden; background: #000; }
-.scene.stage .yt iframe { width: 100%; height: 100%; border: 0; }
-.scene.stage .yt-wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 72px; animation: pulse 1.2s ease-in-out infinite; }
-.scene.stage .yt:not(.loading) .yt-wait { display: none; }
-.scene.stage .yt-again { width: 100%; height: 100%; font-size: 96px; color: #fff; background: radial-gradient(circle, #5B3E8F, #2A1E45); }
 .stage-curtain { position: relative; height: clamp(260px, 50vw, 420px); border-radius: var(--radius); overflow: hidden; background: radial-gradient(60% 50% at 50% 85%, #FFF1C9, #F9D77B 40%, #5B3E8F 100%); }
 .stage-curtain .cl, .stage-curtain .cr { position: absolute; top: 0; bottom: 0; width: 50%; background: repeating-linear-gradient(90deg, #B83A5E 0 18px, #E2688F 18px 36px); transition: transform 1.6s ease-in-out; z-index: 1; }
 .stage-curtain .cl { left: 0; }
@@ -443,3 +438,46 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
 .scene.stage .song-play:active { transform: translateY(4px); box-shadow: 0 4px 0 #9E3A5E, var(--shadow); }
 .scene.stage .song-bar { width: 100%; height: 18px; border-radius: 10px; background: #F3E8EE; overflow: hidden; }
 .scene.stage .song-bar .fill { width: 0; height: 100%; background: linear-gradient(90deg, var(--mint), var(--gold), var(--rose)); transition: width 0.25s linear; }
+
+/* Star Stage audition trainer: today's plan, fading cues, the reminder bounce, the acting cue, sound-on, breathing */
+.plan-strip { display: flex; justify-content: center; gap: 12px; }
+.plan-item { position: relative; width: clamp(54px, 11vw, 76px); height: clamp(54px, 11vw, 76px); border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: clamp(28px, 6vw, 42px); background: rgba(255,255,255,0.8); border: 3px solid #F3D3DC; }
+.plan-item.next { border-color: var(--gold); box-shadow: var(--glow-gold); animation: breathe 2.4s ease-in-out infinite; }
+.plan-item.done { background: var(--tint-mint); border-color: var(--mint); }
+.plan-item b { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: 50%; background: var(--mint-deep); color: #fff; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.scene.stage .encounter-btn.off { opacity: 0.55; }
+.scene.stage .cues.faded .cue span { opacity: 0.22; }
+.scene.stage .mic.nudge .mic-icon { animation: jump 0.7s ease-out 1; }
+.scene.stage .mic-status.act { font-size: clamp(56px, 12vw, 96px); line-height: 1.1; }
+.scene.stage .unmute { align-self: center; padding: 24px 36px; border-radius: 999px; font-size: clamp(44px, 10vw, 72px); background: linear-gradient(180deg, var(--gold), var(--gold-deep)); box-shadow: 0 8px 0 #9B7414, var(--shadow); animation: breathe 2s ease-in-out infinite; }
+.scene.stage.breath { align-items: center; }
+.scene.stage.breath .bubble { width: clamp(180px, 40vw, 300px); height: clamp(180px, 40vw, 300px); }
+
+/* Phones on their side: compact head, pictures beside the turn panel, everything on one screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  main:has(> #cabinet .scene.stage) { max-width: 980px; }
+  .scene.stage { gap: 8px; padding: 8px 12px; }
+  .scene.stage .scene-head .companion { width: 52px; height: 52px; }
+  .scene.stage .scene-head .title { font-size: 20px; }
+  .scene.stage .scene-head .line { font-size: 13px; }
+  .scene.stage.practice { display: grid; grid-template-columns: 3fr 2fr; grid-template-areas: "head head" "dots dots" "cues mic" "cues status"; align-items: center; }
+  .scene.stage.practice > .scene-head { grid-area: head; }
+  .scene.stage.practice > .round-dots { grid-area: dots; }
+  .scene.stage.practice > .cues { grid-area: cues; padding: 8px; gap: 8px; }
+  .scene.stage.practice > .mic { grid-area: mic; padding: 8px 10px; }
+  .scene.stage.practice > .mic-status { grid-area: status; font-size: 20px; }
+  .scene.stage .cue { min-width: clamp(56px, 17vh, 96px); min-height: clamp(56px, 17vh, 96px); font-size: clamp(32px, 10vh, 60px); }
+  .scene.stage .mic-icon { width: 56px; height: 56px; font-size: 32px; }
+  .scene.stage .vstar { font-size: 40px; }
+  .scene.stage .mic-status.act { font-size: 48px; }
+  .scene.stage .encounters { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .scene.stage .encounter-btn { min-height: 84px; font-size: 16px; }
+  .scene.stage .encounter-btn .icon { font-size: 34px; }
+  .day-strip { padding: 4px; gap: 6px; }
+  .day-strip .day { width: 32px; height: 32px; font-size: 18px; border-width: 2px; }
+  .day-strip .day.audition { width: 42px; height: 42px; font-size: 24px; }
+  .plan-item { width: 46px; height: 46px; font-size: 24px; }
+  .stage-curtain { height: 46vh; }
+  .scene.stage.breath .bubble { width: 38vh; height: 38vh; }
+  .scene.stage .song-play { width: 96px; height: 96px; font-size: 48px; }
+}

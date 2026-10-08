@@ -35,7 +35,9 @@ export async function openMic() {
       return roomLevel(readings);
     },
     // Records until the gate closes or live() turns false. Resolves { blob, heard, peakDb, ms, reason }.
-    listen({ floorDb, maxMs, endSilenceMs, noVoiceMs, graceMs = 250, onLevel = () => {}, live = () => true }) {
+    // nudgeMs: with no voice yet by then, onNudge() runs once (the "your turn" reminder) and the gate ignores the
+    // next 500 ms, so the reminder's own chime is never taken for her voice.
+    listen({ floorDb, maxMs, endSilenceMs, noVoiceMs, graceMs = 250, nudgeMs = 0, onNudge = () => {}, onLevel = () => {}, live = () => true }) {
       const gate = createVoiceGate({ floorDb, maxMs, endSilenceMs, noVoiceMs, graceMs });
       const rec = new MediaRecorder(stream);
       const chunks = [];
@@ -44,9 +46,11 @@ export async function openMic() {
         let result = null;
         rec.onstop = () => resolve({ ...result, blob: chunks.length ? new Blob(chunks, { type: rec.mimeType || 'audio/webm' }) : null });
         const t0 = Date.now();
+        let nudged = false;
         rec.start();
         const timer = setInterval(() => {
           const db = level(), t = Date.now() - t0;
+          if (nudgeMs && !nudged && t >= nudgeMs && !gate.heard) { nudged = true; gate.ignore(t + 500); try { onNudge(); } catch {} }
           if (t >= graceMs) onLevel(db);
           const r = live() ? gate.step(db, t) : { reason: 'cancelled', heard: false, peakDb: null, ms: t };
           if (r) { clearInterval(timer); result = r; if (rec.state !== 'inactive') rec.stop(); }

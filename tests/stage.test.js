@@ -5,16 +5,16 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, readJSON } from './helpers.js';
-import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate, roomLevel, followTimes, dayStrip, addDays } from '../shared/stage-plan.js';
+import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate, roomLevel, followTimes, dayStrip, addDays, dailyPlan, cueLevel } from '../shared/stage-plan.js';
 import { REGISTRY } from '../games/registry.js';
 import { migrate, defaultSave } from '../shared/economy.js';
 
 const stage = readJSON('content/stage.json');
-const blocks = [stage.warmup, stage.slate, ...stage.pieces];
+const blocks = [stage.warmup, stage.slate, ...stage.pieces, ...stage.others];
 
 test('every clip the place can play is bundled, and nothing else', () => {
   const want = new Set();
-  for (const b of blocks) for (const [i, j] of clipRanges(b.chunks.length)) want.add(clipId(b.id, i, j) + '.ogg');
+  for (const b of blocks) for (const [i, j] of clipRanges(b.chunks.length, b.chain !== false)) want.add(clipId(b.id, i, j) + '.ogg');
   const have = new Set(readdirSync(join(ROOT, 'assets/audio/stage')));
   assert.deepEqual([...want].filter(f => !have.has(f)), [], 'missing clips (run tools/build-stage-audio.py)');
   assert.deepEqual([...have].filter(f => !want.has(f)), [], 'stale clips');
@@ -27,7 +27,11 @@ test('content: pieces, pictures, dates', () => {
   for (const b of blocks) for (const c of b.chunks) { assert.ok(c.text.trim(), b.id); assert.ok(c.pic, b.id + ' picture'); }
   for (const p of stage.pieces) { assert.ok(p.intro && p.tip && p.maxMs >= 8000, p.id); }
   assert.match(stage.auditionDate, /^\d{4}-\d{2}-\d{2}$/);
-  assert.ok(stage.videos.length >= 1 && stage.videos.every(v => /^[\w-]{11}$/.test(v)));
+  assert.equal(stage.videos, undefined, 'no YouTube: it could lead out of the app');
+  for (const p of stage.pieces) assert.ok(p.act, p.id + ' acting cue');
+  assert.equal(stage.others.length, 7, 'the other seven lines on the audition sheet');
+  for (const o of stage.others) { assert.ok(o.role && o.pic && o.intro && o.tip && o.act && o.chain === false, o.id); assert.ok(o.chunks.length >= 4 && o.chunks.every(c => c.text && c.pic), o.id); }
+  assert.ok(!JSON.stringify(stage).includes('Mr.') || stage.others.every(o => o.chunks.every(c => !c.text.includes('Mr.') || c.say)), 'Mr. is read as a sentence end: give it a say');
   const reg = REGISTRY.find(r => r.id === 'stage');
   assert.ok(reg && existsSync(join(ROOT, reg.entry.replace('./', ''))));
   assert.equal(reg.spotlight.until, stage.auditionDate, 'map countdown and the place use the same date');
@@ -104,13 +108,15 @@ test('every Star Stage sentence has a story-voice clip', async () => {
   const have = readJSON('content/lines-audio.json').lines;
   const src = readFileSync(join(ROOT, 'games/princess-quest/stage.js'), 'utf8');
   const unq = s => s.replace(/\\'/g, "'");
-  const said = [...src.matchAll(/say\('((?:[^'\\]|\\.)*)'\)/g)].map(m => unq(m[1]));
+  // every sentence-like string literal not glued to another with + (ternaries included)
+  const said = [...src.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)].filter(m => /^[A-Z][a-z]/.test(m[1]) && (/[.!?]$/.test(m[1]) || m[1].split(' ').length >= 4)
+    && src.slice(m.index + m[0].length).trimStart()[0] !== '+' && src.slice(0, m.index).trimEnd().slice(-1) !== '+').map(m => unq(m[1]));
   said.push(...[...src.match(/const HINT = \{([\s\S]*?)\};/)[1].matchAll(/: '((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
   said.push(...[...src.matchAll(/cannot\('((?:[^'\\]|\\.)*)'\)/g)].map(m => unq(m[1])));
   for (const list of ['BIG', 'MORE', 'NOMIC']) said.push(...[...src.match(new RegExp('const ' + list + ' = \\[(.*)\\];'))[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
   said.push(...[...src.matchAll(/(?:intro|line): '((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])), 'You did it!');
   for (const p of stage.pieces) said.push(p.intro, p.tip);
-  const missing = said.flatMap(t => splitSentences(t)).filter(sn => !have[keyOf(sn)]);
+  const missing = said.filter(t => /^[A-Za-z]/.test(t)).flatMap(t => splitSentences(t)).filter(sn => !have[keyOf(sn)]);
   assert.ok(said.length >= 25, String(said.length));
   assert.deepEqual([...new Set(missing)], [], 'run tools/collect-lines.py and tools/build-lines-audio.py');
 });
@@ -148,4 +154,41 @@ test('song cut: kept when sane, dropped when not; content default is inside the 
   assert.deepEqual(mergeStage({ songCut: null }, { songCut: { start: 1, end: 9 } }).songCut, { start: 1, end: 9 });
   const c = stage.songCut;
   assert.ok(c.start >= 0 && c.end > c.start + 5 && c.end < c.duration, 'chorus inside the recording');
+});
+
+test('daily plan: hear first, then line and song, mock auditions in the last three days, warm-up on the day', () => {
+  const A = '2026-10-14';
+  assert.deepEqual(dailyPlan('2026-10-08', A, { canHear: true }), ['hear', 'line', 'song']);
+  assert.deepEqual(dailyPlan('2026-10-08', A, { canHear: true, heard: true }), ['line', 'song']);
+  assert.deepEqual(dailyPlan('2026-10-08', A, { canHear: false }), ['line', 'song'], 'no recording loaded: nothing she cannot do');
+  assert.deepEqual(dailyPlan('2026-10-10', A, { heard: true, canHear: true }), ['line', 'song']);
+  assert.deepEqual(dailyPlan('2026-10-11', A, { heard: true, canHear: true }), ['line', 'song', 'audition']);
+  assert.deepEqual(dailyPlan('2026-10-13', A, { heard: true, canHear: true }), ['line', 'song', 'audition']);
+  assert.deepEqual(dailyPlan(A, A, { canHear: true }), ['dayof']);
+  assert.deepEqual(dailyPlan('2026-10-15', A, {}), []);
+});
+
+test('cue fading: pictures, then faded with recall first, then the curtain', () => {
+  assert.deepEqual([0, 1, 2, 5].map(cueLevel), [0, 1, 2, 2]);
+});
+
+test('voice gate: the reminder chime mid-take is not taken for her voice', () => {
+  const g = createVoiceGate({ floorDb: -65, noVoiceMs: 7000, endSilenceMs: 1200 });
+  let r = null, t = 0;
+  for (; t < 3000; t += 50) r = g.step(-64, t);
+  assert.equal(g.heard, false);
+  g.ignore(t + 500);
+  for (; t < 3500; t += 50) r = g.step(-20, t); // the chime, loud
+  assert.equal(g.heard, false, 'chime ignored');
+  for (; t < 7200 && !r; t += 50) r = g.step(-64, t);
+  assert.equal(r.reason, 'novoice');
+  const g2 = createVoiceGate({ floorDb: -65 });
+  g2.ignore(1000);
+  let r2 = null;
+  for (let u = 0; u < 3000 && !r2; u += 50) r2 = g2.step(u < 1000 ? -64 : -25, u);
+  assert.equal(g2.heard, true, 'her voice after the window counts');
+});
+
+test('echo-only clips: each chunk and the whole', () => {
+  assert.deepEqual(clipRanges(4, false), [[0, 1], [0, 4], [1, 2], [2, 3], [3, 4]]);
 });

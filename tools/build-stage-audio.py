@@ -15,9 +15,10 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'assets' / 'audio' / 'stage'
 
 
-def ranges(n):
-    """Every range the place can play: each single chunk and each tail (shared/stage-plan.js clipRanges)."""
-    out = {(i, i + 1) for i in range(n)} | {(i, n) for i in range(n)}
+def ranges(n, chain=True):
+    """Every range the place can play: each single chunk and each tail, or for an echo-only block (chain: false)
+    each chunk and the whole (shared/stage-plan.js clipRanges)."""
+    out = {(i, i + 1) for i in range(n)} | ({(i, n) for i in range(n)} if chain else {(0, n)})
     return sorted(out)
 
 
@@ -29,13 +30,14 @@ def main():
     ap.add_argument('--name', default='Amelia')
     args = ap.parse_args()
     stage = json.loads((ROOT / 'content' / 'stage.json').read_text(encoding='utf-8'))
-    blocks = [stage['warmup'], stage['slate']] + stage['pieces']
+    blocks = [stage['warmup'], stage['slate']] + stage['pieces'] + stage.get('others', [])
     v = pa.Voice(args.model, args.voices, args.voice)
     OUT.mkdir(parents=True, exist_ok=True)
     keep, dur = set(), {}
     for b in blocks:
-        texts = [c['text'].replace('{name}', args.name) for c in b['chunks']]
-        for i, j in ranges(len(texts)):
+        # 'say' spells a chunk the way the voice should read it (Mister, not Mr.: Kokoro stops at the period)
+        texts = [c.get('say', c['text']).replace('{name}', args.name) for c in b['chunks']]
+        for i, j in ranges(len(texts), b.get('chain', True)):
             fid = f"{b['id']}-{i}-{j}"
             keep.add(fid)
             text = ' '.join(texts[i:j])

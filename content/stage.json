@@ -53,13 +53,14 @@
           "text": "Yes, Miss Hannigan.",
           "pic": "🙄"
         }
-      ]
+      ],
+      "act": "😴"
     },
     {
       "id": "song",
       "title": "My Song",
       "icon": "🎵",
-      "intro": "These are the words to the orphans' song. First we say them like a chant. You learn the tune when you watch the orphans sing.",
+      "intro": "These are the words to the orphans' song. First we say them like a chant, then we sing them with the orphans.",
       "tip": "Sing it strong, like you are scrubbing the floor! Stomp your foot when you sing hard knock.",
       "maxMs": 30000,
       "chunks": [
@@ -79,18 +80,232 @@
           "text": "It's the hard-knock life!",
           "pic": "🪣"
         }
-      ]
+      ],
+      "act": "🧽"
     }
-  ],
-  "videos": [
-    "LH6MstVxehQ",
-    "j95fGroRjhw",
-    "xh0YzOZrniQ"
   ],
   "songCut": {
     "start": 10.8,
     "end": 27.0,
     "duration": 221.9,
     "note": "The audition chorus inside the Sony 'Full Clip' audio (3:41.9). Times found by analysis, not by ear: Parent Corner lets a grown-up check and nudge them."
-  }
+  },
+  "others": [
+    {
+      "id": "annie",
+      "role": "Annie",
+      "pic": "👧",
+      "act": "🐶",
+      "chain": false,
+      "intro": "This is Annie's line. Annie finds a scared little dog.",
+      "tip": "Say it kindly, like you are talking to a scared puppy.",
+      "chunks": [
+        {
+          "text": "Hey there.",
+          "pic": "👋"
+        },
+        {
+          "text": "Are the dog catchers after you?",
+          "pic": "🐕"
+        },
+        {
+          "text": "Well don't worry,",
+          "pic": "🤗"
+        },
+        {
+          "text": "I ain't gonna let them get you or me.",
+          "pic": "🛡️"
+        },
+        {
+          "text": "Everything's gonna be fine.",
+          "pic": "👍"
+        },
+        {
+          "text": "If not today, well... tomorrow!",
+          "pic": "🌅"
+        }
+      ]
+    },
+    {
+      "id": "grace",
+      "role": "Grace",
+      "pic": "👩‍💼",
+      "act": "💼",
+      "chain": false,
+      "intro": "This is Grace's line. Grace works for a very rich man.",
+      "tip": "Stand tall and say it clearly, like a grown-up at work.",
+      "chunks": [
+        {
+          "text": "I'm Grace Farrell,",
+          "pic": "👩‍💼"
+        },
+        {
+          "text": "private secretary to Oliver Warbucks.",
+          "pic": "📝"
+        },
+        {
+          "text": "Mr. Warbucks has decided",
+          "pic": "🤵",
+          "say": "Mister Warbucks has decided"
+        },
+        {
+          "text": "to invite an orphan",
+          "pic": "💌"
+        },
+        {
+          "text": "to spend the holidays at his home.",
+          "pic": "🎄"
+        }
+      ]
+    },
+    {
+      "id": "warbucks",
+      "role": "Mister Warbucks",
+      "pic": "🤵",
+      "act": "🎩",
+      "chain": false,
+      "intro": "This is Mister Warbucks's line. He is surprised the orphan is a girl.",
+      "tip": "Use a big, deep, bossy voice.",
+      "chunks": [
+        {
+          "text": "That's not a boy.",
+          "pic": "🙅"
+        },
+        {
+          "text": "Orphans are boys!",
+          "pic": "👦"
+        },
+        {
+          "text": "Oh well, I suppose she'll have to do.",
+          "pic": "🤷"
+        },
+        {
+          "text": "So, Annie,",
+          "pic": "👧"
+        },
+        {
+          "text": "I guess we should do something special on your first night.",
+          "pic": "✨"
+        },
+        {
+          "text": "Would you like to go to a movie?",
+          "pic": "🎬"
+        }
+      ]
+    },
+    {
+      "id": "hannigan",
+      "role": "Miss Hannigan",
+      "pic": "😠",
+      "act": "😤",
+      "chain": false,
+      "intro": "This is Miss Hannigan's line. She is very bossy to the orphans.",
+      "tip": "Put your hands on your hips and be very, very bossy!",
+      "chunks": [
+        {
+          "text": "Now, for this one's shenanigans,",
+          "pic": "😠"
+        },
+        {
+          "text": "you'll all get down on your knobby little knees",
+          "pic": "🦵"
+        },
+        {
+          "text": "and clean this dump",
+          "pic": "🧽"
+        },
+        {
+          "text": "until it shines like the top of the Chrysler Building!",
+          "pic": "🏙️"
+        },
+        {
+          "text": "Get to work. Now!",
+          "pic": "👉"
+        }
+      ]
+    },
+    {
+      "id": "rooster",
+      "role": "Rooster",
+      "pic": "🐓",
+      "act": "🦊",
+      "chain": false,
+      "intro": "This is Rooster's line. Rooster is Miss Hannigan's sneaky brother.",
+      "tip": "Be sneaky and sly, like a fox.",
+      "chunks": [
+        {
+          "text": "That kid is livin' in the lap of luxury",
+          "pic": "💎"
+        },
+        {
+          "text": "while the two Hannigan kids",
+          "pic": "👫"
+        },
+        {
+          "text": "ended up on the skids!",
+          "pic": "📉"
+        },
+        {
+          "text": "I wanna be on Easy Street!",
+          "pic": "💰"
+        }
+      ]
+    },
+    {
+      "id": "lily",
+      "role": "Lily",
+      "pic": "💃",
+      "act": "💅",
+      "chain": false,
+      "intro": "This is Lily's line. Lily is Rooster's fancy friend.",
+      "tip": "Say it in a big, fancy, showy voice.",
+      "chunks": [
+        {
+          "text": "I'm Lily St. Regis,",
+          "pic": "💃",
+          "say": "I'm Lily Saint Regis,"
+        },
+        {
+          "text": "from Jersey City!",
+          "pic": "🌆"
+        },
+        {
+          "text": "I heard about that orphan of yours, Annie.",
+          "pic": "👂"
+        },
+        {
+          "text": "It ain't fair!",
+          "pic": "😤"
+        }
+      ]
+    },
+    {
+      "id": "bundles",
+      "role": "Bundles",
+      "pic": "🧺",
+      "act": "📣",
+      "chain": false,
+      "intro": "This is Bundles's line. Bundles brings the laundry.",
+      "tip": "Be cheerful and loud, like you are calling down the hall.",
+      "chunks": [
+        {
+          "text": "Laundry! Laundry man!",
+          "pic": "🧺"
+        },
+        {
+          "text": "Mornin' kids!",
+          "pic": "👋"
+        },
+        {
+          "text": "Clean sheets once a month,",
+          "pic": "🛏️"
+        },
+        {
+          "text": "whether you need 'em or not.",
+          "pic": "🤷",
+          "say": "whether you need um or not."
+        }
+      ]
+    }
+  ]
 }
