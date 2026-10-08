@@ -21,23 +21,32 @@ what was only analysed, and what cannot be checked here.
      - a dead microphone repeated its failures in every activity;
      - a double tap on "Yay!" started an activity;
      - a damaged recording earned listening credit.
-3. **Re-checks.** After each round, fixes were re-checked in the browser with the same scripted attacks the
+3. **Third round.** A correctness review and a red team ran on the changes since the second round
+   (939d186..bb78ec1). Their findings were fixed in 5240f60 and 6144e75; a skeptic confirmed the high one:
+   - a quiet "Thank you!" / "Hey there." was no longer heard (high);
+   - a knock split across two analyser readings was praised as her voice (high);
+   - double taps on the Hear tile or the PIN pad's Cancel landed on what appeared under her finger;
+   - the menu stayed quiet after the PIN pad when the app had been in the background;
+   - the warm-up's star bar;
+   - a slow microphone's repeated line;
+   - the map's countdown after she had practiced.
+4. **Re-checks.** After each round, fixes were re-checked in the browser with the same scripted attacks the
    reviewers used, plus new ones.
 
-## Measured (headless Chromium, fake microphone, build bb78ec1)
+## Measured (headless Chromium, fake microphone, build 6144e75)
 
 Every activity, at 360x640, 412x915, 800x1280 and 915x412:
 
 | Activity | 360x640 | 412x915 | 800x1280 | 915x412 | Longest silence |
 |---|---|---|---|---|---|
-| My Line (1st practice) | 95 s | 95 s | 95 s | 96 s | 0.4 s |
+| My Line (1st practice) | 95 s | 95 s | 94 s | 95 s | 0.4 s |
 | My Line (3rd practice) | 81 s | 81 s | 81 s | 81 s | 0.4 s |
 | My Song (1st, with the recording) | 157 s | 158 s | 158 s | 158 s | 0.4 s |
-| My Song (4th) | 128 s | 127 s | 127 s | 128 s | 0.4 s |
+| My Song (4th) | 128 s | 128 s | 128 s | 128 s | 0.4 s |
 | Hear the orphans (12 s, then ✅) | 12 s | 12 s | 12 s | 12 s | 0.0 s |
 | Audition time! | 84 s | 84 s | 84 s | 84 s | 2.1 s |
-| Try another line | 112 s | 113 s | 112 s | 113 s | 0.4 s |
-| Audition day warm-up | 73 s | 73 s | 73 s | 73 s | 2.1 s |
+| Try another line | 112 s | 113 s | 113 s | 113 s | 0.4 s |
+| Audition day warm-up | 72 s | 73 s | 73 s | 73 s | 2.1 s |
 
 Session lengths are within the plan's limits: My Line ≤ 3 min, My Song ≤ 4 min, mock audition ≤ 2.5 min, warm-up ≤ 3.5 min.
 
@@ -56,7 +65,9 @@ Microphone and edge cases (scripted, 412x915 unless noted):
 | Quiet child (speech 24 dB down) | Heard on every turn ("Good! Now even bigger!"); the microphone is kept. Before the fixes it was dropped within a minute. |
 | Loud TV with no voice (steady −25 dB) | Not taken for her voice. She is coached ("say it nice and loud"), the microphone is kept, and the practice finishes in 2.5 min. |
 | Speech in noise | Heard on every turn |
-| Knock near the microphone (impact with room echo) | Never counted as her turn or praised; the take keeps listening for her |
+| Knock near the microphone (impact with room echo, incl. one split across two readings) | Never counted as her turn or praised; the take keeps listening for her. Exception: a knock loud enough to clip the input, at some window phases. |
+| Soft short phrases ("Thank you!", "Hey there.", "Yes!" at −41 dB) | Heard, as they were before the knock rules |
+| Double tap on Hear tile / PIN pad Cancel / "Yay!" | The second tap is ignored; a deliberate tap 0.6 s later works |
 | Silent child (room noise only) | The microphone is kept; she gets two tries per step, then "That's okay. Let's keep going."; done in 2 min |
 | Dead microphone (digital silence) | Set aside after two takes, with one "keep going" line, then thumbs-up turns. The next activity skips the warm-up and sets it aside after one take. |
 | Double tap on "Yay!" | The second tap does not start an activity |
@@ -80,7 +91,7 @@ EBU R128 (short clips looped to 3 s):
 - Median −16.51 LUFS, range −16.69 to −16.36: a spread of 0.33 dB.
 - Highest true peak −1.0 dBTP.
 
-Tests: `node --test tests/*.test.js` passes (135 tests). These rounds added tests for:
+Tests: `node --test tests/*.test.js` passes (136 tests). These rounds added tests for:
 
 - the voice gate: a soft voice, the bump, a soft syllable that keeps the take open, a knock with a room echo
   (including half caught), and short words with a hard start
