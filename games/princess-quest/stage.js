@@ -29,7 +29,7 @@ const BIG = ['Big stage voice!', 'Wow, the back row heard you!', 'Loud and clear
 const MORE = ['Good! Now even bigger!', 'Nice! Use your big stage voice!'];
 const NOMIC = ['Great job!', 'Wonderful!'];
 
-const say = t => ctx.audio.say(t);
+const say = t => ctx.audio.say(t, { story: true }); // Luna's own voice, the one that models the line
 const sfx = () => ctx.audio.sfx || { sparkle() {}, yay() {}, ding() {}, applause() {} };
 const named = t => t.replace(/\{name\}/g, ctx.economy.save.child.name);
 const stage = () => ctx.economy.save.stage;

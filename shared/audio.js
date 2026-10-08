@@ -125,8 +125,10 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
     }
     return best[n];
   }
-  function lineClips(parts) {
-    if (!lines || !settings || settings.voice !== 'luna') return null;
+  // story: use the story voice whenever it has every sentence, whatever the setting (Star Stage: Luna's
+  // instructions must sound like the Luna who models the line).
+  function lineClips(parts, story = false) {
+    if (!lines || !settings || (settings.voice !== 'luna' && !story)) return null;
     const out = [];
     for (const part of parts) {
       if (part.sound) {
@@ -161,9 +163,9 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
   }
   // Says text, stopping as soon as live() turns false. Shared by say() and the {say} steps of sequence(),
   // so a sequence's own say step never cancels the sequence (the heart-word bug).
-  async function speak(text, live) {
+  async function speak(text, live, story = false) {
     const parts = parseParts(String(text));
-    const clips = lineClips(parts);
+    const clips = lineClips(parts, story);
     if (clips) {
       for (let i = 0; i < clips.length; i++) {
         if (!live()) return;
@@ -240,11 +242,11 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
       const r = await player.play(src);
       return my === seq ? r : 'stopped';
     },
-    async say(text, { interrupt = true } = {}) {
+    async say(text, { interrupt = true, story = false } = {}) {
       if (api.muted) return;
       if (interrupt) api.stop();
       const my = ++seq;
-      await speak(text, () => my === seq);
+      await speak(text, () => my === seq, story);
     },
     // Source for one phoneme without playing it: a Blob (recording), a URL (bundled), or null.
     phonemeSrc(id) {
@@ -358,7 +360,10 @@ export function createWebAudioPlayer() {
   const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!AC) return createHtmlPlayer();
   let ctx = null;
-  const buffers = new Map(); // key → Promise<AudioBuffer>
+  const buffers = new Map(); // URL → Promise<AudioBuffer>
+  // Recordings by Blob, held only as long as the Blob is: Star Stage plays back a new take every few minutes,
+  // and a Map kept every one of them decoded until the app was closed.
+  const blobBuffers = new WeakMap();
   let playing = [];          // active source nodes
   let timers = [];
   let waiters = [];          // resolvers of in-flight play()/chain() promises; settled false on stop
@@ -392,14 +397,15 @@ export function createWebAudioPlayer() {
   }
   function decode(src) {
     const k = keyOf(src);
-    if (!buffers.has(k)) {
+    const cache = src instanceof Blob ? blobBuffers : buffers;
+    if (!cache.has(k)) {
       const p = (src instanceof Blob ? src.arrayBuffer() : fetch(src).then(r => { if (!r.ok) throw new Error('audio ' + r.status); return r.arrayBuffer(); }))
         .then(ab => context().decodeAudioData(ab))
         .then(buf => (src instanceof Blob ? conditioned(buf) : buf))
-        .catch(e => { buffers.delete(k); throw e; });
-      buffers.set(k, p);
+        .catch(e => { cache.delete(k); throw e; });
+      cache.set(k, p);
     }
-    return buffers.get(k);
+    return cache.get(k);
   }
   // A recording (Blob) is levelled, trimmed and normalised once, when it is decoded.
   function conditioned(buf) {

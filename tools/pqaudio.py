@@ -60,6 +60,47 @@ def normalise_peak(x, peak_db=-1.0):
     return x * (10 ** (peak_db / 20) / pk) if pk > 0 else x
 
 
+# One loudness for every spoken clip, so no line is noticeably quieter than the one before it. Peak
+# normalising alone left Star Stage clips 8 dB apart (and one over full scale after Opus encoding); Kokoro
+# speech has sharp peaks, so reaching a common loudness needs a gentle limiter on those peaks first.
+# -16.5 LUFS is the median of the story-voice lines rendered before this existed.
+LOUDNESS_LUFS = -16.5
+
+
+def limit_peaks(x, ceiling_db=-2.0, hold_ms=8, release_ms=80):
+    """Look-ahead peak limiter: the gain dips just before a peak (no overshoot) and recovers smoothly."""
+    from scipy.ndimage import minimum_filter1d
+    c = 10 ** (ceiling_db / 20)
+    need = np.minimum(1.0, c / np.maximum(np.abs(x), 1e-9))
+    h = max(1, int(SR * hold_ms / 1000))
+    g = minimum_filter1d(need, size=2 * h + 1, mode='nearest')
+    g = np.convolve(g, np.ones(h) / h, mode='same')  # every sample averaged here is <= the need at the peak
+    r = np.exp(-1 / (SR * release_ms / 1000))
+    out = g.copy()
+    for i in range(1, len(out)):  # fall at once, recover with the release time
+        out[i] = g[i] if g[i] < out[i - 1] else out[i - 1] * r + g[i] * (1 - r)
+    return (x * np.minimum(out, need)).astype(np.float32)
+
+
+def normalise_loudness(x, target=LOUDNESS_LUFS, ceiling_db=-2.0):
+    """Gain to `target` integrated loudness (EBU R128 / BS.1770) with the peaks limited to ceiling_db, so the
+    true peak after Opus encoding stays near -1 dBTP. Needs pyloudnorm (it brings scipy). Clips shorter than
+    the 400 ms gate are only peak-normalised."""
+    import pyloudnorm
+    if len(x) < SR * 0.45:
+        return normalise_peak(x, ceiling_db)
+    meter = pyloudnorm.Meter(SR)
+    y = x.astype(np.float64)
+    for _ in range(3):  # limiting lowers the loudness a little; converge in a few passes
+        lufs = meter.integrated_loudness(y)
+        if not np.isfinite(lufs):
+            return x
+        if abs(lufs - target) < 0.1:
+            break
+        y = limit_peaks(y * 10 ** ((target - lufs) / 20), ceiling_db).astype(np.float64)
+    return y.astype(np.float32)
+
+
 VOICELESS = ('sh', 'ch', 'th', 'p', 't', 'k', 'c', 's', 'f', 'h', 'q', 'x')
 VOICED_STOPS = ('b', 'd', 'g', 'j')
 

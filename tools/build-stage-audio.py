@@ -2,7 +2,8 @@
 # af_heart (Apache-2.0) via kokoro-onnx. Each block (warm-up, slate, line, song) is a list of chunks; the
 # place plays one chunk when a picture is tapped and every tail (chunk i to the end) for backward chaining,
 # so those ranges are rendered: assets/audio/stage/<block>-<i>-<j>.ogg covers chunks i..j-1.
-# A tail is rendered as one sentence, not spliced from chunks, so it keeps natural phrasing.
+# A tail is rendered as one sentence, not spliced from chunks, so it keeps natural phrasing. Every clip is set to
+# the same loudness (pqaudio.normalise_loudness; needs pyloudnorm).
 # Usage: python tools/build-stage-audio.py --model <kokoro-v1.0.onnx> --voices <voices-v1.0.bin> [--name Amelia]
 import argparse, json, sys
 from pathlib import Path
@@ -40,7 +41,7 @@ def main():
             first = text.split()[0].strip('"\'')
             raw = pa.trim_silence(v.say(text, speed=args.speed), -45, 5)
             x, _ = pa.trim_lead_murmur(raw, first, window_ms=450, max_ms=140)
-            x = pa.normalise_peak(pa.fade(pa.trim_silence(x, -45, 20), 5, 25))
+            x = pa.normalise_loudness(pa.fade(pa.trim_silence(x, -45, 20), 5, 25))
             pa.encode_opus(x, OUT / f'{fid}.ogg', 32)
             print(f'{fid}: {len(x) / pa.SR:.2f}s  {text}')
     for f in OUT.glob('*.ogg'):

@@ -93,3 +93,20 @@ test('big voice: relative to her warm-up, with sane limits', () => {
   assert.equal(bigVoiceThreshold(-45), -36); // a whispered warm-up cannot make everything "big"
   assert.ok(Math.abs(rmsDb(new Float32Array(1000).fill(0.1)) - -20) < 0.01);
 });
+
+// Star Stage speaks in the story voice whatever the setting (audio.say { story: true }), which only works when
+// every sentence it says has a rendered clip; otherwise the whole line falls back to the device voice.
+test('every Star Stage sentence has a story-voice clip', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { splitSentences, keyOf } = await import('../shared/audio.js');
+  const have = readJSON('content/lines-audio.json').lines;
+  const src = readFileSync(join(ROOT, 'games/princess-quest/stage.js'), 'utf8');
+  const unq = s => s.replace(/\\'/g, "'");
+  const said = [...src.matchAll(/say\('((?:[^'\\]|\\.)*)'\)/g)].map(m => unq(m[1]));
+  for (const list of ['BIG', 'MORE', 'NOMIC']) said.push(...[...src.match(new RegExp('const ' + list + ' = \\[(.*)\\];'))[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
+  said.push(...[...src.matchAll(/(?:intro|line): '((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])), 'You did it!');
+  for (const p of stage.pieces) said.push(p.intro, p.tip);
+  const missing = said.flatMap(t => splitSentences(t)).filter(sn => !have[keyOf(sn)]);
+  assert.ok(said.length >= 25, String(said.length));
+  assert.deepEqual([...new Set(missing)], [], 'run tools/collect-lines.py and tools/build-lines-audio.py');
+});
