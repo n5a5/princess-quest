@@ -13,59 +13,70 @@ export function svgFrom(markup, cls = '') {
 
 export const LUNA_COLORS = { body: '#FFF8EE', mane1: '#E2688F', mane2: '#7C5CC4', mane3: '#4DB6A4', horn: '#E9B949', cheek: '#FFC7D6', eye: '#33254F' };
 
-// Each Luna gets her own gradient ids: with one shared id, every Luna drawn while the map's copy was hidden
+// Luna, redrawn 10/2026 as a kawaii chibi foal (big sparkly eyes, a rainbow cloud mane, a swirl horn): chosen
+// from four styles by three judges for a six-year-old's appeal, readability at 52 px and fit with the app.
+// Each Luna gets her own gradient ids: with one shared id, every Luna drawn while another copy was hidden
 // (display: none) lost her rainbow mane, because the reference resolved to the hidden one.
 let lunaCount = 0;
 export function lunaSVG({ state = 'idle', glow = 0 } = {}) {
-  const c = LUNA_COLORS;
   const u = ++lunaCount;
-  const g = Math.max(0, Math.min(3, glow));
-  return `
-<svg class="companion ${state}" viewBox="0 0 120 120" xmlns="${NS}" aria-label="Luna the unicorn" role="img">
-  <defs>
-    <linearGradient id="mane-${u}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.mane1}"/><stop offset="0.5" stop-color="${c.mane2}"/><stop offset="1" stop-color="${c.mane3}"/></linearGradient>
-    <radialGradient id="hornglow-${u}" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFF3C4" stop-opacity="0.9"/><stop offset="1" stop-color="#FFF3C4" stop-opacity="0"/></radialGradient>
-  </defs>
-  <g class="body">
-    ${g >= 1 ? `<circle cx="66" cy="22" r="18" fill="url(#hornglow-${u})"/>` : ''}
-    ${g >= 2 ? '<path d="M26 70 C10 60 12 42 30 44 C22 56 26 64 34 68 Z" fill="#E4D6FF" stroke="#B9A7E6" stroke-width="2"/><path d="M94 70 C110 60 108 42 90 44 C98 56 94 64 86 68 Z" fill="#E4D6FF" stroke="#B9A7E6" stroke-width="2"/>' : ''}
-    <ellipse cx="60" cy="112" rx="34" ry="5" fill="#33254F" opacity="0.08"/>
-    <path d="M30 100 L30 84 Q30 62 52 60 L86 60 Q100 62 100 78 L100 100 Q100 106 94 106 L92 106 Q88 106 88 100 L88 90 L72 90 L72 100 Q72 106 66 106 L64 106 Q60 106 60 100 L60 92 L46 92 L46 100 Q46 106 40 106 L36 106 Q30 106 30 100 Z" fill="${c.body}" stroke="#D8CCEB" stroke-width="2.5"/>
-    <path d="M86 62 Q108 60 106 74 Q104 86 90 82" fill="url(#mane-${u})" opacity="0.9"/>
-    <path d="M46 26 Q34 30 34 46 L34 66 Q34 76 46 76 L64 76 Q78 76 78 62 L78 46 Q78 26 62 24 Z" fill="${c.body}" stroke="#D8CCEB" stroke-width="2.5"/>
-    <path d="M56 24 L66 4 L72 26 Z" fill="${c.horn}" stroke="#C9971F" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M60 18 L66 10 M63 22 L69 14" stroke="#FFF3C4" stroke-width="1.5" stroke-linecap="round"/>
-    <path d="M40 30 Q44 16 52 24 Q48 30 44 34 Z" fill="${c.body}" stroke="#D8CCEB" stroke-width="2"/>
-    <path d="M42 30 Q44 22 49 26 Q46 30 44 32 Z" fill="${c.cheek}"/>
-    <path d="M46 26 Q30 24 26 44 Q22 62 30 70 Q34 56 36 44 Q40 32 52 30 Z" fill="url(#mane-${u})"/>
-    <path d="M30 70 Q24 80 30 92 Q34 82 36 74 Z" fill="url(#mane-${u})" opacity="0.85"/>
-    <circle cx="39" cy="60" r="6" fill="${c.cheek}" opacity="0.8"/>
-    <g class="face-idle">
-      <ellipse cx="50" cy="50" rx="4.5" ry="6" fill="${c.eye}"/><circle cx="51.5" cy="47.5" r="1.6" fill="#fff"/>
-      <ellipse cx="68" cy="50" rx="4.5" ry="6" fill="${c.eye}"/><circle cx="69.5" cy="47.5" r="1.6" fill="#fff"/>
-      <path d="M52 66 Q59 70 66 66" stroke="${c.eye}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-    </g>
-    <g class="face-happy">
-      <path d="M45 50 Q50 44 55 50" stroke="${c.eye}" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <path d="M63 50 Q68 44 73 50" stroke="${c.eye}" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <path d="M50 64 Q59 74 68 64" stroke="${c.eye}" stroke-width="2.5" fill="#FFB8CB" stroke-linecap="round"/>
-    </g>
-    <g class="face-think">
-      <ellipse cx="50" cy="51" rx="4.5" ry="5" fill="${c.eye}"/><circle cx="52" cy="49" r="1.5" fill="#fff"/>
-      <ellipse cx="68" cy="51" rx="4.5" ry="5" fill="${c.eye}"/><circle cx="70" cy="49" r="1.5" fill="#fff"/>
-      <path d="M44 42 Q50 40 55 43" stroke="${c.eye}" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <path d="M53 67 Q59 65 65 67" stroke="${c.eye}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-    </g>
-    <g class="face-yay">
-      <path d="M44 48 L50 44 L56 48" stroke="${c.eye}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M62 48 L68 44 L74 48" stroke="${c.eye}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M48 62 Q59 78 70 62 Z" fill="#FFB8CB" stroke="${c.eye}" stroke-width="2.5" stroke-linejoin="round"/>
-      <path d="M22 40 l3 -6 l3 6 l6 3 l-6 3 l-3 6 l-3 -6 l-6 -3 Z" fill="${c.horn}"/>
-      <path d="M96 30 l2 -4 l2 4 l4 2 l-4 2 l-2 4 l-2 -4 l-4 -2 Z" fill="${c.mane3}"/>
-    </g>
-    ${g >= 3 ? '<path d="M50 8 L54 14 L60 12 L58 18 L64 22 L57 23 L56 30 L52 25 L46 27 L48 21 L42 18 L48 16 Z" fill="#E9B949" stroke="#C9971F" stroke-width="1.5" stroke-linejoin="round"/>' : ''}
-  </g>
-</svg>`;
+  const g = Math.max(0, Math.min(3, glow | 0));
+  const OL = '#B8A2DE', BODY = '#FFF8EE', FAR = '#EDE3F5', EYE = '#33254F', CHEEK = '#FFC7D6', HORN = '#E9B949', HORN_OL = '#C9971F';
+  const P = '#E2688F', V = '#7C5CC4', T = '#4DB6A4';
+  const S = `stroke="${OL}" stroke-width="2.6" stroke-linejoin="round"`;
+  // Mane curls: one outline layer underneath, then solid colour bands (pink top, purple middle, teal bottom).
+  const cloud = (cs) => cs.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r + 1.3}" fill="${OL}"/>`).join('') + cs.map(([x, y, r, f]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${f}"/>`).join('');
+    const sparkle = (x, y, s, f, st = '') => `<path d="M${+(x).toFixed(2)} ${+(y - s).toFixed(2)}Q${+(x + s * .2).toFixed(2)} ${+(y - s * .2).toFixed(2)} ${+(x + s).toFixed(2)} ${+(y).toFixed(2)}Q${+(x + s * .2).toFixed(2)} ${+(y + s * .2).toFixed(2)} ${+(x).toFixed(2)} ${+(y + s).toFixed(2)}Q${+(x - s * .2).toFixed(2)} ${+(y + s * .2).toFixed(2)} ${+(x - s).toFixed(2)} ${+(y).toFixed(2)}Q${+(x - s * .2).toFixed(2)} ${+(y - s * .2).toFixed(2)} ${+(x).toFixed(2)} ${+(y - s).toFixed(2)}Z" fill="${f}"${st}/>`;
+  // Eye: dark oval, purple gloss and two highlights; (dx, dy) moves the gaze (gloss and highlights move with it).
+  const eye = (x, y, dx = 0, dy = 0) => `<ellipse cx="${x}" cy="${y}" rx="6.4" ry="7.8" fill="${EYE}"/><ellipse cx="${x + dx * .6}" cy="${y + 3.3 + dy}" rx="4.1" ry="3" fill="${V}" opacity=".7"/><circle cx="${x + 2 + dx}" cy="${y - 3 + dy}" r="2.8" fill="#fff"/><circle cx="${x - 2.1 + dx * .5}" cy="${y + 3.2 + dy * .5}" r="1.25" fill="#fff"/>`;
+  // Pill leg with a coloured hoof; drawn before the body so the belly covers its top.
+  const leg = (x, top, b, fill, hoof) => `<rect x="${x}" y="${top}" width="11" height="${b - top}" rx="5.5" fill="${fill}"/><path d="M${x} ${b - 5.5}h11a5.5 5.5 0 0 1-11 0z" fill="${hoof}"/><rect x="${x}" y="${top}" width="11" height="${b - top}" rx="5.5" fill="none" ${S}/>`;
+  const line = (d, c = EYE, w = 2.4) => `<path d="${d}" stroke="${c}" stroke-width="${w}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const shine = (d) => `<path d="${d}" stroke="#fff" stroke-opacity=".6" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  // Round float noise from the gaze/sparkle maths so the markup stays short.
+  return `<svg class="companion ${state}" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="Luna the unicorn" role="img">
+<defs>
+<linearGradient id="hn-${u}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F8DC86"/><stop offset="1" stop-color="${HORN}"/></linearGradient>
+<radialGradient id="gl-${u}" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFD24D" stop-opacity=".95"/><stop offset=".45" stop-color="#FFDB70" stop-opacity=".6"/><stop offset="1" stop-color="#FFE9A8" stop-opacity="0"/></radialGradient>
+</defs>
+<g class="body">
+<ellipse cx="66" cy="111" rx="36" ry="4.5" fill="${EYE}" opacity=".12"/>
+${g >= 1 ? `<ellipse cx="50" cy="19" rx="23" ry="19" fill="url(#gl-${u})"/>` : ''}
+${g >= 2 ? `<path d="M82 66C83 52 92 41 108 35C107 41 104 44 100 46C103 49 100 53 96 54C97 58 93 61 88 61Z" fill="#C3ADF0" ${S}/>
+<path d="M84 80C84 63 95 49 114 42C114 49 110 53 106 55C110 58 107 63 102 64C105 68 101 72 96 72C97 77 92 81 86 81Z" fill="#D6C4FA" stroke="#9C86D6" stroke-width="2.4" stroke-linejoin="round"/>${line('M90 72Q96 62 107 51', '#A993DA', 1.8)}${line('M93 77Q98 70 103 65', '#A993DA', 1.6)}` : ''}
+${leg(58, 86, 107.5, FAR, '#A993DA')}${leg(72, 86, 107.5, FAR, '#A993DA')}
+<g transform="translate(-6 9)"><path d="M98 72C106 64 116 68 115 78C114 86 108 88 110 96C111 101 116 102 117 100C114 106 104 104 103 96C102 90 106 84 104 79C102 75 100 76 98 77Z" fill="${P}" ${S}/>
+<path d="M99 75C104 72 109 75 108 81C107 87 102 90 103 96C99 92 98 86 101 82C102 79 101 77 99 77Z" fill="${V}"/>
+<path d="M104 91C104 98 110 101 114 99C110 98 108 94 108 88Z" fill="${T}"/>${shine('M106 69C111 69 113 73 112.5 77')}</g>
+${leg(45, 86, 110.5, BODY, '#B9A3E3')}${leg(84, 86, 110.5, BODY, '#B9A3E3')}
+<ellipse cx="70" cy="87" rx="26" ry="12" fill="${BODY}" ${S}/>
+${cloud([[66, 27, 8, P], [76, 30, 9, P], [84, 40, 9.5, P], [88, 52, 9, V], [86, 64, 8.5, V], [80, 75, 7.5, T]])}
+${shine('M79 34q5 0 6 5')}${shine('M86 58q4 2 4 6')}
+<path d="M65 32C66 25 70 19 78.5 15C80.5 22 79 29 75 35Z" fill="${BODY}" ${S}/><path d="M69 30C70 26 72.5 22.5 76.5 20C77.3 24 76.2 27.5 74.3 30.8Z" fill="${CHEEK}"/>
+<path d="M32 37C26 31 24.5 24 26.5 17C34 19.5 40 25 42 32Z" fill="${BODY}" ${S}/><path d="M33 31C30 27.5 29 24 29.5 21C33.5 23 36 25.5 37.5 29Z" fill="${CHEEK}"/>
+<ellipse cx="54" cy="55" rx="30" ry="27" fill="${BODY}" ${S}/><ellipse cx="39" cy="70" rx="14" ry="10" ${S}/><ellipse cx="54" cy="55" rx="30" ry="27" fill="${BODY}"/><ellipse cx="39" cy="70" rx="14" ry="10" fill="#FFE9E4"/>
+<path d="M43.5 31.5L49.4 4.5Q50 3.6 50.6 4.6L57.5 31.5Z" fill="url(#hn-${u})" stroke="${HORN_OL}" stroke-width="2" stroke-linejoin="round"/>
+${line('M44.9 27Q50 25 55.6 20M46.3 20.3Q50 18.4 53.7 13.8M47.8 13.4Q50 12.4 51.9 8.8', HORN_OL, 1.8)}
+<path d="M62 31C62 24 54 22 47 25C38 27 31 33 30 42C30 47 34 50 37 47C36 42 39 38 45 37C52 36 59 36 62 31Z" fill="${P}" ${S}/>
+<path d="M60.5 33.5C56 36 49 35.5 43 37.5C39 39 36.5 42.5 37 47C34 48.5 31 46 31 42.5C32.5 37 38 34.5 45 34C51 33.5 57 34 60.5 33.5Z" fill="${V}"/>
+<g transform="translate(73 41)"><circle cy="-3" r="2.6" fill="#FF9EBB"/><circle cx="2.9" cy="-.9" r="2.6" fill="#FF9EBB"/><circle cx="1.8" cy="2.5" r="2.6" fill="#FF9EBB"/><circle cx="-1.8" cy="2.5" r="2.6" fill="#FF9EBB"/><circle cx="-2.9" cy="-.9" r="2.6" fill="#FF9EBB"/><circle r="1.8" fill="${HORN}"/></g>
+<ellipse cx="30" cy="67" rx="1.3" ry="1.6" fill="#C7A3C8"/>
+<ellipse cx="64.5" cy="62" rx="5.4" ry="3.5" fill="${CHEEK}"/>
+<g class="face-idle">${eye(37, 53)}${eye(58, 53)}
+${line('M31.1 50.6l-2.8-1.4M64 50.6l2.8-1.4', EYE, 1.9)}
+<g transform="translate(-8 .5)">${line('M44 70.5Q48.5 75 53 70.5', EYE, 2.4)}</g></g>
+<g class="face-happy">${line('M31 55Q37 47 43 55M52 55Q58 47 64 55', EYE, 3)}
+<g transform="translate(-8 .5)"><path d="M43 69.5Q48.5 71 54 69.5Q53.6 77.5 48.5 77.5Q43.4 77.5 43 69.5Z" fill="#E25478" stroke="${EYE}" stroke-width="2.1" stroke-linejoin="round"/><path d="M45.3 75.2Q48.5 72.6 51.7 75.2Q50.4 76.6 48.5 76.6Q46.6 76.6 45.3 75.2Z" fill="#FF9BB6"/></g></g>
+<g class="face-think">${eye(37, 53, 1.6, -3)}${eye(58, 53, 1.6, -3)}
+${line('M31.5 43.5Q37 42.5 42.5 43.5', EYE, 2.6)}${line('M52.5 41Q58 35.5 64 39', EYE, 2.6)}
+<ellipse cx="45" cy="72.5" rx="3" ry="3.2" fill="#E25478" stroke="${EYE}" stroke-width="2"/></g>
+<g class="face-yay">${line('M31 56L37 49L43 56M52 56L58 49L64 56', EYE, 3.2)}
+<g transform="translate(-8 -.5)"><path d="M42 68.5Q48.5 70.5 55 68.5Q54.2 79 48.5 79Q42.8 79 42 68.5Z" fill="#E25478" stroke="${EYE}" stroke-width="2.2" stroke-linejoin="round"/><path d="M44.7 76.4Q48.5 72.9 52.3 76.4Q50.6 78.4 48.5 78.4Q46.4 78.4 44.7 76.4Z" fill="#FF9BB6"/></g>
+${sparkle(14, 40, 7, HORN)}${sparkle(104, 18, 6, T)}${sparkle(16, 86, 5, P)}</g>
+${g >= 1 ? sparkle(50, 5.4, 4.4, '#fff', ` stroke="${HORN_OL}" stroke-width=".9" stroke-linejoin="round"`) : ''}
+${g >= 3 ? `<path d="M92 25l2.8 5.6 6.1.9-4.4 4.3 1 6.1-5.5-2.9-5.5 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="${HORN}" stroke="${HORN_OL}" stroke-width="1.6" stroke-linejoin="round"/><circle cx="92" cy="34.5" r="1.8" fill="${P}"/>` : ''}
+</g>
+</svg>`.replace(/\d+\.\d{3,}/g, (n) => String(+(+n).toFixed(2)));
 }
 
 export const SQUISHY_KINDS = [
