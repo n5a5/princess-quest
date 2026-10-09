@@ -245,13 +245,18 @@ test('room level per turn: one loud reading never sets the floor; a room that st
   assert.equal(deadMic({ heard: true, maxDb: -20 }), false);
 });
 
-test('Luna: the horn glow points at its own gradient (review: the id was never filled in, so the glow vanished)', async () => {
+test('Luna: every gradient she uses is defined in her own drawing, with ids unique to each copy, at every state and level', async () => {
   const { lunaSVG } = await import('../shared/characters.js');
-  const svg = lunaSVG({ state: 'idle', glow: 2 });
-  const def = svg.match(/id="(hornglow-[^"]+)"/);
-  assert.ok(def, 'the gradient is defined');
-  assert.ok(svg.includes(`fill="url(#${def[1]})"`), 'and used by the glow circle');
-  assert.ok(!svg.includes('${'), 'no template text left in the markup');
+  for (const state of ['idle', 'happy', 'think', 'yay']) for (const glow of [0, 1, 2, 3]) {
+    const svg = lunaSVG({ state, glow }), other = lunaSVG({ state, glow });
+    const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(m => m[1]);
+    for (const [, ref] of svg.matchAll(/url\(#([^)]+)\)/g)) assert.ok(ids.includes(ref), `${state} g${glow}: url(#${ref}) is defined`);
+    const otherIds = [...other.matchAll(/id="([^"]+)"/g)].map(m => m[1]);
+    assert.ok(!ids.some(i => otherIds.includes(i)), 'ids differ between copies (a hidden copy must not steal the gradient)');
+    assert.ok(!svg.includes('${'), 'no template text left in the markup');
+    for (const f of ['face-idle', 'face-happy', 'face-think', 'face-yay', 'body']) assert.ok(svg.includes(`class="${f}"`), f);
+    assert.ok(svg.includes(`class="companion ${state}"`) && svg.includes('viewBox="0 0 120 120"'));
+  }
 });
 
 test('map countdown: Luna says where to go in the audition week only', async () => {
