@@ -39,7 +39,7 @@ main { padding: calc(var(--bar) + 12px) 12px 40px; max-width: 560px; margin: 0 a
 #splash .hero { width: min(70vw, 300px); animation: floaty 3.5s ease-in-out infinite; }
 #splash h1 { font-family: var(--display); font-size: 40px; font-weight: 700; color: var(--tint-gold); text-shadow: 0 4px 20px rgba(233, 185, 73, 0.35); }
 #splash p { font-size: 18px; opacity: 0.85; }
-#splash .app-version { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); font-size: 14px; opacity: 0.6; letter-spacing: 0.5px; }
+#splash .app-version { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); font-size: 15px; opacity: 0.8; letter-spacing: 0.5px; }
 .star-field { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .star-field span { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #fff; opacity: 0.6; }
 

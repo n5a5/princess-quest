@@ -79,14 +79,22 @@ export function watchUpdates({ onSplash = () => false, onMap = () => false } = {
 export async function installedVersion() {
   const sw = navigator.serviceWorker;
   let v = null;
-  if (sw && sw.controller) {
-    v = await new Promise(res => {
-      const ch = new MessageChannel();
-      ch.port1.onmessage = e => res(e.data);
-      sw.controller.postMessage({ type: 'version' }, [ch.port2]);
-      setTimeout(() => res(null), 1500);
-    });
+  const ask = ms => new Promise(res => {
+    if (!sw || !sw.controller) return res(null);
+    const ch = new MessageChannel();
+    ch.port1.onmessage = e => res(e.data);
+    sw.controller.postMessage({ type: 'version' }, [ch.port2]);
+    setTimeout(() => res(null), ms);
+  });
+  v = await ask(2500);
+  // no answer (a phone waking the worker slowly): the newest version's cache names it
+  if (!v) {
+    try {
+      const num = k => k.replace(/^arcade-v/, '').split('.').map(Number);
+      const newer = (a, b) => { const x = num(a), y = num(b); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+      const keys = (await caches.keys()).filter(k => /^arcade-v\d/.test(k));
+      v = keys.reduce((best, k) => (!best || newer(k, best) ? k : best), null);
+    } catch {}
   }
-  if (!v) { try { const keys = (await caches.keys()).filter(k => k.startsWith('arcade-v')); if (keys.length === 1) v = keys[0]; } catch {} }
   return v ? String(v).replace(/^arcade-v/, '') : null;
 }

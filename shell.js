@@ -321,7 +321,9 @@ async function boot() {
   if ('serviceWorker' in navigator && !/[?&]nosw=1/.test(location.search)) {
     updates = watchUpdates({ onSplash: () => !!$('splash'), onMap: () => !current && !opening && !document.querySelector('.overlay') });
     // the version on this device, small at the bottom of the splash (a grown-up checking an update)
-    navigator.serviceWorker.ready.then(() => installedVersion()).then(v => { const n = $('app-version'); if (v && n) n.textContent = 'Version ' + v; }).catch(() => {});
+    // (asked again a few seconds later if the worker did not answer the first time)
+    const showVersion = () => installedVersion().then(v => { const n = $('app-version'); if (v && n) n.textContent = 'Version ' + v; return v; });
+    navigator.serviceWorker.ready.then(showVersion).then(v => { if (!v) setTimeout(showVersion, 3000); }).catch(() => {});
   }
 }
 boot();
