@@ -332,3 +332,17 @@ test('voice gate: soft short phrases are heard (round 3: the 300 ms minimum drop
     assert.equal(r.heard, true, `peak ${peak} dB`);
   }
 });
+
+test('quiet microphone (Samsung, room -87 dB): a normal voice is heard, and the star bar moves down with the microphone', async () => {
+  const { micGain } = await import('../shared/stage-plan.js');
+  assert.equal(createVoiceGate({ floorDb: -87 }).startDb, -70, 'start level -70, not -50 (that needed a shout)');
+  assert.equal(createVoiceGate({ floorDb: -60 }).startDb, -48, 'a usual room is unchanged');
+  // speech peaking at -55 dB on that microphone: 32 dB over its room, clearly a voice
+  const syll = Array.from({ length: 40 }, (_, k) => -55 - 10 * Math.abs(Math.sin(k / 2.4)));
+  const r = run(createVoiceGate({ floorDb: -87, endSilenceMs: 1200 }), [...flat(-87, 500), ...syll, ...flat(-87, 2000)]);
+  assert.equal(r.heard, true);
+  assert.equal(micGain(-87), -27); assert.equal(micGain(-60), 0); assert.equal(micGain(-40), 0); assert.equal(micGain(-120), -30); assert.equal(micGain(null), 0);
+  assert.equal(bigVoiceThreshold(null, -27), -53);
+  assert.equal(bigVoiceThreshold(-70, -27), -63, 'a quiet warm-up on a quiet microphone still sets a reachable bar');
+  assert.equal(bigVoiceThreshold(-45, 0), -36, 'unchanged on a usual microphone');
+});

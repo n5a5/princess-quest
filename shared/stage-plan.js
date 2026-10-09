@@ -111,10 +111,16 @@ export function rmsDb(samples) {
 
 // A "big stage voice" is within 6 dB of her own warm-up shout (half its loudness), so it works with any
 // microphone. A whispered warm-up cannot set the bar below -36 dB; with no warm-up the bar is -26 dB.
-export function bigVoiceThreshold(refDb) { return refDb === null || refDb === undefined ? -26 : Math.max(refDb, -30) - 6; }
+export function bigVoiceThreshold(refDb, gain = 0) { return refDb === null || refDb === undefined ? -26 + gain : Math.max(refDb, -30 + gain) - 6; }
+
+// How much quieter than usual this microphone reads, from the room level (0 to -30 dB). A phone that records
+// unprocessed audio (no automatic gain, which the star needs) can read a quiet room at -85 dB where most read
+// -60; every fixed loudness bar (the big-voice star, a "big" warm-up) moves down by the same amount there, so
+// a normal voice is not "quiet" on a quiet microphone. Measured on a Samsung phone: room -87 dB.
+export function micGain(roomDb) { return Number.isFinite(roomDb) ? Math.max(-30, Math.min(0, roomDb + 60)) : 0; }
 
 // Voice gate, fed one level reading (dB) every ~50 ms. Speech starts when the smoothed level rises 12 dB above
-// the room (at least -50 dB, at most -12 dB) and at least minVoiced raw readings in that stretch are above it too,
+// the room (at least -70 dB, at most -12 dB; -50 made a quiet microphone need a shout) and at least minVoiced raw readings in that stretch are above it too,
 // so a tap or a thud near the microphone (one loud reading that the smoothing drags out) is not her voice. A knock
 // is forgotten when it stops, so the take keeps listening for her: a first sound that is loudest at its very first
 // reading and then only decays (an impact and its room echo; a voice rises before it falls), or a take with fewer
@@ -129,7 +135,7 @@ export function bigVoiceThreshold(refDb) { return refDb === null || refDb === un
 // (null if none), so a caller can tell a quiet voice (some sound) from a dead microphone (nothing at all).
 // ignore(untilMs): skip readings until then (the "your turn" reminder chime played mid-take).
 export function createVoiceGate({ floorDb = -60, endSilenceMs = 1200, maxMs = 12000, noVoiceMs = 7000, graceMs = 300, minVoiced = 3, minTotal = 4 } = {}) {
-  const startDb = Math.min(Math.max(floorDb + 12, -50), -12);
+  const startDb = Math.min(Math.max(floorDb + 12, -70), -12);
   let smooth = null, heard = false, peakDb = -120, maxDb = -120, lastVoice = 0, done = null, ignoreUntil = 0;
   let voiced = 0, runPeak = -120, loudN = 0, total = 0; // this stretch: raw readings above the start level, its peak; all of them
   let since = []; // every smoothed level from her first word on
@@ -215,8 +221,8 @@ export function quietLevel(readings) {
 }
 
 // A take in which the microphone delivered digital silence (a muted, blocked or dead input): a working microphone
-// always picks up some room noise, far above -90 dB, even when she says nothing.
-export const deadMic = res => !!res && !res.heard && (res.maxDb === null || res.maxDb === undefined || res.maxDb < -90);
+// always picks up some room noise, above -100 dB, even when she says nothing.
+export const deadMic = res => !!res && !res.heard && (res.maxDb === null || res.maxDb === undefined || res.maxDb < -100);
 
 // When each chunk starts inside a clip that says chunks i..j-1, so its picture can light up as Luna says it:
 // offsets in ms, in proportion to each chunk's letters.

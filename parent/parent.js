@@ -368,7 +368,7 @@ function micTest() {
       const res = await m.listen({ floorDb: room, maxMs: 5000, endSilenceMs: 900, noVoiceMs: 4500 });
       out.textContent = res.heard
         ? `✓ Heard you. Loudest ${Math.round(res.peakDb)} dB, room ${Math.round(room)} dB. Star Stage is ready; she will not be asked for the microphone again.`
-        : `Nothing heard (room ${Math.round(room)} dB). Check the volume and that nothing covers the microphone, then try again.`;
+        : `Nothing heard (loudest ${res.maxDb === null ? '–' : Math.round(res.maxDb)} dB, room ${Math.round(room)} dB). Check that nothing covers the microphone, then try again.`;
     } catch (e) {
       out.textContent = e && e.name === 'NotAllowedError' ? 'The microphone is blocked. Allow it in the browser\'s site settings for this app, then try again.' : 'No microphone found (' + (e && e.name || e) + ').';
     } finally { if (m) m.close(); btn.disabled = false; }

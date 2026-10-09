@@ -41,7 +41,7 @@ import { lunaSVG, svgFrom } from '../../shared/characters.js';
 import { flyGems } from '../../shared/encounter.js';
 import { canListen, openMic } from '../../shared/mic.js';
 import { createSongPlayer } from '../../shared/songclip.js';
-import { clipId, chainSteps, daysUntil, logPractice, bigVoiceThreshold, followTimes, dayStrip, dailyPlan, hiddenFromEnd, quietFloor, deadMic } from '../../shared/stage-plan.js';
+import { clipId, chainSteps, daysUntil, logPractice, bigVoiceThreshold, micGain, followTimes, dayStrip, dailyPlan, hiddenFromEnd, quietFloor, deadMic } from '../../shared/stage-plan.js';
 
 let host = null, ctx = null, S = null, DUR = {};
 let run = null;     // the activity in progress, { live, noMic }; Back, Home or leaving the place turns it off
@@ -342,7 +342,7 @@ async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000, fol
       v.hideDone();
       return alive(r) ? { heard: true, noMic: true, peakDb: null, big: false, blob: null } : null;
     }
-    const thr = bigVoiceThreshold(refDb);
+    const thr = bigVoiceThreshold(refDb, micGain(quietFloor(rooms)));
     const res = await m.listen({
       floorDb: quietFloor(rooms, refDb), maxMs, endSilenceMs, noVoiceMs: 7000,
       nudgeMs: NUDGE_MS, onNudge: () => { sfx().ding(); v.nudge(); },
@@ -408,7 +408,8 @@ async function warmUp(r) {
   // Praise the loudness only when it was loud (-30 dB: a warm-up quieter than that does not lift the star's bar,
   // see bigVoiceThreshold). A quiet warm-up is praised for trying and asked for more, and on stage the star then
   // needs at least her warm-up's loudness (bar = her peak), never less than she was asked to beat.
-  if (res.peakDb >= -30) { refDb = res.peakDb; v.turn('big'); sfx().sparkle(); await say('What a big voice! That is your stage voice.'); }
+  const gain = micGain(quietFloor(rooms));
+  if (res.peakDb >= -30 + gain) { refDb = res.peakDb; v.turn('big'); sfx().sparkle(); await say('What a big voice! That is your stage voice.'); }
   else { refDb = res.peakDb + 6; v.turn('ok'); await say('Good warm-up! Let\'s make it even bigger on stage.'); }
 }
 
