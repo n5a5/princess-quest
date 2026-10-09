@@ -16,6 +16,7 @@ import { createAudio, createWebAudioPlayer } from '../shared/audio.js';
 import { mouthSVG } from '../shared/mouths.js';
 import { canListen, openMic } from '../shared/mic.js';
 import { createSongPlayer } from '../shared/songclip.js';
+import { stageDefaults } from '../shared/stage-plan.js';
 
 const economy = createEconomy({ storage: localStorage, onSaveError: () => alert('This device could not store the save (storage full or blocked). Use Export now to keep a copy.') });
 const adaptive = createAdaptive({ economy });
@@ -294,8 +295,22 @@ function stageSection() {
     ...(takes.length ? takes : [el('p', { class: 'muted', text: 'Her recordings appear here after her first practice.' })]),
     songBlock(),
     micTest(),
+    // a grown-up tried it out first: start Star Stage over for her (the song and its times stay)
+    el('div', { class: 'row', style: 'justify-content:flex-start; margin-top:12px' }, [
+      el('button', { type: 'button', class: 'danger', text: 'Reset Star Stage practice', onclick: resetStage }),
+      el('span', { class: 'muted', text: 'Clears practice days, counts and recordings, as if she never started. The loaded song stays.' })
+    ]),
     el('p', { class: 'muted', text: 'The microphone only checks that she spoke and how loud (the star), never the words. Hear the orphans plays the recording loaded below, which stays on this device; everything works offline. Recordings stay on this device and play here exactly as loud as she was.' })
   ]);
+}
+
+async function resetStage() {
+  if (!confirm('Reset Star Stage? This clears every practice day, count and recording on this device, so the plan starts again from the beginning. The loaded song stays. (Combining progress from another device later would bring that device\'s Star Stage practice back.)')) return;
+  const keep = economy.save.stage.songCut;
+  economy.save.stage = { ...stageDefaults(), songCut: keep };
+  economy.persist();
+  for (const id of store.ids('stage')) if (id !== 'song-audio') await store.remove('stage', id);
+  render();
 }
 
 // The cast recording for My Song and Hear the orphans. Loaded from a file on this device and kept only here (the
