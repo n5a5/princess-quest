@@ -563,3 +563,17 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
   .overlay.pin-pad .pin-key { min-height: 52px; }
   .overlay.pin-pad .big-btn { grid-area: cancel; }
 }
+/* Star Stage words (a grown-up's switch in Parent Corner, off unless turned on): the words of the picture lit right
+   now, while she listens. A fixed height, so nothing moves when they come and go; two lines at most. The strip
+   only exists with the switch on, so with it off the screen is exactly as before. */
+.scene.stage .stage-words { height: 2.6em; overflow: hidden; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8px; font-family: var(--display); font-weight: 700; font-size: clamp(20px, 4.6vw, 30px); line-height: 1.25; color: var(--plum); }
+.scene.stage .stage-words.long { font-size: clamp(17px, 3.9vw, 26px); }
+@media (orientation: portrait) and (max-height: 720px) {
+  .scene.stage .stage-words { font-size: 18px; }
+  .scene.stage .stage-words.long { font-size: 16px; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .scene.stage.practice:has(> .stage-words) { grid-template-areas: "head head" "dots dots" "cues mic" "cues status" "words status"; }
+  .scene.stage.practice > .stage-words { grid-area: words; font-size: 16px; }
+  .scene.stage.practice > .stage-words.long { font-size: 14px; }
+}

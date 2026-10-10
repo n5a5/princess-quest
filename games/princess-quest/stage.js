@@ -1,6 +1,7 @@
 // games/princess-quest/stage.js — Star Stage: the audition trainer for the Annie audition (Broadway at the J,
-// grades K–5, Wed 10/14/2026). Amelia is six and cannot read yet, so everything is by ear, with a picture for each
-// chunk, and every instruction is spoken.
+// grades K–5, Wed 10/14/2026). Amelia is six and only starting to read (slowly, a few words), so everything is by
+// ear, with a picture for each chunk, and every instruction is spoken. A grown-up can turn on the words under the
+// pictures (Parent Corner); they show only while she listens, never on her turns or in the auditions (showsWords).
 //   My Line / My Song: from the second practice she first tries it from memory; then she hears it whole; then
 //     backward chaining (the last chunk first, then the last two, up to the whole; she says each back); one
 //     acting cue; the song is sung along with the orphans (the cast recording, if loaded); then all of it by
@@ -41,7 +42,7 @@ import { lunaSVG, svgFrom } from '../../shared/characters.js';
 import { flyGems } from '../../shared/encounter.js';
 import { canListen, openMic } from '../../shared/mic.js';
 import { createSongPlayer } from '../../shared/songclip.js';
-import { clipId, chainSteps, daysUntil, logPractice, bigVoiceThreshold, micGain, followTimes, dayStrip, dailyPlan, hiddenFromEnd, quietFloor, deadMic } from '../../shared/stage-plan.js';
+import { clipId, chainSteps, daysUntil, logPractice, bigVoiceThreshold, micGain, followTimes, dayStrip, dailyPlan, hiddenFromEnd, quietFloor, deadMic, showsWords } from '../../shared/stage-plan.js';
 
 let host = null, ctx = null, S = null, DUR = {};
 let run = null;     // the activity in progress, { live, noMic }; Back, Home or leaving the place turns it off
@@ -67,7 +68,7 @@ const THANKS = { id: 'thanks', chunks: [{ text: 'Thank you!', pic: '🙇' }] };
 const BIG = ['Big stage voice!', 'Wow, the back row heard you!', 'Loud and clear. Bravo!'];
 const MORE = ['Good! Now even bigger!', 'Nice! Use your big stage voice!'];
 const ICON = { hear: '🎧', line: '🗣️', song: '🎵', audition: '⭐', dayof: '🌟', other: '🎭' };
-// what Luna says on the menu about the glowing button (she cannot read the labels)
+// what Luna says on the menu about the glowing button (she cannot read the labels yet)
 const HINT = {
   hear: 'First, listen to the orphans sing. Tap the glowing button!',
   line: 'Tap the glowing button to practice your line!',
@@ -242,13 +243,26 @@ async function playSong(r, v, range = {}, state = 'song', b = null) {
 
 // The practice screen: Luna, a title, progress dots, one picture per chunk, the turn panel (ear or microphone,
 // loudness bar, star). The pictures are not buttons: the flow runs by itself.
-function view(b, title, sub = '', steps = 0) {
+// With the grown-up's words switch on (and `words` not false: the auditions pass false), a fixed-height strip
+// under the pictures shows the words of the picture lit right now while she listens (shared/stage-plan.js
+// showsWords). With the switch off nothing is added, so the screen is exactly as before.
+function view(b, title, sub = '', steps = 0, { words = true } = {}) {
   const cues = b.chunks.map(c => {
     const cue = el('div', { class: 'cue', 'aria-label': named(c.text) }, [el('span', { text: c.pic })]);
     cue.addEventListener('pointerdown', () => { cue.classList.remove('wiggle'); void cue.offsetWidth; cue.classList.add('wiggle'); });
     return cue;
   });
   const cueRow = el('div', { class: 'cues' }, cues);
+  const wordsOn = words && stage().words === true;
+  const cap = wordsOn ? el('div', { class: 'stage-words', 'aria-hidden': 'true' }) : null;
+  let state = 'idle';
+  const caption = k => {
+    if (!cap) return;
+    const show = showsWords({ on: true, state, k, gone: k >= 0 && !!cues[k] && cues[k].classList.contains('gone'), curtain: cueRow.classList.contains('curtain') });
+    const text = show && b.chunks[k] ? named(b.chunks[k].text) : '';
+    cap.textContent = text;
+    cap.classList.toggle('long', text.length > 34);
+  };
   const dots = el('div', { class: 'round-dots' });
   const fill = el('div', { class: 'fill' });
   const star = el('div', { class: 'vstar', text: '⭐' });
@@ -260,19 +274,21 @@ function view(b, title, sub = '', steps = 0) {
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level }));
   host.replaceChildren(el('div', { class: 'scene stage practice' }, [
     el('div', { class: 'scene-head' }, [luna, el('div', {}, [el('div', { class: 'title', text: title }), el('div', { class: 'line', text: sub })])]),
-    steps ? dots : null, cueRow, mic, status
+    steps ? dots : null, cueRow, cap, mic, status
   ]));
   const v = {
     light(i, j) { cues.forEach((c, k) => { c.classList.toggle('lit', k >= i && k < j); c.classList.toggle('dim', k < i || k >= j); }); },
-    now(k) { cues.forEach((c, n) => c.classList.toggle('now', n === k)); },
-    hide(on) { cueRow.classList.toggle('curtain', on); },
+    now(k) { cues.forEach((c, n) => c.classList.toggle('now', n === k)); caption(k); },
+    hide(on) { cueRow.classList.toggle('curtain', on); caption(-1); },
     // the last h pictures hidden (a question mark each); all of them: the curtain
-    hideLast(h) { cues.forEach((c, k) => c.classList.toggle('gone', h > 0 && k >= cues.length - h)); cueRow.classList.toggle('curtain', h >= cues.length && h > 0); },
+    hideLast(h) { cues.forEach((c, k) => c.classList.toggle('gone', h > 0 && k >= cues.length - h)); cueRow.classList.toggle('curtain', h >= cues.length && h > 0); caption(-1); },
     progress(done) { dots.replaceChildren(...Array.from({ length: steps }, (_, n) => el('span', { class: n < done ? 'done' : n === done ? 'current' : '' }))); },
     // 'luna' (listen), 'song' (listen to the orphans), 'sing' (sing along with them), 'you' (her turn, the
     // microphone on), 'tap' (her turn, no microphone: the thumbs-up), 'me' (her own take playing back),
     // 'big' / 'ok' (how her turn went), 'idle'
     turn(t) {
+      state = t;
+      caption(-1); // a new turn starts with no words up; the next lit picture brings its own
       mic.dataset.state = t;
       mic.classList.remove('nudge');
       status.classList.remove('act');
@@ -636,7 +652,7 @@ async function audition() {
   for (const [k, st] of steps.entries()) {
     if (!alive(r)) return;
     const n = st.b.chunks.length;
-    const v = view(st.b, st.title, 'Audition', steps.length);
+    const v = view(st.b, st.title, 'Audition', steps.length, { words: false });
     v.progress(k);
     v.light(0, n);
     if (st.hide) v.hide(true);
@@ -745,7 +761,7 @@ async function dayOf() {
   await braveBreath(r);
   if (!alive(r)) return;
   const line = piece('line'), songPiece = piece('song');
-  let v = view(line, 'Your line', 'Audition day', 3);
+  let v = view(line, 'Your line', 'Audition day', 3, { words: false });
   v.light(0, line.chunks.length);
   v.hide(true);
   v.turn('luna');
@@ -754,7 +770,7 @@ async function dayOf() {
   let res = await turnAgain(r, v, { maxMs: line.maxMs, endSilenceMs: 1500, waitMs: estimateMs(blockText(line, 0, line.chunks.length)), follow: [line, 0, line.chunks.length] });
   await cheer(r, v, res);
   if (!alive(r)) return;
-  v = view(songPiece, 'Your song', 'Audition day', 3);
+  v = view(songPiece, 'Your song', 'Audition day', 3, { words: false });
   v.progress(1);
   v.light(0, songPiece.chunks.length);
   v.turn('luna');

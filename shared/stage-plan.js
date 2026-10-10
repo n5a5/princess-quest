@@ -62,8 +62,9 @@ export const countdownSay = days => (Number.isInteger(days) && days >= 0 && COUN
 // ---------- practice log (save.stage) ----------
 // days: { 'YYYY-MM-DD': { line, song, watch, audition } } counts; solos: { line, song } finished practices;
 // watched: times the clip played 45 s or more; auditions: full run-throughs; songCut: where the audition
-// chorus sits in the loaded song recording, if a grown-up adjusted it ({ start, end } seconds) or null.
-export const stageDefaults = () => ({ days: {}, watched: 0, auditions: 0, solos: {}, songCut: null });
+// chorus sits in the loaded song recording, if a grown-up adjusted it ({ start, end } seconds) or null;
+// words: a grown-up turned on the words under the pictures (Parent Corner; off unless set, see showsWords).
+export const stageDefaults = () => ({ days: {}, watched: 0, auditions: 0, solos: {}, songCut: null, words: false });
 const count = v => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
 const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -80,8 +81,16 @@ export function cleanStage(x) {
   if (isObj(x.solos)) for (const [k, v] of Object.entries(x.solos)) if (count(v)) out.solos[k] = count(v);
   const c = x.songCut;
   if (isObj(c) && Number.isFinite(c.start) && Number.isFinite(c.end) && c.start >= 0 && c.end > c.start + 1) out.songCut = { start: c.start, end: c.end };
+  out.words = x.words === true;
   return out;
 }
+
+// The words under the pictures (a grown-up's switch, off unless turned on). They show only while she listens
+// (Luna's model, or the orphans singing), only for the picture lit right now, and never for a hidden picture or
+// under the curtain: on her own turns she says it from memory, and printed words would turn that into reading.
+// Never in the audition run-throughs (the view is built without them).
+export const showsWords = ({ on, state, k, gone = false, curtain = false }) =>
+  on === true && (state === 'luna' || state === 'song') && Number.isInteger(k) && k >= 0 && !gone && !curtain;
 
 export function logPractice(stage, day, kind) {
   const row = stage.days[day] || (stage.days[day] = {});
@@ -99,6 +108,7 @@ export function mergeStage(a, b) {
   x.watched = Math.max(x.watched, y.watched); x.auditions = Math.max(x.auditions, y.auditions);
   for (const [k, v] of Object.entries(y.solos)) x.solos[k] = Math.max(x.solos[k] || 0, v);
   if (!x.songCut && y.songCut) x.songCut = y.songCut; // the recording lives per device; keep this device's cut
+  // words: this device's own switch (a grown-up set it here), never the other device's
   return x;
 }
 

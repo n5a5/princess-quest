@@ -293,12 +293,13 @@ function stageSection() {
     el('div', { class: 'kpis' }, [kpi('Days practiced', days.length), kpi('Line practices', st.solos.line || 0), kpi('Song practices', st.solos.song || 0), kpi('Mock auditions', st.auditions), kpi('Heard the song', st.watched), kpi('Other lines tried', st.solos.other || 0)]),
     el('p', {}, [el('strong', { text: 'By day: ' }), days.slice(-10).map(d => d.slice(5) + ' ' + Object.entries(st.days[d]).map(([k, n]) => (STAGE_WORDS[k] || k) + (n > 1 ? ' ×' + n : '')).join(', ')).join(' · ') || 'nothing yet.']),
     ...(takes.length ? takes : [el('p', { class: 'muted', text: 'Her recordings appear here after her first practice.' })]),
+    wordsBlock(),
     songBlock(),
     micTest(),
     // a grown-up tried it out first: start Star Stage over for her (the song and its times stay)
     el('div', { class: 'row', style: 'justify-content:flex-start; margin-top:12px' }, [
       el('button', { type: 'button', class: 'danger', text: 'Reset Star Stage practice', onclick: resetStage }),
-      el('span', { class: 'muted', text: 'Clears practice days, counts and recordings, as if she never started. The loaded song stays.' })
+      el('span', { class: 'muted', text: 'Clears practice days, counts and recordings, as if she never started. The loaded song and the words switch stay.' })
     ]),
     el('p', { class: 'muted', text: 'The microphone only checks that she spoke and how loud (the star), never the words. Hear the orphans plays the recording loaded below, which stays on this device; everything works offline. Recordings stay on this device and play here exactly as loud as she was.' })
   ]);
@@ -306,11 +307,33 @@ function stageSection() {
 
 async function resetStage() {
   if (!confirm('Reset Star Stage? This clears every practice day, count and recording on this device, so the plan starts again from the beginning. The loaded song stays. (Combining progress from another device later would bring that device\'s Star Stage practice back.)')) return;
-  const keep = economy.save.stage.songCut;
-  economy.save.stage = { ...stageDefaults(), songCut: keep };
+  const { songCut, words } = economy.save.stage;
+  economy.save.stage = { ...stageDefaults(), songCut, words };
   economy.persist();
   for (const id of store.ids('stage')) if (id !== 'song-audio') await store.remove('stage', id);
   render();
+}
+
+// Her words, for the grown-up who helps (the line and the song, with the same pictures she sees), and the switch
+// that shows them under the pictures in Star Stage. Off unless turned on, and only on this device: the words show
+// only while she listens to Luna or the orphans, never on her own turns or in the auditions (shared/stage-plan.js
+// showsWords). Turning it off puts the practice screen back exactly as it was.
+function wordsBlock() {
+  const st = economy.save.stage;
+  const pieces = STAGE ? STAGE.pieces : [];
+  const name = (economy.save.child && economy.save.child.name) || 'Amelia';
+  const lines = pieces.map(p => el('div', { style: 'margin:8px 0' }, [
+    el('strong', { text: p.title }),
+    ...p.chunks.map(c => el('div', { style: 'margin:2px 0 2px 8px', text: c.pic + '  ' + c.text.replace(/\{name\}/g, name) }))
+  ]));
+  const box = el('input', { type: 'checkbox', id: 'stage-words', onchange: e => { st.words = e.target.checked; economy.persist(); } });
+  box.checked = st.words === true;
+  return el('div', { style: 'margin-top:12px' }, [
+    el('h3', { text: 'Her words' }),
+    ...lines,
+    el('label', { class: 'toggle', style: 'margin-top:8px', for: 'stage-words' }, [box, el('span', { style: 'flex:1', text: 'Show the words under the pictures while Luna says them (this device)' })]),
+    el('p', { class: 'muted', text: 'Off unless you turn it on. The words never show on her own turns or in the mock auditions, so she still says it from memory. If they distract her, turn this off: the screen goes back to exactly how it was. With a paper card, read it together after practice, not right before, and keep it away during mock auditions.' })
+  ]);
 }
 
 // The cast recording for My Song and Hear the orphans. Loaded from a file on this device and kept only here (the

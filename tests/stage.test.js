@@ -2,10 +2,10 @@
 // countdown, the practice log in the save (clean, merge), and the voice gate on synthetic level streams.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, readJSON } from './helpers.js';
-import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate, roomLevel, followTimes, dayStrip, addDays, dailyPlan, hiddenFromEnd } from '../shared/stage-plan.js';
+import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate, roomLevel, followTimes, dayStrip, addDays, dailyPlan, hiddenFromEnd, showsWords } from '../shared/stage-plan.js';
 import { REGISTRY } from '../games/registry.js';
 import { migrate, defaultSave } from '../shared/economy.js';
 
@@ -350,4 +350,35 @@ test('quiet microphone (Samsung, room -87 dB): a normal voice is heard, and the 
   assert.equal(bigVoiceThreshold(null, -27), -53);
   assert.equal(bigVoiceThreshold(-70, -27), -63, 'a quiet warm-up on a quiet microphone still sets a reachable bar');
   assert.equal(bigVoiceThreshold(-45, 0), -36, 'unchanged on a usual microphone');
+});
+
+test('the words switch is off unless a grown-up turned it on, and stays on this device', () => {
+  assert.equal(stageDefaults().words, false);
+  assert.equal(cleanStage({}).words, false);
+  assert.equal(cleanStage({ words: 'yes' }).words, false);
+  assert.equal(cleanStage({ words: true }).words, true);
+  assert.equal(mergeStage({ words: false }, { words: true }).words, false, 'another device never turns it on here');
+  assert.equal(mergeStage({ words: true }, { words: false }).words, true);
+});
+
+test('the words show only while she listens, for the lit picture, never hidden ones', () => {
+  const at = o => showsWords({ on: true, state: 'luna', k: 0, ...o });
+  assert.equal(at({}), true);
+  assert.equal(at({ state: 'song' }), true, 'the orphans singing');
+  for (const state of ['you', 'tap', 'sing', 'me', 'big', 'ok', 'idle']) assert.equal(at({ state }), false, 'her turn or after it: ' + state);
+  assert.equal(at({ on: false }), false, 'switch off');
+  assert.equal(at({ on: 'true' }), false);
+  assert.equal(at({ k: -1 }), false, 'nothing lit');
+  assert.equal(at({ gone: true }), false, 'a faded picture keeps its words hidden');
+  assert.equal(at({ curtain: true }), false, 'nothing through the curtain');
+});
+
+test('the words never come into the auditions, and the strip cannot move the screen', () => {
+  const src = readFileSync(join(ROOT, 'games/princess-quest/stage.js'), 'utf8');
+  for (const call of ["view(st.b, st.title, 'Audition'", "view(line, 'Your line', 'Audition day'", "view(songPiece, 'Your song', 'Audition day'"]) {
+    const line = src.split('\n').find(l => l.includes(call));
+    assert.ok(line && line.includes('{ words: false }'), 'no words in: ' + call);
+  }
+  const css = readFileSync(join(ROOT, 'shared/theme.css'), 'utf8');
+  assert.match(css, /\.stage-words \{[^}]*height: 2\.6em;[^}]*overflow: hidden/, 'a fixed height, so nothing jumps when words come and go');
 });
