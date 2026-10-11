@@ -577,4 +577,6 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
 @media (orientation: landscape) and (max-height: 600px) {
   .scene.stage.practice:has(> .stage-words) { grid-template-areas: "head head" "dots dots" "cues mic" "cues status" "cues words"; }
   .scene.stage.practice > .stage-words { grid-area: words; font-size: 15px; }
+  /* the acting cue (a big picture in the status line, no words then) needs the strip's room */
+  .scene.stage.practice:has(> .mic-status.act) > .stage-words { display: none; }
 }
