@@ -260,8 +260,8 @@ function view(b, title, sub = '', steps = 0, { words = true } = {}) {
     if (!cap) return;
     const show = showsWords({ on: true, state, k, gone: k >= 0 && !!cues[k] && cues[k].classList.contains('gone'), curtain: cueRow.classList.contains('curtain') });
     const text = show && b.chunks[k] ? named(b.chunks[k].text) : '';
-    cap.textContent = text;
-    cap.classList.toggle('long', text.length > 34);
+    // a long chunk gets smaller letters inside the strip; the strip itself never changes size
+    cap.replaceChildren(...(text ? [el('span', { class: text.length > 34 ? 'long' : '', text })] : []));
   };
   const dots = el('div', { class: 'round-dots' });
   const fill = el('div', { class: 'fill' });
@@ -412,9 +412,10 @@ async function keepTake(id, res) {
 }
 
 // Once a visit: "Hello, everybody!" as big as she can. Its loudness sets the bar for the big-voice star.
-async function warmUp(r) {
+// `words` false: no words under the picture (the mock audition and audition day).
+async function warmUp(r, { words = true } = {}) {
   if (refDb !== null || !micOK || micDead || !canListen()) return;
-  const v = view(S.warmup, 'Warm up!', 'Get your stage voice ready.');
+  const v = view(S.warmup, 'Warm up!', 'Get your stage voice ready.', 0, { words });
   v.light(0, 1);
   v.turn('luna');
   await say('First, let\'s warm up your stage voice. Say hello to everybody, as big as you can!');
@@ -636,7 +637,7 @@ async function audition() {
   curtain.classList.add('open');
   await say('Audition time! This is just like the real one. Walk to the middle, stand tall, and smile!');
   if (!alive(r)) return;
-  await warmUp(r);
+  await warmUp(r, { words: false });
   if (!alive(r)) return;
   await braveBreath(r);
   if (!alive(r)) return;
@@ -756,7 +757,7 @@ async function dayOf() {
   await readRoom(r);
   if (!alive(r)) return;
   refDb = null; // a fresh warm-up shout on the day
-  await warmUp(r);
+  await warmUp(r, { words: false });
   if (!alive(r)) return;
   await braveBreath(r);
   if (!alive(r)) return;

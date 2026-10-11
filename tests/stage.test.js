@@ -379,6 +379,10 @@ test('the words never come into the auditions, and the strip cannot move the scr
     const line = src.split('\n').find(l => l.includes(call));
     assert.ok(line && line.includes('{ words: false }'), 'no words in: ' + call);
   }
+  // the warm-up shout that opens the mock audition and audition day: no words either
+  const body = name => src.slice(src.indexOf('async function ' + name + '('), src.indexOf('\n}\n', src.indexOf('async function ' + name + '(')));
+  for (const fn of ['audition', 'dayOf']) assert.match(body(fn), /await warmUp\(r, \{ words: false \}\)/, fn + ' warms up without words');
   const css = readFileSync(join(ROOT, 'shared/theme.css'), 'utf8');
   assert.match(css, /\.stage-words \{[^}]*height: 2\.6em;[^}]*overflow: hidden/, 'a fixed height, so nothing jumps when words come and go');
+  assert.doesNotMatch(css, /\.stage-words\.long/, 'a long chunk shrinks the letters inside, never the strip (its height is in em)');
 });
