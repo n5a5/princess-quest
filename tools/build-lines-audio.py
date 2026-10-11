@@ -39,8 +39,11 @@ def main():
             if old == ms:
                 continue
             print(f'retrim {text[:40]!r}: was {old} ms, now {ms} ms')
+        # a stray "s" of breath after a last vowel or nasal ("everybodies") is cut
+        x, cut = pa.trim_tail_hiss(pa.trim_silence(x, -45, 20), text)
+        if cut: print(f'cut a {cut} ms hiss after {text[:40]!r}')
         # one loudness for every line, true peak at or under -1 dBTP after encoding
-        pa.encode_checked(pa.fade(pa.trim_silence(x, -45, 20), 5, 25), out, 24, target=pa.LOUDNESS_LUFS)
+        pa.encode_checked(pa.fade(x, 5, 25), out, 24, target=pa.LOUDNESS_LUFS)
         made += 1
         if made % 50 == 0: print(made, 'rendered')
     keep = set(index.values())

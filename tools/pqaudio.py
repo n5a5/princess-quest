@@ -178,6 +178,54 @@ def trim_lead_murmur(x, word, window_ms=None, max_ms=None):
     return x[cut:], ms
 
 
+# The last sounds of a line that cannot end in a hiss: vowels, nasals and liquids (Kokoro's phonemes).
+SOFT_END = set('aeiouæɑɐɔəɛɜɪʊʌɒᵻɚɝmnŋlɹɾ')
+
+
+def soft_end(text):
+    """Whether the line's last spoken sound is a vowel, nasal or liquid (so any hiss after it is not speech)."""
+    from kokoro_onnx.tokenizer import Tokenizer
+    import re
+    # keep the sounds only: no punctuation, spaces, stress or length marks ("juː" ends in u)
+    ph = re.sub(r'[^\w\u0250-\u02af\u1d00-\u1dbfæðŋθʃʒ]|[ˈˌːˑ]', '', Tokenizer().phonemize(text, 'en-us'))
+    return bool(ph) and ph[-1] in SOFT_END
+
+
+def trim_tail_hiss(x, text, max_ms=200):
+    """Kokoro sometimes ends a line with a short "s" of breath noise after the last word: "Hello, everybody!"
+    came out as "everybodies", "Laundry man!" as "Laundry mans". When the last spoken sound is a vowel, nasal or
+    liquid, a hissy stretch at the very end cannot be part of the word, so it is cut (the caller fades the end).
+    Only a stretch that is mostly hiss (energy above 4 kHz) and 40 to max_ms long is cut. Returns (audio, ms_cut)."""
+    if not len(x) or not soft_end(text):
+        return x, 0
+    win, hop = int(SR * 0.02), int(SR * 0.01)
+    start = max(0, len(x) - int(SR * (max_ms + 100) / 1000))
+    rows = []
+    for i in range(start, len(x) - win + 1, hop):
+        f = x[i:i + win] * np.hanning(win)
+        S = np.abs(np.fft.rfft(f)) ** 2; hz = np.fft.rfftfreq(win, 1 / SR); tot = S.sum() + 1e-18
+        rows.append((i, 10 * np.log10(tot), S[(hz > 4000) & (hz < 11000)].sum() / tot))
+    if not rows:
+        return x, 0
+    top = max(r[1] for r in rows)
+    # from the end: past the quiet fade-out, then back over the run of hissy frames; it must follow speech
+    k = len(rows) - 1
+    while k >= 0 and rows[k][1] < top - 20: k -= 1
+    end = k
+    while k >= 0 and rows[k][2] > 0.55: k -= 1
+    run = end - k
+    # up to two frames where the last sound turns into the hiss; before them, speech
+    for _ in range(2):
+        if k >= 0 and rows[k][2] > 0.3: k -= 1
+    if k < 0 or run < 4 or rows[k][2] > 0.3:
+        return x, 0
+    cut = rows[k + 1][0]
+    ms = round((len(x) - cut) / SR * 1000)
+    if ms > max_ms:
+        return x, 0
+    return x[:cut], ms
+
+
 def main_vowel_start(fr):
     """Index of the first frame of the longest loud, periodic-looking (low zero-crossing) run."""
     e = np.array([f['e'] for f in fr]); z = np.array([f['z'] for f in fr]); top = e.max()
