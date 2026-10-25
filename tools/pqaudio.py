@@ -37,7 +37,7 @@ def encode_checked(x, out, kbps, target=None, tp_max=-1.0, tol=0.2):
     file measures). Returns the final true peak."""
     tgt = target if target is not None else LOUDNESS_LUFS
     ceiling, aim, tp = -2.0, tgt, 0.0
-    for _ in range(6):
+    for _ in range(10):
         y = normalise_loudness(x, aim, ceiling)
         encode_opus(y, out, kbps)
         tp = true_peak_db(out)
