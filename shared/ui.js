@@ -48,8 +48,8 @@ export function roundDots(total, done) {
 // Scaffolded choice grid. items: [{ id, pic, label, ok, say?, why? }]. Resolves { firstTry, misses, revealed }.
 // Miss 1: the tapped choice dims and says WHY it is not the answer (item.why, e.g. "Fox starts with /f/."),
 // the right choice glows, then onMiss(picked, correct) models the skill or the prompt is said again.
-// Miss 2: reveal + speak the answer.
-export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revealText = null, onMiss = null }) {
+// Miss 2: reveal + speak the answer. onWrong(picked, correct) runs at once on every wrong tap (for a tally).
+export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revealText = null, onMiss = null, onWrong = null }) {
   const grid = el('div', { class: 'choices' + (oneCol ? ' one-col' : '') });
   let misses = 0, settled = false, revealedAnswer = false, answered = false;
   const buttons = new Map();
@@ -80,6 +80,7 @@ export function choiceGrid({ audio, prompt, items, praise, oneCol = false, revea
           return;
         }
         misses++;
+        if (onWrong) onWrong(it, items.find(x => x.ok));
         b.classList.add('dim');
         b.setAttribute('disabled', '');
         const correct = items.find(x => x.ok);

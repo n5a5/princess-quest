@@ -145,7 +145,8 @@ PIECES = [
     'how heavy it is.', 'how much it holds.', 'is longer.', 'is heavier.', 'is taller.', 'has more.', 'holds more.',
     'They are the same length.', 'They weigh the same.', 'They are the same height.', 'They have the same.', 'They hold the same.',
     # Tick-Tock Lagoon (lagoon.js): the time goes in the slot ("Which clock says" + "three thirty?")
-    'Which clock says', 'Make the clock say', 'Your clock says', 'This clock says',
+    'Which clock says', 'Make the clock say', 'Your clock says', 'This clock says', 'That says',
+    'Now move the short hand to the', 'Now move the short hand just past the', 'The short hand points to the', 'The short hand has just passed the',
 ]
 SQUISHY_TOWER_NAMES = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'Finn', 'Pinchy', 'Inky']  # shared/characters.js SQUISHY_KINDS
 SLOT_WORDS = ['pink Squishy', 'green Squishy', 'yellow Squishy', 'tulip', 'blossom', 'daisy', 'caterpillar', 'bee', 'butterfly', 'apple',
@@ -184,8 +185,8 @@ def clock_phrases():
     for h in range(1, 13):
         for m in CLOCK_MINUTES:
             p = HOUR_WORDS[h] + (" o'clock" if m == 0 else ' thirty')
-            out += [p, p + '.', p + '?']
-    return out
+            out += [p, p + '.', p + '?', p + '!']
+    return out + [w + '.' for w in HOUR_WORDS[1:]]
 
 
 def from_templates(name):

@@ -609,17 +609,23 @@ main:has(.scene.lagoon) { padding-bottom: 12px; }
 .clock-face .num { font-family: var(--display); fill: var(--ink); }
 .clock.interactive .clock-face { cursor: grab; touch-action: none; }
 .clock.interactive.turning .clock-face { cursor: grabbing; }
-.clock.turning.minute .hand.minute path, .clock.show-minute .hand.minute path { filter: drop-shadow(0 0 4px #F9D77B) drop-shadow(0 0 2px #F9D77B); stroke: #E9B949; }
-.clock.turning.hour .hand.hour path, .clock.show-hour .hand.hour path { filter: drop-shadow(0 0 4px #F9D77B) drop-shadow(0 0 2px #F9D77B); stroke: #E9B949; }
+/* a lit hand keeps its own colour (pink hour, blue minutes) and glows gold around it */
+.clock.turning.minute .hand.minute path, .clock.show-minute .hand.minute path,
+.clock.turning.hour .hand.hour path, .clock.show-hour .hand.hour path { filter: drop-shadow(0 0 4px #F9D77B) drop-shadow(0 0 2px #F9D77B); }
 .clock.show-hour .hand.hour path, .clock.show-minute .hand.minute path { animation: hand-glow 1s ease-in-out infinite alternate; }
-@keyframes hand-glow { from { stroke-width: 2; } to { stroke-width: 5; } }
+@keyframes hand-glow { from { filter: drop-shadow(0 0 2px #F9D77B); } to { filter: drop-shadow(0 0 7px #F9D77B) drop-shadow(0 0 3px #F9D77B); } }
 .turn-btn { flex: none; width: 60px; height: 60px; border-radius: 50%; border: 3px solid #fff; background: var(--cream); box-shadow: var(--shadow-soft); font-size: 32px; font-weight: 700; color: var(--plum); display: flex; align-items: center; justify-content: center; }
 .turn-btn:active { transform: scale(0.92); }
 .turn-btn[disabled] { opacity: 0.4; }
 .clock.locked .clock-face { cursor: default; }
 .done-btn { min-width: 160px; }
 .done-btn.right { background: linear-gradient(180deg, #8FDCCB, #4DB6A4); }
+.choices.times { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .choices.times .choice { min-height: 64px; }
+.choices.times .choice > span { line-height: 1; font-size: 40px; display: block; } /* no 54px line box around the time */
+.choices.times:has(> .choice:nth-child(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.choices.times:has(> .choice:nth-child(4)) .choice { min-height: 56px; padding: 0; }
+.choices.times:not(:has(> .choice:nth-child(3))) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .choices .digital { font-family: var(--display); font-size: 40px; font-weight: 700; line-height: 1; }
 .choices.clocks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .choices.clocks .choice { min-height: 0; padding: 6px; }
@@ -629,7 +635,19 @@ main:has(.scene.lagoon) { padding-bottom: 12px; }
 .choices.clocks:has(> .choice:nth-child(4)) .clock-face { max-width: min(130px, 14vh); }
 .choices.clocks:not(:has(> .choice:nth-child(3))) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .scene.lagoon .round-dots { min-height: 40px; }
-@media (orientation: portrait) and (max-height: 720px) { .clock .clock-face { width: min(64vw, 25vh, 280px); } }
+@media (orientation: portrait) and (max-height: 720px) {
+  .clock .clock-face { width: min(64vw, 25vh, 280px); }
+  .clock-play:has(> .choices.times > .choice:nth-child(4)) .clock .clock-face { width: min(64vw, 19vh, 280px); }
+}
+@media (orientation: portrait) and (min-height: 600px) {
+  .choices.clocks:not(:has(> .choice:nth-child(4))) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .choices.clocks:not(:has(> .choice:nth-child(4))) > .choice:nth-child(3) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 6px); }
+  .choices.clocks .clock-face { max-width: min(160px, 18vh); }
+}
+/* landscape: four time choices in one row */
+@media (orientation: landscape) { .choices.times:has(> .choice:nth-child(4)) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* big landscape screens (Fire HD, Chromebook): the stacked layout, with the clock sized from the free height */
+@media (orientation: landscape) and (min-height: 601px) and (min-width: 1000px) { .scene.lagoon .clock .clock-face { width: min(40vw, max(27vh, calc(100vh - 490px)), 340px); } }
 .reef { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .reef .stone { width: 22px; height: 22px; border-radius: 50%; background: #E6F4F8; border: 3px solid var(--c); transition: background 0.3s, transform 0.3s; }
 .reef .stone.lit { background: var(--c); transform: scale(1.1); }
@@ -663,7 +681,8 @@ main:has(.scene.lagoon) { padding-bottom: 12px; }
   .scene.lagoon .clock.interactive .turn-btn.back { left: -10px; }
   .scene.lagoon .clock.interactive .turn-btn.fwd { right: -10px; }
   .scene.lagoon .picture.routine { font-size: 38px; }
-  .scene.lagoon .prompt { font-size: 18px; padding: 6px 10px; }
+  main:has(.scene.lagoon) { max-width: 980px; }
+  .scene.lagoon .prompt { padding: 6px 10px; }
   .scene.lagoon .prompt .speak-btn { width: 46px; height: 46px; min-width: 46px; min-height: 46px; font-size: 22px; }
   .choices.clocks .clock-face, .choices.clocks:has(> .choice:nth-child(4)) .clock-face { max-width: min(130px, calc(100vh - 262px)); }
   .choices.clocks:has(> .choice:nth-child(4)) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -671,5 +690,10 @@ main:has(.scene.lagoon) { padding-bottom: 12px; }
   .reef .stone { width: 16px; height: 16px; border-width: 2px; }
   .reef .goal svg { width: 28px; height: 28px; }
   .time-card { font-size: 32px; padding: 4px 12px; }
-  .scene.lagoon.intro .clock .clock-face { width: min(40vw, calc(100vh - 210px), 300px); }
+  .scene.lagoon .clock-play > .choices.times:has(> .choice:nth-child(4)) { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .scene.lagoon .clock-play > .choices.times:has(> .choice:nth-child(4)) .digital { font-size: 32px; }
+  .scene.lagoon.intro { flex-direction: row; align-items: center; justify-content: center; column-gap: 16px; }
+  .scene.lagoon.intro > .stage-row { flex: none; }
+  .scene.lagoon.intro .clock .clock-face { width: min(40vw, calc(100vh - 150px), 300px); }
 }
+@media (orientation: landscape) and (max-height: 480px) { .scene.lagoon .prompt { font-size: 18px; } }

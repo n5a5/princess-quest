@@ -140,13 +140,16 @@ const TONIGHT = {
   'data-sort': 'Sort the socks by color, count each pile, and ask which pile has the most.',
   'patterns': 'Make a pattern with spoons and forks (spoon, fork, spoon, fork). She says what comes next.',
   'shapes': 'Shape hunt: find three circles and three rectangles in the kitchen.',
-  'comprehension': 'Read a picture book together. Ask who was in it, where it happened, and how someone felt.'
+  'comprehension': 'Read a picture book together. Ask who was in it, where it happened, and how someone felt.',
+  'time-tell': 'Kitchen clock at a routine time (bath, bed): ask "What time is it?" She reads the short hand first, then the long hand: seven o\'clock, seven thirty.'
 };
 function tonightCard() {
-  const practised = SUBSKILLS.filter(d => adaptive.accuracy(d.id) !== null && d.tier <= 2);
+  // the quest's skills only: free-play places (the Lagoon) never take the parent's two minutes
+  const core = new Set([...GROUPS.reading, ...GROUPS.math]);
+  const practised = SUBSKILLS.filter(d => core.has(d.cabinet) && adaptive.accuracy(d.id) !== null && d.tier <= 2);
   const pool = practised.length ? practised : SUBSKILLS.filter(d => d.tier === 1);
   const d = [...pool].sort((x, y) => adaptive.mastery(x.id) - adaptive.mastery(y.id))[0];
-  return d ? d.name + ': ' + TONIGHT[d.id] : 'Read a picture book together.';
+  return d ? d.name + ': ' + (TONIGHT[d.id] || 'Read a picture book together.') : 'Read a picture book together.';
 }
 function tonightLine() {
   const trouble = adaptive.troubleList(2).slice(0, 3);
@@ -154,7 +157,9 @@ function tonightLine() {
   const pretty = id => {
     const [kind, ...rest] = id.split(':');
     const r = rest.join(' ');
-    return ({ spell: 'building the word "' + r + '"', read: 'reading the word "' + r + '"', heartap: 'the wish word "' + r + '"', note: 'finding "' + r.split(' ')[0] + '" in a sentence', scroll: 'reading a sentence', 'gpc-hear': 'hearing the sound of "' + r + '"', 'gpc-see': 'the sound of the letter "' + r + '"', swap: 'changing ' + r.replace('>', ' into '), oralswap: 'hearing ' + r.replace('>', ' change to '), takeaway: 'taking a sound off ' + r.split('>')[0], rhyme: 'a rhyme for ' + r.split('>')[0], beats: 'clapping the beats in ' + r, onsetrime: 'putting together ' + r, 'pa-first': 'the first sound in ' + r, 'pa-final': 'the last sound in ' + r, 'pa-medial': 'the middle sound in ' + r, blend: 'blending ' + r, count: 'counting sounds in ' + r, teen: 'teen number ' + r.replace('teens ', ''), bridge: 'the sum ' + r, frames: 'seeing ' + r.replace(/\w+ /, '') + ' gems quickly', trail: r.startsWith('onemore') ? 'one more or one less' : r.startsWith('countout') ? 'counting out ' + r.replace('countout ', '') + ' gems' : 'putting numbers in order', story: 'the story questions', vocab: 'the story word', measure: 'measuring (' + r + ')', sort: 'sorting', pattern: 'the ' + r.split(' ')[0] + ' pattern', shape: 'the ' + r.replace(/\w+ /, '') + ' shape' })[kind] || id;
+    // Lagoon ids are clockread:3:30[:bed]; the time is two parts
+    const at = rest.length >= 2 ? rest[0] + ':' + rest[1] + (rest[2] ? ' (' + rest[2] + ')' : '') : r;
+    return ({ spell: 'building the word "' + r + '"', read: 'reading the word "' + r + '"', heartap: 'the wish word "' + r + '"', note: 'finding "' + r.split(' ')[0] + '" in a sentence', scroll: 'reading a sentence', 'gpc-hear': 'hearing the sound of "' + r + '"', 'gpc-see': 'the sound of the letter "' + r + '"', swap: 'changing ' + r.replace('>', ' into '), oralswap: 'hearing ' + r.replace('>', ' change to '), takeaway: 'taking a sound off ' + r.split('>')[0], rhyme: 'a rhyme for ' + r.split('>')[0], beats: 'clapping the beats in ' + r, onsetrime: 'putting together ' + r, 'pa-first': 'the first sound in ' + r, 'pa-final': 'the last sound in ' + r, 'pa-medial': 'the middle sound in ' + r, blend: 'blending ' + r, count: 'counting sounds in ' + r, teen: 'teen number ' + r.replace('teens ', ''), bridge: 'the sum ' + r, frames: 'seeing ' + r.replace(/\w+ /, '') + ' gems quickly', trail: r.startsWith('onemore') ? 'one more or one less' : r.startsWith('countout') ? 'counting out ' + r.replace('countout ', '') + ' gems' : 'putting numbers in order', story: 'the story questions', vocab: 'the story word', measure: 'measuring (' + r + ')', sort: 'sorting', pattern: 'the ' + r.split(' ')[0] + ' pattern', shape: 'the ' + r.replace(/\w+ /, '') + ' shape', clockread: 'reading the clock at ' + at, clockmatch: 'matching the clock to ' + at, clockset: 'setting the clock to ' + at })[kind] || id;
   };
   const items = trouble.map(t => pretty(t.id)).join('; ');
   return `Two minutes tonight: revisit ${items}. Say it, let her find it, then let her teach it to you.`;

@@ -9,9 +9,10 @@ import { createAdaptive, SUBSKILLS, GROUPS } from '../shared/adaptive.js';
 import { REGISTRY, SQUISHIES } from '../games/registry.js';
 import { SQUISHY_KINDS } from '../shared/characters.js';
 import { __test as lagoon } from '../games/princess-quest/lagoon.js';
-import { toTotal, fromTotal, handAngles, phrase, digital, distractors, WHY, setHint, minuteGrab, minuteMove, snap, dragHour, stepFor, routineTimes, timeFor, ROUTINES } from '../shared/clock.js';
+import { toTotal, fromTotal, handAngles, phrase, digital, distractors, KINDS, whyLine, HAND_OF, setHint, longHandRule, minuteGrab, minuteMove, snap, hourTurn, pickHand, stepFor, routineTimes, timeFor, ROUTINES } from '../shared/clock.js';
 
 const ALL = Array.from({ length: 720 }, (_, t) => fromTotal(t));
+const sameT = (a, b) => toTotal(a) === toTotal(b);
 const STAGES = SUBSKILLS.find(s => s.id === 'time-tell').stages;
 
 test('time maths: totals round-trip, 12 not 0, the hour hand is geared to the minute hand', () => {
@@ -48,12 +49,27 @@ test('turning the minute hand: past the 12 the hour moves on (clockwise) or back
   assert.deepEqual(sweep({ h: 3, m: 0 }, 0, -180, -1, 30), { h: 2, m: 30 }, '3:00 turned back to the bottom is 2:30');
   assert.deepEqual(sweep({ h: 11, m: 0 }, 0, 720, 1, 30), { h: 1, m: 0 }, 'two whole turns move the hour on two');
   assert.deepEqual(sweep({ h: 12, m: 0 }, 0, -360, -1, 30), { h: 11, m: 0 });
+  assert.deepEqual(fromTotal(snap(minuteGrab(toTotal({ h: 2, m: 0 }), 180), 30)), { h: 2, m: 30 }, 'a tap on the 6 at 2:00 makes two thirty, not one thirty');
   for (const step of [30, 5]) for (const t of ALL.filter(x => x.m % step === 0)) {
     assert.equal(snap(minuteGrab(toTotal(t), t.m * 6), step), toTotal(t), 'grabbing the hand where it is moves nothing');
   }
-  assert.equal(dragHour(105, 30), toTotal({ h: 3, m: 30 }));
-  assert.equal(dragHour(100, 60), toTotal({ h: 3, m: 0 }));
-  assert.equal(dragHour(359, 60), 0);
+  // letting go at the o'clock level settles on o'clock: snap to 60 never leaves a :30
+  for (let c = -100; c < 900; c += 7) assert.equal(snap(c, 60) % 60, 0);
+});
+
+test('turning the short hand changes only the hour, and grabbing it where it is moves nothing', () => {
+  for (const t of ALL.filter(x => x.m % 30 === 0)) assert.equal(hourTurn(handAngles(t).hour, t.m), toTotal(t), digital(t));
+  assert.equal(hourTurn(90, 30), toTotal({ h: 3, m: 30 }), 'the short hand on the 3 numeral keeps three thirty (the long hand stays put)');
+  assert.equal(hourTurn(150, 30), toTotal({ h: 5, m: 30 }));
+  assert.equal(hourTurn(100, 0), toTotal({ h: 3, m: 0 }));
+  assert.equal(hourTurn(359, 0), 0);
+});
+
+test('the hand under the finger: out at the numbers it is always the long hand', () => {
+  for (const t of ALL.filter(x => x.m % 30 === 0)) for (let a = 0; a < 360; a += 15) assert.equal(pickHand(a, 0.72, toTotal(t)), 'minute', `${digital(t)} at ${a}°`);
+  assert.equal(pickHand(60, 0.3, toTotal({ h: 2, m: 0 })), 'hour', 'on the short hand near the middle');
+  assert.equal(pickHand(180, 0.7, toTotal({ h: 2, m: 0 })), 'minute', 'a finger on the 6 means the long hand');
+  assert.equal(pickHand(5, 0.3, toTotal({ h: 12, m: 0 })), 'minute', 'hands together: the long hand');
 });
 
 test('wrong choices: real mistakes, distinct, never the answer, o\'clock only at the o\'clock level', () => {
@@ -64,18 +80,24 @@ test('wrong choices: real mistakes, distinct, never the answer, o\'clock only at
     assert.equal(keys.size, n);
     assert.ok(!keys.has(toTotal(t)));
     for (const x of w) {
-      assert.ok(WHY[x.kind], x.kind);
+      assert.ok(KINDS.includes(x.kind) && HAND_OF[x.kind], x.kind);
+      assert.match(whyLine(x.kind, t, x.time), /^That says [a-z' ]+\. [A-Z]/);
       assert.ok(x.time.h >= 1 && x.time.h <= 12 && [0, 30].includes(x.time.m));
       if (stage === 'hour') assert.equal(x.time.m, 0, 'a half-past choice would give the answer away');
     }
-    if (t.m === 30) assert.deepEqual(w[0].time, fromTotal(toTotal(t) + 60), 'the next-hour slip is always offered at half past');
+    if (t.m === 30 && n >= 2) assert.ok(w.some(x => sameT(x.time, fromTotal(toTotal(t) + 60))), 'the next-hour slip is always offered at thirty');
+    // at the thirty level she always has to read both hands: one choice gets the long hand wrong
+    if (stage === 'half' && n >= 2) assert.ok(w.some(x => x.time.m !== t.m), `${digital(t)} n=${n}: no long-hand choice`);
   }
 });
 
-test('set-the-clock hints: the long hand first, then the short hand', () => {
+test('set-the-clock hints: the long hand first, then the short hand, by its number', () => {
   assert.match(setHint({ h: 3, m: 30 }, { h: 3, m: 0 }), /down to the six/);
   assert.match(setHint({ h: 3, m: 0 }, { h: 4, m: 30 }), /up to the twelve/);
-  assert.match(setHint({ h: 3, m: 0 }, { h: 5, m: 0 }), /short hand/);
+  assert.equal(setHint({ h: 3, m: 0 }, { h: 5, m: 0 }), 'Now move the short hand to the three.');
+  assert.equal(setHint({ h: 3, m: 30 }, { h: 5, m: 30 }), 'Now move the short hand just past the three.');
+  assert.equal(whyLine('minute', { h: 3, m: 30 }, { h: 3, m: 0 }, 'match'), "This clock says three o'clock. " + longHandRule({ m: 30 }));
+  assert.equal(whyLine('next', { h: 3, m: 30 }, { h: 4, m: 30 }), 'That says four thirty. The short hand has just passed the three.');
 });
 
 test('card generators: one right answer, the level\'s times only, a set card starts a few turns away', () => {
@@ -93,10 +115,24 @@ test('card generators: one right answer, the level\'s times only, a set card sta
     const d = Math.abs(toTotal(s.start) - toTotal(s.time)), dist = Math.min(d, 720 - d);
     assert.ok(dist >= 2 * step && dist <= 3 * step, `start ${digital(s.start)} target ${digital(s.time)}`);
     assert.equal(toTotal(s.start) % step, 0);
+    if (stage === 'half') assert.notEqual(s.start.m, s.time.m, 'at the thirty level the long hand starts wrong too');
   }
   // at the half level both kinds come up
   const ms = new Set(Array.from({ length: 200 }, () => timeFor('half').m));
   assert.deepEqual([...ms].sort(), [0, 30]);
+});
+
+test('rounds: six cards, never two alike (a twin would count as an unscored retry), with any number of routine times', () => {
+  const { buildRound } = lagoon;
+  const r = { wake: '07:00', school: '08:00', dinner: '18:30', bath: '19:00', bed: '19:30' };
+  for (const stage of STAGES) for (const kind of ['mix', 'read', 'set', 'match', 'day']) for (const n of [0, 1, 2, 5]) for (let i = 0; i < 200; i++) {
+    const days = routineTimes(Object.fromEntries(Object.entries(r).slice(0, n)), stage);
+    const items = buildRound(kind, { stage, choices: 3, days });
+    assert.equal(items.length, 6, `${stage} ${kind} ${n}`);
+    const ids = items.map(x => x.family.itemId(x.item));
+    assert.equal(new Set(ids).size, 6, ids.join(' '));
+    if (kind === 'day' && days.length) assert.ok(items.filter(x => x.item.routine).length >= Math.min(6, 2 * days.length));
+  }
 });
 
 test('her routine times: only real times the level can show, as a 12-hour clock', () => {
@@ -127,12 +163,12 @@ test('the place: registered, free play (never a quest stop), three sea Squishies
 test('save: routine times and clock mistakes are cleaned on load and combined across devices', () => {
   const s = migrate({ schemaVersion: 3, gems: 0, settings: { routine: { wake: '07:00', bed: 'late', Bad: '08:00', school: 7 } }, clock: { intro: 5, mistakes: { next: 3, swap: -1, near: 'x' } } });
   assert.deepEqual(s.settings.routine, { wake: '07:00' });
-  assert.deepEqual(s.clock, { intro: null, mistakes: { next: 3 } });
+  assert.deepEqual(s.clock, { intro: null, introHalf: null, mistakes: { next: 3 } });
   const a = createEconomy({ storage: memoryStorage() });
   const b = createEconomy({ storage: memoryStorage() });
   a.save.clock.mistakes = { next: 2, swap: 1 }; b.save.clock.mistakes = { next: 5 }; b.save.clock.intro = '2026-10-25';
   a.mergeJSON(JSON.stringify(b.save));
-  assert.deepEqual(a.save.clock, { intro: '2026-10-25', mistakes: { next: 5, swap: 1 } });
+  assert.deepEqual(a.save.clock, { intro: '2026-10-25', introHalf: null, mistakes: { next: 5, swap: 1 } });
   a.mergeJSON(JSON.stringify(b.save));
   assert.deepEqual(a.save.clock.mistakes, { next: 5, swap: 1 }, 'merging twice changes nothing');
 });
@@ -152,17 +188,24 @@ test('every Lagoon sentence has Luna\'s recording (whole, or spliced from record
     return best[w.length];
   };
   const times = Array.from({ length: 24 }, (_, i) => ({ h: 1 + (i >> 1), m: (i & 1) * 30 }));
+  const intro = ['This is the short hand. It shows the hour.', 'This is the long hand. It shows the minutes.',
+    "When the long hand points straight up to the twelve, we say o'clock. The short hand points to the three. Three o'clock!",
+    'Watch! When the long hand goes all the way around, the short hand moves to the next number.', "Now it is four o'clock.",
+    'Now watch the long hand go halfway round.', 'The long hand points straight down to the six. That means thirty.',
+    'The short hand has gone halfway. It has just passed the three, so it is three thirty!'];
   const say = [
-    'Welcome to Tick-Tock Lagoon! Tell the time to free the sea Squishies!', 'What time does the clock say?', 'Watch the hands.',
-    'This is the short hand. It shows the hour.', 'This is the long hand. It shows the minutes.',
-    'Watch! When the long hand goes all the way around, the short hand moves to the next number.', 'Now it is four o\'clock.',
-    ...Object.values(WHY), ...ROUTINES.map(r => r.line + ' What time does the clock say?'),
+    'Welcome to Tick-Tock Lagoon! Tell the time to free the sea Squishies!', 'What time does the clock say?', 'Watch the hands.', ...intro,
+    ...ROUTINES.map(r => r.line + ' What time does the clock say?'),
     ...['finn', 'pinchy', 'inky'].map(id => 'You freed ' + SQUISHY_KINDS.find(k => k.id === id).name + ' the Squishy!')
   ];
   for (const t of times) {
-    say.push('Which clock says ' + phrase(t) + '?', 'Make the clock say ' + phrase(t) + '.', 'It is ' + phrase(t) + '.', 'This clock says ' + phrase(t) + '.');
+    const cap = phrase(t)[0].toUpperCase() + phrase(t).slice(1) + '!';
+    say.push(cap, 'Which clock says ' + phrase(t) + '?', 'Make the clock say ' + phrase(t) + '.', 'It is ' + phrase(t) + '.', 'This clock says ' + phrase(t) + '.');
     for (const r of ROUTINES) say.push(r.line + ' Make the clock say ' + phrase(t) + '.');
-    for (const u of times) if (u.m !== t.m || u.h !== t.h) say.push('Your clock says ' + phrase(u) + '. ' + setHint(t, u));
+    for (const u of times) if (!sameT(u, t)) {
+      say.push('Your clock says ' + phrase(u) + '. ' + setHint(t, u));
+      for (const k of KINDS) for (const c of ['read', 'match']) say.push(whyLine(k, t, u, c));
+    }
   }
   const missing = [...new Set(say.flatMap(s => splitSentences(s)).filter(sn => !playable(sn)))];
   assert.deepEqual(missing, [], 'run tools/collect-lines.py and tools/build-lines-audio.py');

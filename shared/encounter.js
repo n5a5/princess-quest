@@ -131,7 +131,7 @@ export async function runEncounterRound({ host, ctx, place, cabinetId, items, re
   const praise = ctx.praise && ctx.praise.praise ? ctx.praise.praise : ['Great job!'];
   const name = ctx.economy.save.child.name;
   const queue = items.slice();
-  const retried = new Set();
+  const retried = new Set(); // the queued items that were re-presented (by the item itself: two cards that share an id are both scored)
   let firstTries = 0, total = 0, index = 0, cancelled = false, lastGood = null;
   stage.cancel = () => { cancelled = true; };
   // Back to the menu or map replaces the stage: the round is over, nothing more is said or credited.
@@ -144,7 +144,7 @@ export async function runEncounterRound({ host, ctx, place, cabinetId, items, re
   while (queue.length && !gone()) {
     const { family, item } = queue.shift();
     const itemId = family.itemId ? family.itemId(item) : (family.id + ':' + (item.w || item.id || index));
-    const isRetry = retried.has(itemId);
+    const isRetry = retried.has(item);
     stage.setDots(items.length - demoCount, Math.min(items.length - demoCount, index));
     stage.luna('idle');
     stage.helpUsed = false;
@@ -190,7 +190,7 @@ export async function runEncounterRound({ host, ctx, place, cabinetId, items, re
     if (outcome === 'firstTry') stage.luna('happy'); else if (outcome === 'revealed') stage.luna('think'); else stage.luna('happy', 900);
     if (!isRetry) { if (scored) { total++; if (outcome === 'firstTry') firstTries++; } index++; }
     if (outcome === 'revealed' && !isRetry && !family.noRequeue) {
-      retried.add(itemId);
+      retried.add(item);
       if (queue.length < 2 && lastGood) queue.push(lastGood); // BUG-13: never re-present immediately
       queue.splice(Math.min(2, queue.length), 0, { family, item });
     } else if (outcome === 'firstTry' && !isRetry && !family.noRequeue) lastGood = { family, item };

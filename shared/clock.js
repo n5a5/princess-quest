@@ -40,26 +40,24 @@ export function timeFor(stage, rand = Math.random) {
   return { h, m: rand() < 0.65 ? 30 : 0 };
 }
 
-// Wrong choices are the mistakes children really make, each with what Luna says about it:
+// Wrong choices are the mistakes children really make:
 //   next     the hour hand read as the next number (3:30 → "four thirty"), the classic one
 //   minute   the minute hand ignored (3:30 → "three o'clock") or the wrong half (3:00 → "three thirty")
 //   swap     the hands swapped (the long hand read as the hour: 3:30 → "six thirty"; 3:00 → "twelve o'clock")
 //   near     a near hour (3:00 → "two o'clock" or "four o'clock")
 //   across   the number across the face (3:00 → "nine o'clock")
-export const WHY = {
-  next: 'The short hand has not reached the next number yet.',
-  minute: 'Now look at the long hand.',
-  swap: 'The short hand shows the hour. The long hand shows the minutes.',
-  near: 'Look where the short hand points.',
-  across: 'Look where the short hand points.'
-};
+// The first two are always offered (where the level allows), so every card makes her read both hands: at thirty
+// "four thirty" (the short hand) and "three o'clock" (the long hand) sit beside "three thirty".
+export const KINDS = ['next', 'minute', 'swap', 'near', 'across'];
 export function distractors(t, n = 2, stage = 'half', rand = Math.random) {
   const at = (h, m) => ({ h: ((h - 1 + 120) % 12) + 1, m });
   const cands = t.m === 30
     ? [[at(t.h + 1, 30), 'next'], [at(t.h, 0), 'minute'], [at(6, 30), 'swap'], [at(t.h + 1, 0), 'next'], [at(t.h - 1, 30), 'near']]
-    : [[at(t.h + 1, 0), 'near'], [at(t.h - 1, 0), 'near'], [at(12, 0), 'swap'], [at(t.h + 6, 0), 'across'], [at(t.h, 30), 'minute']];
-  // the levels in the right order: the classic mistake first, then a shuffle of the rest
-  const head = cands.slice(0, 1), tail = cands.slice(1).map(c => [rand(), c]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+    : [[at(t.h + 1, 0), 'near'], [at(t.h, 30), 'minute'], [at(t.h - 1, 0), 'near'], [at(12, 0), 'swap'], [at(t.h + 6, 0), 'across']];
+  let head = cands.slice(0, 2);
+  // with one wrong choice, either of the two (so two-choice cards also ask about the long hand)
+  if (n === 1 && stage !== 'hour' && rand() < 0.5) head = [head[1], head[0]];
+  const tail = cands.slice(2).map(c => [rand(), c]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
   const out = [], seen = new Set([toTotal(t)]);
   for (const [time, kind] of [...head, ...tail]) {
     if (seen.has(toTotal(time))) continue;
@@ -71,11 +69,24 @@ export function distractors(t, n = 2, stage = 'half', rand = Math.random) {
   return out;
 }
 
+// What the long hand means, said after a long-hand mistake.
+export const longHandRule = target => target.m === 0 ? 'The long hand points straight up to the twelve for o\'clock.' : 'The long hand points straight down to the six for thirty.';
+// What Luna says when she picks a wrong time: what she picked, then the one rule that fixes it, pointing at the
+// hand she misread (the card lights that hand up). Spliced from recorded pieces: "That says" + "four thirty."
+export function whyLine(kind, target, picked, card = 'read') {
+  const said = (card === 'match' ? 'This clock says ' : 'That says ') + phrase(picked) + '.';
+  if (kind === 'minute') return said + ' ' + longHandRule(target);
+  if (kind === 'swap') return said + ' The short hand shows the hour. The long hand shows the minutes.';
+  return said + ' ' + (target.m === 0 ? 'The short hand points to the ' : 'The short hand has just passed the ') + WORD[target.h] + '.';
+}
+// Which hand a mistake is about, for lighting it up on the clock.
+export const HAND_OF = { next: ['hour'], near: ['hour'], across: ['hour'], minute: ['minute'], swap: ['hour', 'minute'] };
+
 // What a wrong clock she set gets told: which hand to fix first. The minute hand comes first because it
-// carries the hour hand with it.
+// carries the hour hand with it; then the short hand, by name of its number.
 export function setHint(target, made) {
-  if (made.m !== target.m) return target.m === 0 ? 'The long hand points straight up to the twelve for o\'clock.' : 'The long hand points straight down to the six for thirty.';
-  return 'Now turn it until the short hand shows the hour.';
+  if (made.m !== target.m) return longHandRule(target);
+  return (target.m === 0 ? 'Now move the short hand to the ' : 'Now move the short hand just past the ') + WORD[target.h] + '.';
 }
 
 // Turning the minute hand. The finger's path is followed continuously (`cont`, minutes, not wrapped), so a
@@ -83,13 +94,23 @@ export function setHint(target, made) {
 // clock snaps in half hours (where "the short way round" would be a tie). minuteGrab starts a turn at the
 // finger's angle, minuteMove follows it, snap() gives the clock's time.
 const wrapTo = (x, half) => ((x + half) % (2 * half) + 2 * half) % (2 * half) - half;
-export const minuteGrab = (total, angle) => total + wrapTo(angle / 6 - (((total % 60) + 60) % 60), 30);
+// (a finger exactly opposite the long hand turns it forward: at 2:00 a tap on the 6 makes two thirty)
+export const minuteGrab = (total, angle) => { const d = wrapTo(angle / 6 - (((total % 60) + 60) % 60), 30); return total + (d === -30 ? 30 : d); };
 export const minuteMove = (cont, prevAngle, angle) => cont + wrapTo(angle - prevAngle, 180) / 6;
 export const snap = (cont, step) => ((Math.round(cont / step) * step) % 720 + 720) % 720;
-// Turning the hour hand to `angle`: 0.5 degrees per minute, snapped to `step` minutes.
-export function dragHour(angle, step) {
-  const raw = ((angle % 360) + 360) % 360 / 0.5;
-  return (Math.round(raw / step) * step) % 720;
+// Turning the short hand changes only the hour: the long hand stays where she put it. `angle` is where the short
+// hand should point (the finger, less where on the hand she grabbed it), so a press without moving changes nothing.
+export function hourTurn(angle, minutes) {
+  const h = ((Math.round((angle - minutes * 0.5) / 30) % 12) + 12) % 12;
+  return h * 60 + minutes;
+}
+// The hand under a finger: past the short hand's tip (half the radius) only the long hand can be there; nearer the
+// middle, the hand closer in angle (the short hand when it is clearly closer).
+const off = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+export function pickHand(angle, dist, total) {
+  if (dist > 0.58) return 'minute';
+  const a = handAngles(fromTotal(total)), dm = off(angle, a.minute), dh = off(angle, a.hour);
+  return dh + 10 < dm || (dist < 0.5 && dh < dm) ? 'hour' : 'minute';
 }
 
 // Routine times from Parent Corner ("HH:MM", 24-hour) as clock times; only those the level can show.
@@ -188,33 +209,42 @@ export function clockEl({ time, size = 220, interactive = false, step = 30, onCh
     const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
     return { angle: (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360, dist: Math.hypot(dx, dy) / (r.width / 2) };
   };
-  const off = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
-  let grab = null, cont = 0, prev = 0;
+  // One finger drives the clock: the newest touch takes over, and only its lift ends the turn (a resting thumb
+  // never moves the hands). Letting go of the long hand settles it on the level's step (o'clock at that level).
+  let grab = null, cont = 0, prev = 0, hOff = 0, activeId = null;
   svg.addEventListener('pointerdown', e => {
     if (locked) return;
     const { angle, dist } = angleAt(e);
     if (dist > 1.08) return;
-    const a = handAngles(fromTotal(total));
-    // the hand under the finger; near the middle the short hand wins, out at the numbers the long one
-    const dm = off(angle, a.minute), dh = off(angle, a.hour);
-    grab = dh + 10 < dm || (dist < 0.5 && dh < dm) ? 'hour' : 'minute';
+    if (activeId !== null && activeId !== e.pointerId) { try { svg.releasePointerCapture(activeId); } catch {} }
+    activeId = e.pointerId;
+    grab = pickHand(angle, dist, total);
     cont = minuteGrab(total, angle); prev = angle;
+    hOff = wrapTo(angle - handAngles(fromTotal(total)).hour, 180);
+    wrap.classList.remove('hour', 'minute');
     wrap.classList.add('turning', grab);
     try { svg.setPointerCapture(e.pointerId); } catch {}
     e.preventDefault();
-    move(e);
+    if (grab === 'minute') move(e);
   });
   const move = e => {
-    if (!grab || locked) return;
+    if (!grab || locked || e.pointerId !== activeId) return;
     const { angle } = angleAt(e);
-    if (grab === 'hour') { setTotal(dragHour(angle, step)); return; }
+    if (grab === 'hour') { setTotal(hourTurn(angle - hOff, ((total % 60) + 60) % 60)); return; }
     cont = minuteMove(cont, prev, angle); prev = angle;
     setTotal(snap(cont, Math.min(step, 30)));
   };
   svg.addEventListener('pointermove', move);
-  const end = () => { if (grab) wrap.classList.remove('turning', 'hour', 'minute'); grab = null; };
+  const end = e => {
+    if (e.pointerId !== activeId) return;
+    activeId = null;
+    if (grab === 'minute' && !locked && total % step) setTotal(snap(cont, step));
+    if (grab) wrap.classList.remove('turning', 'hour', 'minute');
+    grab = null;
+  };
   svg.addEventListener('pointerup', end);
   svg.addEventListener('pointercancel', end);
+  svg.addEventListener('lostpointercapture', end);
   svg.style.touchAction = 'none';
   // turn buttons: big, on either side, so a small finger never has to drag at all
   const btn = (dir, text, aria) => {
