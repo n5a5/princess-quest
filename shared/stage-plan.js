@@ -14,18 +14,34 @@ export function clipRanges(n, chain = true) {
   return out.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
 }
 
-// The plan for one day, in order (Star Stage glows the first one not yet done today). Spaced practice: a little
-// every day rather than a lot at once. Four or more days out: hear the real song (until she has heard it), the
-// line, the song. The last three days add a mock audition. Audition day: only the short warm-up. After it: none.
-// `canHear`: the cast recording is loaded on this device.
-export function dailyPlan(today, auditionDate, { heard = false, canHear = false } = {}) {
-  const d = daysUntil(today, auditionDate);
+// The plan for one day of show practice, in order (Star Stage glows the first one not yet done today). Spaced
+// practice: a little every day rather than a lot at once. Every day Kate's lines and one song; then the orphans'
+// lines and Sandy on alternate days, with "Run my lines" in their place every third day and every day in the last
+// week; about 8-10 minutes in all. Show day: one run, nothing new. After the show: free practice. The day count
+// decides, not the save, so two devices agree. `canHear`: the cast recording is loaded on this device; until she
+// has heard it once, hearing it comes first.
+export function dailyPlan(today, showDate, { heard = false, canHear = false } = {}) {
+  const d = daysUntil(today, showDate);
   if (d < 0) return [];
-  if (d === 0) return ['dayof'];
+  if (d === 0) return ['run'];
   const plan = canHear && !heard ? ['hear'] : [];
-  plan.push('line', 'song');
-  if (d <= 3) plan.push('audition');
+  plan.push('kate', 'songs', d <= 7 || d % 3 === 0 ? 'run' : d % 2 ? 'lines' : 'sandy');
   return plan;
+}
+
+// The song sections to practice in one visit, least practiced first (ties in show order): a section still new to
+// her (fewer than two practices) gets the whole visit; learned ones go two or three at a time in a short form.
+export function songQueue(sections, solos = {}) {
+  const order = sections.map((s, k) => ({ s, k, n: solos[s.id] || 0 })).sort((a, b) => a.n - b.n || a.k - b.k);
+  if (!order.length) return [];
+  if (order[0].n < 2) return [order[0].s];
+  return order.slice(0, 3).filter(x => x.n >= 2).map(x => x.s);
+}
+
+// The orphans' lines for one visit: the first half or the second half, in turn (visits: finished visits so far).
+export function linesHalf(lines, visits = 0) {
+  const h = Math.ceil(lines.length / 2);
+  return visits % 2 ? lines.slice(h) : lines.slice(0, h);
 }
 
 // How many of a piece's pictures are hidden, counted from the end, after `practices` finished practices: one more
@@ -45,22 +61,24 @@ export function chainSteps(n) { return Array.from({ length: n }, (_, k) => [n - 
 const dayNum = d => { const [y, m, dd] = String(d).split('-').map(Number); return Date.UTC(y, m - 1, dd) / 86400000; };
 export function daysUntil(today, date) { return Math.round(dayNum(date) - dayNum(today)); }
 
-// The map card's hint while the audition is coming; null once it has passed.
+// The map card's hint while the show is coming; null once it has passed.
 export function countdownHint(days, label) {
   if (!(days >= 0)) return null;
   return days === 0 ? label + ' today!' : days === 1 ? label + ' tomorrow!' : label + ' in ' + days + ' days';
 }
 
-// What Luna says on the map in the last week before the audition, so the place to go is spoken, not only written on
+// What Luna says on the map in the last week before the show, so the place to go is spoken, not only written on
 // its card. Whole sentences, so each one has a story-voice clip (tools/collect-lines.py). null outside that week.
-const COUNTDOWN_SAY = ['Your Annie audition is today! Tap Star Stage.', 'Your Annie audition is tomorrow! Tap Star Stage.',
-  'Your Annie audition is in two days! Tap Star Stage.', 'Your Annie audition is in three days! Tap Star Stage.',
-  'Your Annie audition is in four days! Tap Star Stage.', 'Your Annie audition is in five days! Tap Star Stage.',
-  'Your Annie audition is in six days! Tap Star Stage.', 'Your Annie audition is in seven days! Tap Star Stage.'];
+const COUNTDOWN_SAY = ['Your Annie show is today! Tap Star Stage.', 'Your Annie show is tomorrow! Tap Star Stage.',
+  'Your Annie show is in two days! Tap Star Stage.', 'Your Annie show is in three days! Tap Star Stage.',
+  'Your Annie show is in four days! Tap Star Stage.', 'Your Annie show is in five days! Tap Star Stage.',
+  'Your Annie show is in six days! Tap Star Stage.', 'Your Annie show is in seven days! Tap Star Stage.'];
 export const countdownSay = days => (Number.isInteger(days) && days >= 0 && COUNTDOWN_SAY[days]) || null;
 
 // ---------- practice log (save.stage) ----------
-// days: { 'YYYY-MM-DD': { line, song, watch, audition } } counts; solos: { line, song } finished practices;
+// days: { 'YYYY-MM-DD': { kate, lines, songs, sandy, run, hear } } counts (rows from the audition weeks keep their
+// old kinds: line, song, audition, other, dayof); solos: finished practices per block id (kate-doin, hkl-2, ...)
+// and finished visits per tile (kate, lines, songs, sandy, run), merged by the larger count;
 // watched: times the clip played 45 s or more; auditions: full run-throughs; songCut: where the audition
 // chorus sits in the loaded song recording, if a grown-up adjusted it ({ start, end } seconds) or null;
 // words: a grown-up turned on the words under the pictures (Parent Corner; off unless set, see showsWords).
@@ -243,18 +261,23 @@ export function followTimes(texts, ms) {
   return w.map(x => { const at = Math.round(acc / total * ms); acc += x; return at; });
 }
 
-// The row of days up to the audition for the menu (she counts circles, she cannot read "in 5 days"): from the
-// first day she practiced, or today, at most a week back. kind: 'done' (practiced), 'missed', 'today', 'future',
-// 'audition'. Empty once the audition has passed.
-export function dayStrip(today, auditionDate, practiced) {
-  if (daysUntil(today, auditionDate) < 0) return [];
+// The row of days for the menu (she counts circles, she cannot read "in 5 days"): from the first day she practiced,
+// or today, at most a week back, then the next week; the show's circle at the end, after a gap when it is further
+// away. kind: 'done' (practiced), 'missed', 'today', 'future', 'gap', 'show'. Empty once the show has passed.
+export function dayStrip(today, showDate, practiced, ahead = 6) {
+  const left = daysUntil(today, showDate);
+  if (left < 0) return [];
   const first = [...practiced].filter(d => d <= today).sort()[0] || today;
   const back = Math.min(7, Math.max(0, daysUntil(first, today)));
   const out = [];
-  for (let k = -back; k <= daysUntil(today, auditionDate); k++) {
+  for (let k = -back; k <= Math.min(left, ahead); k++) {
     const d = addDays(today, k);
-    const kind = d === auditionDate ? 'audition' : practiced.has(d) ? 'done' : d === today ? 'today' : d < today ? 'missed' : 'future';
+    const kind = d === showDate ? 'show' : practiced.has(d) ? 'done' : d === today ? 'today' : d < today ? 'missed' : 'future';
     out.push({ day: d, kind, today: d === today });
+  }
+  if (left > ahead) {
+    if (left > ahead + 1) out.push({ day: null, kind: 'gap', today: false });
+    out.push({ day: showDate, kind: 'show', today: false });
   }
   return out;
 }

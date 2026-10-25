@@ -63,7 +63,8 @@ let praise = { praise: ['Great job!'], greeting: ['Hello, {name}!'], retry: [], 
 
 function available() { return REGISTRY.filter(r => !economy.save.settings.modulesOff.includes(r.id)); }
 // A place with an event coming (Star Stage before the audition) goes to the top of the map with a countdown.
-const spotlightHint = r => r.spotlight ? countdownHint(daysUntil(economy.today(), r.spotlight.until), r.spotlight.label) : null;
+// a place's countdown on the map, from its spotlight's `from` day (two weeks before the show) to the day itself
+const spotlightHint = r => r.spotlight && !(r.spotlight.from && economy.today() < r.spotlight.from) ? countdownHint(daysUntil(economy.today(), r.spotlight.until), r.spotlight.label) : null;
 function readyIds() { return available().filter(r => r.ready).map(r => r.id); }
 
 function updateBar() {
@@ -306,8 +307,8 @@ async function boot() {
     renderHome();
     await audioReady;
     await audio.say(withName(pick(praise.greeting), economy.save.child.name));
-    // the audition week: Luna says where to go (the card's countdown is text she cannot read)
-    const spot = available().filter(r => r.ready && r.spotlight).map(r => countdownSay(daysUntil(economy.today(), r.spotlight.until))).find(Boolean);
+    // the show week: Luna says where to go (the card's countdown is text she cannot read)
+    const spot = available().filter(r => r.ready && spotlightHint(r)).map(r => countdownSay(daysUntil(economy.today(), r.spotlight.until))).find(Boolean);
     const stageToDo = !Object.keys((economy.save.stage.days || {})[economy.today()] || {}).length; // as spotFirst in renderHome
     if (spot && stageToDo && !current && !opening && !document.querySelector('.overlay')) audio.say(spot);
   });

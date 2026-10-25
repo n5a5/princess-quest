@@ -5,16 +5,20 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, readJSON } from './helpers.js';
-import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate, roomLevel, followTimes, dayStrip, addDays, dailyPlan, hiddenFromEnd, showsWords } from '../shared/stage-plan.js';
+import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate, roomLevel, followTimes, dayStrip, addDays, dailyPlan, hiddenFromEnd, showsWords, songQueue, linesHalf } from '../shared/stage-plan.js';
 import { REGISTRY } from '../games/registry.js';
 import { migrate, defaultSave } from '../shared/economy.js';
 
 const stage = readJSON('content/stage.json');
-const blocks = [stage.warmup, stage.slate, ...stage.pieces, ...stage.others];
+const sh = stage.show;
+const parts = [...sh.kate, ...sh.lines, ...sh.songs];
+const blocks = [stage.warmup, ...parts];
+const withCue = [...parts, ...sh.sandy].filter(b => b.cue);
 
 test('every clip the place can play is bundled, and nothing else', () => {
   const want = new Set();
   for (const b of blocks) for (const [i, j] of clipRanges(b.chunks.length, b.chain !== false)) want.add(clipId(b.id, i, j) + '.ogg');
+  for (const b of withCue) want.add(b.id + '-cue.ogg');
   const have = new Set(readdirSync(join(ROOT, 'assets/audio/stage')));
   assert.deepEqual([...want].filter(f => !have.has(f)), [], 'missing clips (run tools/build-stage-audio.py)');
   assert.deepEqual([...have].filter(f => !want.has(f)), [], 'stale clips');
@@ -22,19 +26,51 @@ test('every clip the place can play is bundled, and nothing else', () => {
   for (const f of want) assert.ok(dur[f.replace('.ogg', '')] > 300, 'duration of ' + f);
 });
 
-test('content: pieces, pictures, dates', () => {
-  assert.deepEqual(stage.pieces.map(p => p.id).sort(), ['line', 'song']);
+test('content: her parts, cues, pictures, dates', () => {
+  const ids = [...blocks, ...sh.sandy].map(b => b.id);
+  assert.equal(new Set(ids).size, ids.length, 'block ids are unique');
   for (const b of blocks) for (const c of b.chunks) { assert.ok(c.text.trim(), b.id); assert.ok(c.pic, b.id + ' picture'); }
-  for (const p of stage.pieces) { assert.ok(p.intro && p.tip && p.maxMs >= 8000, p.id); }
-  assert.match(stage.auditionDate, /^\d{4}-\d{2}-\d{2}$/);
+  for (const b of parts) {
+    assert.ok(b.intro && b.tip && b.act && b.who, b.id + ' intro, tip, acting cue, who');
+    assert.ok(b.cue && b.cue.who && b.cue.text, b.id + ' has a cue');
+    assert.ok(b.chunks.length >= 1 && b.chunks.length <= 4, b.id + ': at most four pieces, so a visit stays short');
+  }
+  for (const b of sh.songs) assert.ok(b.sing && b.song, b.id + ' is a song section');
+  // every cue is said by a character with their own voice and picture, never Luna's voice, and no two share one
+  for (const b of withCue) { assert.ok(sh.voices[b.cue.who], b.id + ' voice for ' + b.cue.who); assert.ok(sh.people[b.cue.who], b.id + ' picture for ' + b.cue.who); }
+  const KOKORO = ['af_sky', 'af_bella', 'af_nicole', 'af_aoede', 'af_kore', 'af_jessica', 'am_puck', 'am_michael', 'am_adam'];
+  for (const [who, v] of Object.entries(sh.voices)) { assert.notEqual(v, 'af_heart', who + ' is not Luna'); assert.ok(KOKORO.includes(v), who + ': ' + v); }
+  // Sandy: only the kinds the game knows, and every song it sings exists
+  for (const st of sh.sandy) {
+    assert.ok(['act', 'listen', 'sing', 'wait'].includes(st.kind), st.id);
+    if (st.kind === 'sing') assert.ok(sh.songs.some(b => b.id === st.block) && st.narrate, st.id);
+    else assert.ok(st.pic && st.do, st.id);
+  }
+  // Run my lines: her spoken parts and Kate's lines, each once, all real
+  assert.ok(sh.run.length >= 10 && new Set(sh.run).size === sh.run.length);
+  for (const id of sh.run) assert.ok([...sh.kate, ...sh.lines].some(b => b.id === id), 'run: ' + id);
+  for (const b of [...sh.kate, ...sh.lines]) assert.ok(sh.run.includes(b.id), b.id + ' is in Run my lines');
+  assert.ok(!JSON.stringify(parts.map(b => [b.chunks, b.cue.text])).includes('Mr.') || parts.every(b => b.chunks.every(c => !c.text.includes('Mr.') || c.say)), 'Mr. is read as a sentence end: give it a say');
+  assert.match(stage.showDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(stage.videos, undefined, 'no YouTube: it could lead out of the app');
-  for (const p of stage.pieces) assert.ok(p.act, p.id + ' acting cue');
-  assert.equal(stage.others.length, 7, 'the other seven lines on the audition sheet');
-  for (const o of stage.others) { assert.ok(o.role && o.pic && o.intro && o.tip && o.act && o.chain === false, o.id); assert.ok(o.chunks.length >= 4 && o.chunks.every(c => c.text && c.pic), o.id); }
-  assert.ok(!JSON.stringify(stage).includes('Mr.') || stage.others.every(o => o.chunks.every(c => !c.text.includes('Mr.') || c.say)), 'Mr. is read as a sentence end: give it a say');
   const reg = REGISTRY.find(r => r.id === 'stage');
   assert.ok(reg && existsSync(join(ROOT, reg.entry.replace('./', ''))));
-  assert.equal(reg.spotlight.until, stage.auditionDate, 'map countdown and the place use the same date');
+  assert.equal(reg.spotlight.until, stage.showDate, 'map countdown and the place use the same date');
+  assert.equal(daysUntil(reg.spotlight.from, reg.spotlight.until), 14, 'the map spotlight starts two weeks before the show');
+});
+
+test('cue clips are in the character\'s voice and every clip says what the content says now', () => {
+  const said = readJSON('tools/stage-audio-texts.json');
+  for (const b of withCue) {
+    const [voice, , text] = said[b.id + '-cue'].split('|');
+    assert.equal(voice, sh.voices[b.cue.who], b.id + ' cue voice');
+    assert.equal(text, b.cue.say || b.cue.text, b.id + ' cue text');
+  }
+  for (const b of blocks) for (const [i, j] of clipRanges(b.chunks.length, b.chain !== false)) {
+    const [voice, , text] = said[clipId(b.id, i, j)].split('|');
+    assert.equal(voice, 'af_heart', b.id + ' is Luna');
+    assert.equal(text, b.chunks.slice(i, j).map(c => c.say || c.text).join(' ').replace(/\{name\}/g, 'Amelia'), clipId(b.id, i, j));
+  }
 });
 
 test('clip ranges: singles and tails, no duplicates', () => {
@@ -50,10 +86,10 @@ test('backward chaining: last chunk first, ends with the whole thing', () => {
 test('countdown', () => {
   assert.equal(daysUntil('2026-10-08', '2026-10-14'), 6);
   assert.equal(daysUntil('2026-10-31', '2026-11-01'), 1); // across a month (and the DST change on Nov 1)
-  assert.equal(countdownHint(6, 'Annie audition'), 'Annie audition in 6 days');
-  assert.equal(countdownHint(1, 'Annie audition'), 'Annie audition tomorrow!');
-  assert.equal(countdownHint(0, 'Annie audition'), 'Annie audition today!');
-  assert.equal(countdownHint(-1, 'Annie audition'), null);
+  assert.equal(countdownHint(6, 'Annie show'), 'Annie show in 6 days');
+  assert.equal(countdownHint(1, 'Annie show'), 'Annie show tomorrow!');
+  assert.equal(countdownHint(0, 'Annie show'), 'Annie show today!');
+  assert.equal(countdownHint(-1, 'Annie show'), null);
 });
 
 test('practice log: survives the save migration, junk is dropped, merging is idempotent', () => {
@@ -120,7 +156,8 @@ test('every Star Stage sentence has a story-voice clip', async () => {
   said.push(...[...src.matchAll(/cannot\('((?:[^'\\]|\\.)*)'\)/g)].map(m => unq(m[1])));
   for (const list of ['BIG', 'MORE']) said.push(...[...src.match(new RegExp('const ' + list + ' = \\[(.*)\\];'))[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
   said.push(...[...src.matchAll(/(?:intro|line): '((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])), 'You did it!');
-  for (const p of stage.pieces) said.push(p.intro, p.tip);
+  for (const p of parts) said.push(p.intro, p.tip);
+  for (const st of sh.sandy) said.push(st.narrate || '', st.do || '');
   const missing = said.filter(t => /^[A-Za-z]/.test(t)).flatMap(t => splitSentences(t)).filter(sn => !have[keyOf(sn)]);
   assert.ok(said.length >= 25, String(said.length));
   assert.deepEqual([...new Set(missing)], [], 'run tools/collect-lines.py and tools/build-lines-audio.py');
@@ -137,19 +174,22 @@ test('room level: median of real readings, not the silent first ones', () => {
 test('follow-along: each picture lights in proportion to its words', () => {
   assert.deepEqual(followTimes(['abcd', 'abcd'], 1000), [0, 500]);
   assert.deepEqual(followTimes(['Yes, Miss Hannigan.'], 1300), [0]);
-  const chunks = stage.pieces[0].chunks.map(c => c.text);
+  const chunks = sh.kate[0].chunks.map(c => c.text);
   const t = followTimes(chunks, 5327);
   assert.equal(t.length, chunks.length); assert.equal(t[0], 0); assert.ok(t.every((x, k) => k === 0 || x > t[k - 1]) && t[t.length - 1] < 5327);
 });
 
-test('day strip: a circle per day to the audition, stars on practice days', () => {
+test('day strip: a week back, a week ahead, then the show circle; stars on practice days', () => {
   const kinds = s => s.map(d => d.kind).join(' ');
-  assert.equal(kinds(dayStrip('2026-10-09', '2026-10-14', new Set(['2026-10-08']))), 'done today future future future future audition');
-  assert.equal(kinds(dayStrip('2026-10-09', '2026-10-14', new Set(['2026-10-07', '2026-10-09']))), 'done missed done future future future future audition');
-  assert.equal(dayStrip('2026-10-09', '2026-10-14', new Set()).filter(d => d.today).length, 1);
-  assert.equal(kinds(dayStrip('2026-10-14', '2026-10-14', new Set())), 'audition');
-  assert.deepEqual(dayStrip('2026-10-15', '2026-10-14', new Set()), []);
-  assert.ok(dayStrip('2026-10-13', '2026-10-14', new Set(['2026-09-01'])).length <= 9, 'at most a week back');
+  assert.equal(kinds(dayStrip('2027-02-16', '2027-02-21', new Set(['2027-02-15']))), 'done today future future future future show');
+  assert.equal(kinds(dayStrip('2027-02-16', '2027-02-21', new Set(['2027-02-14', '2027-02-16']))), 'done missed done future future future future show');
+  assert.equal(dayStrip('2027-02-16', '2027-02-21', new Set()).filter(d => d.today).length, 1);
+  assert.equal(kinds(dayStrip('2027-02-21', '2027-02-21', new Set())), 'show');
+  assert.deepEqual(dayStrip('2027-02-22', '2027-02-21', new Set()), []);
+  assert.ok(dayStrip('2027-02-20', '2027-02-21', new Set(['2027-01-01'])).length <= 9, 'at most a week back');
+  // months away: the next week, a gap, and the show, never a circle for every day (review: 119 circles)
+  assert.equal(kinds(dayStrip('2026-10-25', '2027-02-21', new Set())), 'today future future future future future future gap show');
+  assert.equal(kinds(dayStrip('2027-02-14', '2027-02-21', new Set())), 'today future future future future future future show', 'a week away: no gap');
   assert.equal(addDays('2026-10-31', 1), '2026-11-01');
 });
 
@@ -162,22 +202,42 @@ test('song cut: kept when sane, dropped when not; content default is inside the 
   assert.ok(c.start >= 0 && c.end > c.start + 5 && c.end < c.duration, 'chorus inside the recording');
 });
 
-test('daily plan: hear first, then line and song, mock auditions in the last three days, warm-up on the day', () => {
-  const A = '2026-10-14';
-  assert.deepEqual(dailyPlan('2026-10-08', A, { canHear: true }), ['hear', 'line', 'song']);
-  assert.deepEqual(dailyPlan('2026-10-08', A, { canHear: true, heard: true }), ['line', 'song']);
-  assert.deepEqual(dailyPlan('2026-10-08', A, { canHear: false }), ['line', 'song'], 'no recording loaded: nothing she cannot do');
-  assert.deepEqual(dailyPlan('2026-10-10', A, { heard: true, canHear: true }), ['line', 'song']);
-  assert.deepEqual(dailyPlan('2026-10-11', A, { heard: true, canHear: true }), ['line', 'song', 'audition']);
-  assert.deepEqual(dailyPlan('2026-10-13', A, { heard: true, canHear: true }), ['line', 'song', 'audition']);
-  assert.deepEqual(dailyPlan(A, A, { canHear: true }), ['dayof']);
-  assert.deepEqual(dailyPlan('2026-10-15', A, {}), []);
+test('daily plan: Kate and a song every day, orphan lines and Sandy in turn, a run every third day and in the last week', () => {
+  const S = '2027-02-21';
+  const at = (d, o = {}) => dailyPlan(d, S, { heard: true, canHear: true, ...o });
+  assert.deepEqual(dailyPlan('2026-10-25', S, { canHear: true }), ['hear', 'kate', 'songs', 'lines'], 'hear the recording first, until heard once');
+  assert.deepEqual(dailyPlan('2026-10-25', S, { canHear: false }), ['kate', 'songs', 'lines'], 'no recording loaded: nothing she cannot do');
+  assert.deepEqual(at('2026-10-25'), ['kate', 'songs', 'lines']); // 119 days out
+  assert.deepEqual(at('2026-10-26'), ['kate', 'songs', 'sandy']); // 118
+  assert.deepEqual(at('2026-10-27'), ['kate', 'songs', 'run']); // 117, a multiple of three
+  assert.deepEqual(at('2027-02-14'), ['kate', 'songs', 'run'], 'the last week: a run every day');
+  assert.deepEqual(at('2027-02-20'), ['kate', 'songs', 'run']);
+  assert.deepEqual(at(S), ['run'], 'show day: one run, nothing new');
+  assert.deepEqual(at('2027-02-22'), []);
+  // over the weeks every tile comes round, and never more than three a day plus hearing the song
+  const seen = new Set();
+  for (let k = 8; k < 40; k++) { const p = at(addDays('2026-10-25', k)); assert.ok(p.length === 3); p.forEach(x => seen.add(x)); }
+  assert.deepEqual([...seen].sort(), ['kate', 'lines', 'run', 'sandy', 'songs']);
+});
+
+test('song sections: a new one alone, learned ones two or three at a time, least practiced first', () => {
+  const secs = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
+  assert.deepEqual(songQueue(secs, {}).map(x => x.id), ['a'], 'all new: the first, alone');
+  assert.deepEqual(songQueue(secs, { a: 1 }).map(x => x.id), ['b'], 'the least practiced first');
+  assert.deepEqual(songQueue(secs, { a: 2, b: 2, c: 2, d: 1 }).map(x => x.id), ['d'], 'a section still new gets the visit');
+  assert.deepEqual(songQueue(secs, { a: 3, b: 2, c: 2, d: 4 }).map(x => x.id), ['b', 'c', 'a'], 'learned: up to three, least practiced first');
+  assert.deepEqual(songQueue(sh.songs, {}).map(x => x.id), [sh.songs[0].id]);
+  const lines = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  assert.deepEqual(linesHalf(lines, 0), [1, 2, 3, 4, 5]);
+  assert.deepEqual(linesHalf(lines, 1), [6, 7, 8, 9, 10]);
+  assert.deepEqual(linesHalf(lines, 2), [1, 2, 3, 4, 5]);
+  assert.equal(linesHalf(sh.lines, 0).length + linesHalf(sh.lines, 1).length, sh.lines.length);
 });
 
 test('cue fading: one more picture hidden from the end each practice, then all of them', () => {
   assert.deepEqual([0, 1, 2, 3, 9].map(k => hiddenFromEnd(k, 3)), [0, 1, 2, 3, 3]);
   assert.deepEqual([0, 1, 4, 5].map(k => hiddenFromEnd(k, 4)), [0, 1, 4, 4]);
-  assert.equal(stage.pieces.find(x => x.id === 'line').chunks.length, 3, 'the line in three clauses');
+  assert.equal(sh.kate.find(x => x.id === 'kate-doin').chunks.length, 3, 'Maybe, then her Kate line in two clauses');
 });
 
 test('voice gate: the reminder chime mid-take is not taken for her voice', () => {
@@ -259,11 +319,11 @@ test('Luna: every gradient she uses is defined in her own drawing, with ids uniq
   }
 });
 
-test('map countdown: Luna says where to go in the audition week only', async () => {
+test('map countdown: Luna says where to go in the show week only', async () => {
   const { countdownSay } = await import('../shared/stage-plan.js');
-  assert.equal(countdownSay(0), 'Your Annie audition is today! Tap Star Stage.');
-  assert.equal(countdownSay(1), 'Your Annie audition is tomorrow! Tap Star Stage.');
-  assert.equal(countdownSay(6), 'Your Annie audition is in six days! Tap Star Stage.');
+  assert.equal(countdownSay(0), 'Your Annie show is today! Tap Star Stage.');
+  assert.equal(countdownSay(1), 'Your Annie show is tomorrow! Tap Star Stage.');
+  assert.equal(countdownSay(6), 'Your Annie show is in six days! Tap Star Stage.');
   assert.equal(countdownSay(8), null);
   assert.equal(countdownSay(-1), null);
   const { readFileSync } = await import('node:fs');
@@ -373,15 +433,13 @@ test('the words show only while she listens, for the lit picture, never hidden o
   assert.equal(at({ curtain: true }), false, 'nothing through the curtain');
 });
 
-test('the words never come into the auditions, and the strip cannot move the screen', () => {
+test('the words never come into Run my lines, and the strip cannot move the screen', () => {
   const src = readFileSync(join(ROOT, 'games/princess-quest/stage.js'), 'utf8');
-  for (const call of ["view(st.b, st.title, 'Audition'", "view(line, 'Your line', 'Audition day'", "view(songPiece, 'Your song', 'Audition day'"]) {
-    const line = src.split('\n').find(l => l.includes(call));
-    assert.ok(line && line.includes('{ words: false }'), 'no words in: ' + call);
-  }
-  // the warm-up shout that opens the mock audition and audition day: no words either
-  const body = name => src.slice(src.indexOf('async function ' + name + '('), src.indexOf('\n}\n', src.indexOf('async function ' + name + '(')));
-  for (const fn of ['audition', 'dayOf']) assert.match(body(fn), /await warmUp\(r, \{ words: false \}\)/, fn + ' warms up without words');
+  const body = name => { const at = src.indexOf('async function ' + name + '('); assert.ok(at >= 0, name); return src.slice(at, src.indexOf('\n}\n', at)); };
+  const run = body('runTile');
+  assert.match(run, /view\(b, b\.who, 'Run my lines', ids\.length, \{ words: false \}\)/, 'no words on the run-through screens');
+  assert.match(run, /await warmUp\(r, \{ words: false \}\)/, 'the warm-up shout that opens it: no words either');
+  assert.ok(!/view\(/.test(run.replace(/view\(b, b\.who, 'Run my lines', ids\.length, \{ words: false \}\)/, '')), 'no other screen in the run');
   const css = readFileSync(join(ROOT, 'shared/theme.css'), 'utf8');
   assert.match(css, /\.stage-words \{[^}]*height: 2\.6em;[^}]*overflow: hidden/, 'a fixed height, so nothing jumps when words come and go');
   assert.doesNotMatch(css, /\.stage-words\.long/, 'a long chunk shrinks the letters inside, never the strip (its height is in em)');

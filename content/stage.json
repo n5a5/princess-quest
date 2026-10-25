@@ -1,307 +1,888 @@
 {
-  "auditionDate": "2026-10-14",
-  "showDate": "2027-02-21",
-  "show": "Annie",
-  "warmup": {
-    "id": "warmup",
-    "chunks": [
-      {
-        "text": "Hello, everybody!",
-        "pic": "👋"
-      }
-    ]
-  },
-  "slate": {
-    "id": "slate",
-    "chunks": [
-      {
-        "text": "Hi! I'm {name}.",
-        "pic": "👋"
-      },
-      {
-        "text": "I'm in kindergarten.",
-        "pic": "🏫"
-      },
-      {
-        "text": "I'll be singing, It's the Hard-Knock Life!",
-        "pic": "🎵"
-      }
-    ]
-  },
-  "pieces": [
-    {
-      "id": "line",
-      "title": "My Line",
-      "icon": "🗣️",
-      "intro": "This is the orphans' line. Miss Hannigan just woke them up, and it is still dark outside!",
-      "tip": "Rub your eyes and say it like you are so, so sleepy. Then say Yes, Miss Hannigan, slow and grumpy.",
-      "maxMs": 12000,
-      "chunks": [
-        {
-          "text": "Oh my goodness, oh my goodness.",
-          "pic": "😱"
-        },
-        {
-          "text": "It's four o'clock in the morning!",
-          "pic": "🕓🌙"
-        },
-        {
-          "text": "Yes, Miss Hannigan.",
-          "pic": "🙄"
-        }
-      ],
-      "act": "😴"
-    },
-    {
-      "id": "song",
-      "title": "My Song",
-      "icon": "🎵",
-      "intro": "These are the words to the orphans' song. First we say them like a chant, then we sing them with the orphans.",
-      "tip": "Sing it strong, like you are scrubbing the floor! Stomp your foot when you sing hard knock.",
-      "maxMs": 30000,
-      "chunks": [
-        {
-          "text": "It's the hard-knock life for us! It's the hard-knock life for us!",
-          "pic": "🧹"
-        },
-        {
-          "text": "'Steada treated, we get tricked!",
-          "pic": "🍭🎃"
-        },
-        {
-          "text": "'Steada kisses, we get kicked!",
-          "pic": "😘🦶"
-        },
-        {
-          "text": "It's the hard-knock life!",
-          "pic": "🪣"
-        }
-      ],
-      "act": "🧽"
-    }
-  ],
-  "songCut": {
-    "start": 10.8,
-    "end": 27.0,
-    "duration": 221.9,
-    "note": "The audition chorus inside the Sony 'Full Clip' audio (3:41.9). Times found by analysis, not by ear: Parent Corner lets a grown-up check and nudge them."
-  },
-  "others": [
-    {
-      "id": "annie",
-      "role": "Annie",
-      "pic": "👧",
-      "act": "🐶",
-      "chain": false,
-      "intro": "This is Annie's line. Annie finds a scared little dog.",
-      "tip": "Say it kindly, like you are talking to a scared puppy.",
-      "chunks": [
-        {
-          "text": "Hey there.",
-          "pic": "👋"
-        },
-        {
-          "text": "Are the dog catchers after you?",
-          "pic": "🐕"
-        },
-        {
-          "text": "Well don't worry,",
-          "pic": "🤗"
-        },
-        {
-          "text": "I ain't gonna let them get you or me.",
-          "pic": "🛡️"
-        },
-        {
-          "text": "Everything's gonna be fine.",
-          "pic": "👍"
-        },
-        {
-          "text": "If not today, well... tomorrow!",
-          "pic": "🌅"
-        }
-      ]
-    },
-    {
-      "id": "grace",
-      "role": "Grace",
-      "pic": "👩‍💼",
-      "act": "💼",
-      "chain": false,
-      "intro": "This is Grace's line. Grace works for a very rich man.",
-      "tip": "Stand tall and say it clearly, like a grown-up at work.",
-      "chunks": [
-        {
-          "text": "I'm Grace Farrell,",
-          "pic": "👩‍💼"
-        },
-        {
-          "text": "private secretary to Oliver Warbucks.",
-          "pic": "📝"
-        },
-        {
-          "text": "Mr. Warbucks has decided",
-          "pic": "🤵",
-          "say": "Mister Warbucks has decided"
-        },
-        {
-          "text": "to invite an orphan",
-          "pic": "💌"
-        },
-        {
-          "text": "to spend the holidays at his home.",
-          "pic": "🎄"
-        }
-      ]
-    },
-    {
-      "id": "warbucks",
-      "role": "Mister Warbucks",
-      "pic": "🤵",
-      "act": "🎩",
-      "chain": false,
-      "intro": "This is Mister Warbucks's line. He is surprised the orphan is a girl.",
-      "tip": "Use a big, deep, bossy voice.",
-      "chunks": [
-        {
-          "text": "That's not a boy.",
-          "pic": "🙅"
-        },
-        {
-          "text": "Orphans are boys!",
-          "pic": "👦"
-        },
-        {
-          "text": "Oh well, I suppose she'll have to do.",
-          "pic": "🤷"
-        },
-        {
-          "text": "So, Annie,",
-          "pic": "👧"
-        },
-        {
-          "text": "I guess we should do something special on your first night.",
-          "pic": "✨"
-        },
-        {
-          "text": "Would you like to go to a movie?",
-          "pic": "🎬"
-        }
-      ]
-    },
-    {
-      "id": "hannigan",
-      "role": "Miss Hannigan",
-      "pic": "😠",
-      "act": "😤",
-      "chain": false,
-      "intro": "This is Miss Hannigan's line. She is very bossy to the orphans.",
-      "tip": "Put your hands on your hips and be very, very bossy!",
-      "chunks": [
-        {
-          "text": "Now, for this one's shenanigans,",
-          "pic": "😠"
-        },
-        {
-          "text": "you'll all get down on your knobby little knees",
-          "pic": "🦵"
-        },
-        {
-          "text": "and clean this dump",
-          "pic": "🧽"
-        },
-        {
-          "text": "until it shines like the top of the Chrysler Building!",
-          "pic": "🏙️"
-        },
-        {
-          "text": "Get to work. Now!",
-          "pic": "👉"
-        }
-      ]
-    },
-    {
-      "id": "rooster",
-      "role": "Rooster",
-      "pic": "🐓",
-      "act": "🦊",
-      "chain": false,
-      "intro": "This is Rooster's line. Rooster is Miss Hannigan's sneaky brother.",
-      "tip": "Be sneaky and sly, like a fox.",
-      "chunks": [
-        {
-          "text": "That kid is livin' in the lap of luxury",
-          "pic": "💎"
-        },
-        {
-          "text": "while the two Hannigan kids",
-          "pic": "👫"
-        },
-        {
-          "text": "ended up on the skids!",
-          "pic": "📉"
-        },
-        {
-          "text": "I wanna be on Easy Street!",
-          "pic": "💰"
-        }
-      ]
-    },
-    {
-      "id": "lily",
-      "role": "Lily",
-      "pic": "💃",
-      "act": "💅",
-      "chain": false,
-      "intro": "This is Lily's line. Lily is Rooster's fancy friend.",
-      "tip": "Say it in a big, fancy, showy voice.",
-      "chunks": [
-        {
-          "text": "I'm Lily St. Regis,",
-          "pic": "💃",
-          "say": "I'm Lily Saint Regis,"
-        },
-        {
-          "text": "from Jersey City!",
-          "pic": "🌆"
-        },
-        {
-          "text": "I heard about that orphan of yours, Annie.",
-          "pic": "👂"
-        },
-        {
-          "text": "It ain't fair!",
-          "pic": "😤"
-        }
-      ]
-    },
-    {
-      "id": "bundles",
-      "role": "Bundles",
-      "pic": "🧺",
-      "act": "📣",
-      "chain": false,
-      "intro": "This is Bundles's line. Bundles brings the laundry.",
-      "tip": "Be cheerful and loud, like you are calling down the hall.",
-      "chunks": [
-        {
-          "text": "Laundry! Laundry man!",
-          "pic": "🧺"
-        },
-        {
-          "text": "Mornin' kids!",
-          "pic": "👋"
-        },
-        {
-          "text": "Clean sheets once a month,",
-          "pic": "🛏️"
-        },
-        {
-          "text": "whether you need 'em or not.",
-          "pic": "🤷",
-          "say": "whether you need um or not."
-        }
-      ]
-    }
+ "showDate": "2027-02-21",
+ "warmup": {
+  "id": "warmup",
+  "chunks": [
+   {
+    "text": "Hello, everybody!",
+    "pic": "👋"
+   }
   ]
+ },
+ "songCut": {
+  "start": 10.8,
+  "end": 27.0,
+  "duration": 221.9,
+  "note": "The first Hard-Knock Life chorus (hkl-1) inside the Sony 'Full Clip' audio (3:41.9). Times found by analysis, not by ear: Parent Corner lets a grown-up check and nudge them."
+ },
+ "show": {
+  "voices": {
+   "Annie": "af_sky",
+   "Miss Hannigan": "af_bella",
+   "Tessie": "af_nicole",
+   "Molly": "af_aoede",
+   "Pepper": "af_kore",
+   "July": "af_jessica",
+   "Bundles": "am_puck",
+   "Officer Ward": "am_michael",
+   "Mr. Warbucks": "am_adam",
+   "Everybody": "af_sky",
+   "Annie and the orphans": "af_sky"
+  },
+  "people": {
+   "Annie": "👧",
+   "Miss Hannigan": "😠",
+   "Tessie": "😭",
+   "Molly": "🧒",
+   "Pepper": "😤",
+   "July": "👩",
+   "Bundles": "🧺",
+   "Officer Ward": "👮",
+   "Mr. Warbucks": "🎩",
+   "Everybody": "👭",
+   "Annie and the orphans": "👭"
+  },
+  "kate": [
+   {
+    "id": "kate-doin",
+    "scene": 1,
+    "who": "Kate",
+    "cue": {
+     "who": "Annie",
+     "text": "So maybe now this prayer's the last one of its kind... won't you please come get your baby?"
+    },
+    "intro": "This is your line as Kate! Everybody sings Maybe, then Annie sneaks away, and you say your line.",
+    "tip": "Sing Maybe dreamy. Then say your line like you just woke up and see Annie sneaking away. Surprised!",
+    "act": "😮",
+    "chunks": [
+     {
+      "text": "Maybe.",
+      "pic": "🌙"
+     },
+     {
+      "text": "Annie,",
+      "pic": "👧"
+     },
+     {
+      "text": "whatta ya doin'?",
+      "pic": "🤔"
+     }
+    ]
+   },
+   {
+    "id": "kate-light",
+    "scene": 1,
+    "who": "Kate and Tessie",
+    "sing": true,
+    "cue": {
+     "who": "Annie",
+     "text": "Don't it feel like the wind is always howlin'?"
+    },
+    "intro": "In Hard-Knock Life, you sing this line with Tessie.",
+    "tip": "Sing it sad and spooky, like the lights went out.",
+    "act": "🌑",
+    "chunks": [
+     {
+      "text": "Don't it seem like",
+      "pic": "😟"
+     },
+     {
+      "text": "there's never any light!",
+      "pic": "🌑"
+     }
+    ]
+   },
+   {
+    "id": "kate-shrink",
+    "scene": 1,
+    "who": "Molly and Kate",
+    "sing": true,
+    "cue": {
+     "who": "Annie",
+     "text": "No one's there when your dreams at night get creepy!"
+    },
+    "intro": "Then you sing this line with Molly.",
+    "tip": "Stand up tall on grow, and squish down small on shrink!",
+    "act": "🌱",
+    "chunks": [
+     {
+      "text": "No one cares if you grow",
+      "pic": "🌱"
+     },
+     {
+      "text": "or if you shrink!",
+      "pic": "🤏"
+     }
+    ]
+   }
+  ],
+  "lines": [
+   {
+    "id": "or-note",
+    "scene": 1,
+    "who": "All the orphans",
+    "cue": {
+     "who": "Pepper",
+     "text": "We have left half of a silver locket around her neck, and kept the other half..."
+    },
+    "tip": "Say it in a silly teasing voice. The orphans have heard Annie's note a thousand times!",
+    "act": "😜",
+    "chunks": [
+     {
+      "text": "So that when we come back for her",
+      "pic": "🚶‍♀️"
+     },
+     {
+      "text": "you will know that she's our baby.",
+      "pic": "👶"
+     }
+    ],
+    "intro": "All the orphans say this together."
+   },
+   {
+    "id": "or-luck",
+    "scene": 1,
+    "who": "All the orphans except Pepper",
+    "cue": {
+     "who": "Annie",
+     "text": "I don't care. I'm gettin' outta here. Wish me luck."
+    },
+    "tip": "A stage whisper: a secret, but the back row can hear it!",
+    "act": "🤫",
+    "chunks": [
+     {
+      "text": "Good luck, Annie.",
+      "pic": "🍀"
+     },
+     {
+      "text": "'Bye, Annie!",
+      "say": "Bye, Annie!",
+      "pic": "👋"
+     }
+    ],
+    "intro": "All the orphans say this together, but not Pepper.",
+    "voice": "soft"
+   },
+   {
+    "id": "or-yes",
+    "scene": 1,
+    "who": "Annie and the orphans",
+    "cue": {
+     "who": "Miss Hannigan",
+     "text": "...and clean this dump until it shines like the top of the Chrysler Building! Get to work."
+    },
+    "tip": "Slow and grumpy. It's four o'clock in the morning!",
+    "act": "🙄",
+    "chunks": [
+     {
+      "text": "Yes, Miss Hannigan.",
+      "pic": "🙄"
+     }
+    ],
+    "intro": "Annie and the orphans say this together."
+   },
+   {
+    "id": "or-morning",
+    "scene": 1,
+    "who": "The orphans",
+    "cue": {
+     "who": "Miss Hannigan",
+     "text": "Good morning, children."
+    },
+    "tip": "Sing-songy and extra sweet, but you don't mean it!",
+    "act": "😇",
+    "chunks": [
+     {
+      "text": "Good morning, Miss Hannigan.",
+      "pic": "☀️"
+     }
+    ],
+    "intro": "The orphans say this together."
+   },
+   {
+    "id": "or-love",
+    "scene": 1,
+    "who": "The orphans, one at a time",
+    "cue": {
+     "who": "Miss Hannigan",
+     "text": "Well?"
+    },
+    "tip": "Wait for your turn. Then say it sweetly, with a fake smile.",
+    "act": "😬",
+    "chunks": [
+     {
+      "text": "I love you.",
+      "pic": "💖"
+     }
+    ],
+    "intro": "After good morning, Miss Hannigan says, Well? Then the orphans say this one at a time. Wait for your turn!"
+   },
+   {
+    "id": "or-bundles",
+    "scene": 1,
+    "who": "The orphans",
+    "cue": {
+     "who": "Bundles",
+     "text": "Laundry. Laundry man."
+    },
+    "tip": "Happy! The orphans like Bundles.",
+    "act": "😃",
+    "chunks": [
+     {
+      "text": "Mornin', Bundles!",
+      "pic": "🧺"
+     }
+    ],
+    "intro": "The orphans say this together."
+   },
+   {
+    "id": "or-aint",
+    "scene": 1,
+    "who": "The orphans",
+    "cue": {
+     "who": "Miss Hannigan",
+     "text": "You call this clean, Annie? Annie? Annie?"
+    },
+    "tip": "Innocent, like you don't know anything.",
+    "act": "🤷",
+    "chunks": [
+     {
+      "text": "Annie ain't here.",
+      "pic": "🤷"
+     }
+    ],
+    "intro": "The orphans say this together."
+   },
+   {
+    "id": "or-cheer",
+    "scene": 1,
+    "who": "The orphans",
+    "cue": {
+     "who": "July",
+     "text": "No more hard-knock life for Annie!"
+    },
+    "tip": "Cheer as loud as you can! Any happy cheer is fine.",
+    "act": "🎉",
+    "chunks": [
+     {
+      "text": "Hooray!",
+      "pic": "🎉"
+     }
+    ],
+    "intro": "The orphans say this together."
+   },
+   {
+    "id": "or-hikids",
+    "scene": 8,
+    "who": "The orphans",
+    "cue": {
+     "who": "Annie",
+     "text": "Hi, kids!"
+    },
+    "tip": "So happy to see Annie again!",
+    "act": "🤗",
+    "chunks": [
+     {
+      "text": "Annie! Annie!",
+      "pic": "👧"
+     },
+     {
+      "text": "Hi, Annie!",
+      "pic": "🤗"
+     }
+    ],
+    "intro": "The orphans say this together."
+   },
+   {
+    "id": "or-hooray",
+    "scene": 8,
+    "who": "The orphans",
+    "cue": {
+     "who": "Annie",
+     "text": "Miss Hannigan is gone for good!"
+    },
+    "tip": "The happiest Hooray of the whole show!",
+    "act": "🎉",
+    "chunks": [
+     {
+      "text": "Hooray!",
+      "pic": "🎉"
+     }
+    ],
+    "intro": "The orphans say this together."
+   }
+  ],
+  "songs": [
+   {
+    "id": "maybe-1",
+    "song": "Maybe",
+    "scene": 1,
+    "who": "Annie and the orphans",
+    "sing": true,
+    "cue": {
+     "who": "Annie",
+     "text": "She's sitting playing piano, he's sitting paying a bill!"
+    },
+    "tip": "Sing it dreamy, like you are wishing on a star. Soft, but the back row can still hear you!",
+    "act": "🌙",
+    "chunks": [
+     {
+      "text": "Betcha they're young, betcha they're smart,",
+      "pic": "🧠"
+     },
+     {
+      "text": "bet they collect things like ashtrays and art!",
+      "pic": "🖼️"
+     },
+     {
+      "text": "Betcha they're good, why shouldn't they be?",
+      "pic": "😇"
+     }
+    ],
+    "intro": "This is from Maybe. Annie and the orphans sing this together.",
+    "voice": "soft"
+   },
+   {
+    "id": "maybe-2",
+    "song": "Maybe",
+    "scene": 1,
+    "who": "Annie and the orphans",
+    "sing": true,
+    "cue": {
+     "who": "Everybody",
+     "text": "Betcha they're good, why shouldn't they be?"
+    },
+    "tip": "Sing it dreamy, like you are wishing on a star. Soft, but the back row can still hear you!",
+    "act": "🌙",
+    "chunks": [
+     {
+      "text": "Their one mistake was giving up me!",
+      "pic": "💔"
+     },
+     {
+      "text": "So maybe now it's time, and maybe when I wake,",
+      "pic": "⏰"
+     },
+     {
+      "text": "they'll be there calling me baby... maybe.",
+      "pic": "👶"
+     }
+    ],
+    "intro": "This is from Maybe. Annie and the orphans sing this together.",
+    "voice": "soft"
+   },
+   {
+    "id": "hkl-1",
+    "song": "Hard-Knock Life",
+    "scene": 1,
+    "who": "Annie and the orphans",
+    "sing": true,
+    "cue": {
+     "who": "Miss Hannigan",
+     "text": "Now! Why any kid would want to be an orphan, I'll never know."
+    },
+    "tip": "Sing it strong, like you are scrubbing the floor! Stomp your foot when you sing hard knock.",
+    "act": "🧽",
+    "chunks": [
+     {
+      "text": "It's the hard-knock life for us! It's the hard-knock life for us!",
+      "pic": "🧹"
+     },
+     {
+      "text": "'Steada treated, we get tricked!",
+      "say": "Steada treated, we get tricked!",
+      "pic": "🍭🎃"
+     },
+     {
+      "text": "'Steada kisses, we get kicked!",
+      "say": "Steada kisses, we get kicked!",
+      "pic": "😘🦶"
+     },
+     {
+      "text": "It's the hard-knock life!",
+      "pic": "🪣"
+     }
+    ],
+    "intro": "This is from Hard-Knock Life. Annie and the orphans sing this together."
+   },
+   {
+    "id": "hkl-2",
+    "song": "Hard-Knock Life",
+    "scene": 1,
+    "who": "Annie and the orphans",
+    "sing": true,
+    "cue": {
+     "who": "Annie and the orphans",
+     "text": "'Steada kisses, we get kicked! It's the hard-knock life!"
+    },
+    "tip": "Sing it strong and a little bit grumpy.",
+    "act": "😤",
+    "chunks": [
+     {
+      "text": "Got no folks to speak of, so,",
+      "pic": "🚫👪"
+     },
+     {
+      "text": "it's the hard-knock row we hoe!",
+      "pic": "🌾"
+     }
+    ],
+    "intro": "This is from Hard-Knock Life. Annie and the orphans sing this together."
+   },
+   {
+    "id": "hkl-3",
+    "song": "Hard-Knock Life",
+    "scene": 1,
+    "who": "Annie and the orphans",
+    "sing": true,
+    "cue": {
+     "who": "Everybody",
+     "text": "It's the hard-knock row we hoe!"
+    },
+    "tip": "Sing it strong and a little bit grumpy.",
+    "act": "😤",
+    "chunks": [
+     {
+      "text": "Cotton blankets 'steada wool!",
+      "say": "Cotton blankets steada wool!",
+      "pic": "🛏️"
+     },
+     {
+      "text": "Empty bellies 'steada full!",
+      "say": "Empty bellies steada full!",
+      "pic": "🍽️"
+     },
+     {
+      "text": "It's the hard-knock life!",
+      "pic": "🪣"
+     }
+    ],
+    "intro": "This is from Hard-Knock Life. Annie and the orphans sing this together."
+   },
+   {
+    "id": "hkl-4",
+    "song": "Hard-Knock Life",
+    "scene": 1,
+    "who": "Everybody",
+    "sing": true,
+    "cue": {
+     "who": "Tessie",
+     "text": "No one dries when your eyes get wet and weepy!"
+    },
+    "tip": "Pretend to cry, then sing it big!",
+    "act": "😭",
+    "chunks": [
+     {
+      "text": "From the cryin' you would think this place would sink!",
+      "pic": "😭"
+     },
+     {
+      "text": "Oh! Empty belly life!",
+      "pic": "🍽️"
+     }
+    ],
+    "intro": "This is from Hard-Knock Life. Everybody sings this part."
+   },
+   {
+    "id": "hkl-5",
+    "song": "Hard-Knock Life",
+    "scene": 1,
+    "who": "Everybody",
+    "sing": true,
+    "cue": {
+     "who": "Everybody",
+     "text": "Oh! Empty belly life!"
+    },
+    "tip": "Make a yucky face on rotten smelly, and a sad face on sorrow!",
+    "act": "🤢",
+    "chunks": [
+     {
+      "text": "Rotten smelly life!",
+      "pic": "🤢"
+     },
+     {
+      "text": "Full of sorrow life!",
+      "pic": "😢"
+     },
+     {
+      "text": "No tomorrow life!",
+      "pic": "🌧️"
+     }
+    ],
+    "intro": "This is from Hard-Knock Life. Everybody sings this part."
+   },
+   {
+    "id": "hkl-6",
+    "song": "Hard-Knock Life",
+    "scene": 1,
+    "who": "Everybody",
+    "sing": true,
+    "cue": {
+     "who": "Annie",
+     "text": "Santa Claus? What's that? Who's he?"
+    },
+    "tip": "Sing it sad, then loud on hard-knock life!",
+    "act": "🤏",
+    "chunks": [
+     {
+      "text": "No one cares for you a smidge when you're in an orphanage!",
+      "pic": "😞"
+     },
+     {
+      "text": "It's the hard-knock life!",
+      "pic": "🪣"
+     }
+    ],
+    "intro": "This is from Hard-Knock Life. Everybody sings this part."
+   },
+   {
+    "id": "hkl-7",
+    "song": "Hard-Knock Life",
+    "scene": 1,
+    "who": "The orphans",
+    "sing": true,
+    "cue": {
+     "who": "Molly",
+     "text": "You'll stay up till this dump shines like the top of the Chrysler Building!"
+    },
+    "tip": "Sneaky and silly, then smile sweetly on I love you!",
+    "act": "😜",
+    "chunks": [
+     {
+      "text": "Yank the whiskers from her chin,",
+      "pic": "🧔"
+     },
+     {
+      "text": "jab her with a safety pin,",
+      "pic": "📌"
+     },
+     {
+      "text": "make her drink a Mickey Finn,",
+      "pic": "🥤"
+     },
+     {
+      "text": "I love you, Miss Hannigan!",
+      "pic": "💖"
+     }
+    ],
+    "intro": "This is from Hard-Knock Life. The orphans sing this part."
+   },
+   {
+    "id": "hkl-8",
+    "song": "Hard-Knock Life",
+    "scene": 1,
+    "who": "Everybody",
+    "sing": true,
+    "cue": {
+     "who": "Molly",
+     "text": "Get to work! Strip them beds! I said get to work!"
+    },
+    "tip": "The big ending! Sing the last line slow and loud.",
+    "act": "💪",
+    "chunks": [
+     {
+      "text": "It's the hard-knock life for us! It's the hard-knock life for us!",
+      "pic": "🧹"
+     },
+     {
+      "text": "No one cares for you a smidge when you're in an orphanage!",
+      "pic": "😞"
+     },
+     {
+      "text": "It's the hard-knock life! It's the hard-knock life!",
+      "pic": "🪣"
+     },
+     {
+      "text": "It's the hard-knock life!",
+      "pic": "🪣"
+     }
+    ],
+    "intro": "This is from Hard-Knock Life. Everybody sings this part."
+   },
+   {
+    "id": "smile-1",
+    "song": "You're Never Fully Dressed Without a Smile",
+    "scene": 6,
+    "who": "All the orphans",
+    "sing": true,
+    "cue": {
+     "who": "Tessie",
+     "text": "Hey hobo man, hey dapper Dan, you've both got your style."
+    },
+    "tip": "Big smile the whole time. Be a radio star!",
+    "act": "😁",
+    "chunks": [
+     {
+      "text": "But brother, you're never fully dressed without a smile!",
+      "pic": "😁"
+     },
+     {
+      "text": "Your clothes may be Beau Brummelly,",
+      "pic": "🎩"
+     },
+     {
+      "text": "they stand out a mile,",
+      "pic": "📏"
+     },
+     {
+      "text": "but brother, you're never fully dressed without a smile!",
+      "pic": "😁"
+     }
+    ],
+    "intro": "This is from the Smile song. All the orphans sing this together."
+   },
+   {
+    "id": "smile-2",
+    "song": "You're Never Fully Dressed Without a Smile",
+    "scene": 6,
+    "who": "All the orphans",
+    "sing": true,
+    "cue": {
+     "who": "Molly",
+     "text": "That matters!"
+    },
+    "tip": "Wave goodbye on so long, and the biggest smile on the last line!",
+    "act": "👋",
+    "chunks": [
+     {
+      "text": "So senator, so janitor, so long for a while,",
+      "pic": "👋"
+     },
+     {
+      "text": "remember you're never fully dressed",
+      "pic": "👗"
+     },
+     {
+      "text": "though you may wear the best,",
+      "pic": "✨"
+     }
+    ],
+    "intro": "This is from the Smile song. All the orphans sing this together."
+   },
+   {
+    "id": "smile-3",
+    "song": "You're Never Fully Dressed Without a Smile",
+    "scene": 6,
+    "who": "All the orphans",
+    "sing": true,
+    "cue": {
+     "who": "Everybody",
+     "text": "Though you may wear the best,"
+    },
+    "tip": "The biggest smile of all on smile darn ya, smile!",
+    "act": "😁",
+    "chunks": [
+     {
+      "text": "you're never fully dressed without a smile!",
+      "pic": "😁"
+     },
+     {
+      "text": "Smile, smile, smile darn ya, smile!",
+      "pic": "😊"
+     }
+    ],
+    "intro": "This is from the Smile song. All the orphans sing this together."
+   },
+   {
+    "id": "tomorrow-1",
+    "song": "Tomorrow",
+    "scene": 8,
+    "who": "Everybody (ask the director)",
+    "sing": true,
+    "cue": {
+     "who": "Mr. Warbucks",
+     "text": "This is going to be the beginning of a wonderful new life."
+    },
+    "tip": "Sing it bright and hopeful, like the sun coming up.",
+    "act": "☀️",
+    "chunks": [
+     {
+      "text": "The sun'll come out tomorrow,",
+      "pic": "☀️"
+     },
+     {
+      "text": "bet your bottom dollar that tomorrow there'll be sun!",
+      "pic": "💵"
+     },
+     {
+      "text": "Just thinking about tomorrow",
+      "pic": "💭"
+     },
+     {
+      "text": "clears away the cobwebs and the sorrow 'til there's none!",
+      "pic": "🕸️"
+     }
+    ],
+    "intro": "This is from Tomorrow. Everybody sings this part."
+   },
+   {
+    "id": "tomorrow-2",
+    "song": "Tomorrow",
+    "scene": 8,
+    "who": "Everybody (ask the director)",
+    "sing": true,
+    "cue": {
+     "who": "Everybody",
+     "text": "Clears away the cobwebs and the sorrow 'til there's none!"
+    },
+    "tip": "Stick out your chin and grin when you sing it!",
+    "act": "😁",
+    "chunks": [
+     {
+      "text": "When I'm stuck with a day that's gray and lonely,",
+      "pic": "☁️"
+     },
+     {
+      "text": "I just stick out my chin and grin, and say, oh!",
+      "pic": "😁"
+     },
+     {
+      "text": "The sun'll come out tomorrow,",
+      "pic": "☀️"
+     },
+     {
+      "text": "so ya gotta hang on 'til tomorrow, come what may!",
+      "pic": "🤞"
+     }
+    ],
+    "intro": "This is from Tomorrow. Everybody sings this part."
+   },
+   {
+    "id": "tomorrow-3",
+    "song": "Tomorrow",
+    "scene": 2,
+    "who": "Annie and Sandy",
+    "sing": true,
+    "cue": {
+     "who": "Annie",
+     "text": "I love ya, tomorrow! You're always a day away!"
+    },
+    "tip": "Sing it big and happy. Sandy sings this part with Annie!",
+    "act": "🐶",
+    "chunks": [
+     {
+      "text": "Tomorrow! Tomorrow!",
+      "pic": "☀️"
+     },
+     {
+      "text": "I love ya, tomorrow!",
+      "pic": "💛"
+     },
+     {
+      "text": "You're always a day away!",
+      "pic": "📅"
+     }
+    ],
+    "intro": "This is from Tomorrow. Sandy sings this with Annie!"
+   },
+   {
+    "id": "tomorrow-4",
+    "song": "Tomorrow",
+    "scene": 8,
+    "who": "Everybody (ask the director)",
+    "sing": true,
+    "cue": {
+     "who": "Everybody",
+     "text": "So ya gotta hang on 'til tomorrow, come what may!"
+    },
+    "tip": "The very end of the show! Sing it the biggest of all.",
+    "act": "🌟",
+    "chunks": [
+     {
+      "text": "Tomorrow! Tomorrow! I love ya, tomorrow!",
+      "pic": "💛"
+     },
+     {
+      "text": "You're always a day away!",
+      "pic": "📅"
+     },
+     {
+      "text": "Tomorrow! Tomorrow! I love ya, tomorrow!",
+      "pic": "💛"
+     },
+     {
+      "text": "You're always a day away!",
+      "pic": "🌟"
+     }
+    ],
+    "intro": "This is from Tomorrow. Everybody sings this part."
+   }
+  ],
+  "sandy": [
+   {
+    "id": "sandy-on",
+    "kind": "act",
+    "narrate": "Scene two. A city street corner. Annie looks around, and Sandy wanders onto the stage.",
+    "do": "Wander onto the stage like a lost puppy.",
+    "pic": "🐕"
+   },
+   {
+    "id": "sandy-hey",
+    "kind": "listen",
+    "cue": {
+     "who": "Annie",
+     "text": "Hey there! The dogcatchers are after you, ain't they? Well, they're after me, too."
+    },
+    "do": "Listen. Annie is talking to you!",
+    "pic": "👀"
+   },
+   {
+    "id": "sandy-sing",
+    "kind": "sing",
+    "block": "tomorrow-3",
+    "narrate": "Annie sings Tomorrow. At the end, you sing with her!"
+   },
+   {
+    "id": "sandy-wait",
+    "kind": "wait",
+    "cue": {
+     "who": "Officer Ward",
+     "text": "Okay, let's see him answer to his name."
+    },
+    "do": "Annie and the officer are talking. Sandy, stay. Stay. Don't go to Annie until she calls you.",
+    "pic": "✋"
+   },
+   {
+    "id": "sandy-call",
+    "kind": "act",
+    "cue": {
+     "who": "Annie",
+     "text": "Here, Sandy. Here, boy. Sandy."
+    },
+    "do": "Now go to Annie!",
+    "pic": "🐕➡️👧"
+   },
+   {
+    "id": "sandy-good",
+    "kind": "listen",
+    "cue": {
+     "who": "Annie",
+     "text": "Good Sandy. Good old Sandy."
+    },
+    "do": "Listen. Annie is happy with you.",
+    "pic": "🐶💛"
+   },
+   {
+    "id": "sandy-end",
+    "kind": "sing",
+    "block": "tomorrow-3",
+    "narrate": "At the end of the scene, Annie sings Tomorrow again, and you sing with her!"
+   }
+  ],
+  "run": [
+   "or-note",
+   "kate-doin",
+   "or-luck",
+   "or-yes",
+   "kate-light",
+   "kate-shrink",
+   "or-morning",
+   "or-love",
+   "or-bundles",
+   "or-aint",
+   "or-cheer",
+   "or-hikids",
+   "or-hooray"
+  ]
+ }
 }

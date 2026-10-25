@@ -167,6 +167,8 @@ def trim_lead_murmur(x, word, window_ms=None, max_ms=None):
             cut = max(0, fr[n]['i'] - int(SR * 0.005))
     else:
         # the closure: the quietest frame between the murmur and the vowel, clearly below the murmur
+        if v0 <= s + 3:
+            return x, 0  # no room for a murmur before the vowel: nothing to cut
         i = min(range(s + 3, v0), key=lambda k: e[k])
         if e[i] < e[s:i].max() - 4:
             cut = fr[i]['i']

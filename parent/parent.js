@@ -273,24 +273,29 @@ function render() {
 // Focus this week: the parent picks a sound and some wish words; for seven days the planner leans on them
 // (more of that letter stone and its words in the Meadow, that sound as the target in the Woods, those
 // words first in the Well) without switching anything else off.
-// Star Stage (Annie audition practice): what she did each day, and her takes (the first and the latest of
-// each) so a grown-up can hear how it is going without sitting next to her.
-const STAGE_TAKES = [['line', 'Line, practice'], ['song', 'Song, practice'], ['other', 'Another line'], ['audition-slate', 'Audition: hello'], ['audition-line', 'Audition: line'], ['audition-song', 'Audition: song'], ['audition-thanks', 'Audition: thank you']];
-const STAGE_WORDS = { line: 'line', song: 'song', watch: 'watched the clip', hear: 'heard the song', audition: 'mock audition', other: 'another line', dayof: 'audition-day warm-up' };
+// Star Stage (Annie show practice: Kate and Sandy): what she did each day, and her takes (the first and the latest
+// of each part, and of each part in Run my lines) so a grown-up can hear how it is going without sitting next to
+// her. The audition's recordings (10/14/2026) stay listed at the end while they are on the device.
+const AUDITION_TAKES = [['line', 'Audition line, practice'], ['song', 'Audition song, practice'], ['other', 'Another line'], ['audition-slate', 'Audition: hello'], ['audition-line', 'Audition: line'], ['audition-song', 'Audition: song'], ['audition-thanks', 'Audition: thank you']];
+const STAGE_WORDS = { kate: 'Kate', lines: 'orphan lines', songs: 'a song', sandy: 'Sandy', run: 'ran her lines', hear: 'heard the song', line: 'audition line', song: 'audition song', watch: 'watched the clip', audition: 'mock audition', other: 'another line', dayof: 'audition-day warm-up' };
+const showParts = () => STAGE && STAGE.show ? [...STAGE.show.kate, ...STAGE.show.lines, ...STAGE.show.songs] : [];
+const partName = b => (b.song ? b.song + ': ' : b.who === 'Kate' || /Kate/.test(b.who) ? 'Kate: ' : 'Orphans: ') + b.chunks[0].text + (b.chunks.length > 1 ? '…' : '');
+const fmtDay = d => (([y, m, dd]) => `${+m}/${+dd}/${y}`)(d.split('-'));
 function stageSection() {
   const st = economy.save.stage;
   const days = Object.keys(st.days).sort();
-  const when = STAGE ? (([y, m, d]) => `${+m}/${+d}/${y}`)(STAGE.auditionDate.split('-')) : '';
+  const when = STAGE && STAGE.showDate ? fmtDay(STAGE.showDate) : '';
   // as recorded, not levelled: you hear how loud she really was
   const play = id => { player.stop(); player.play(store.get('stage', id), { raw: true }); };
-  const takes = STAGE_TAKES.filter(([id]) => store.has('stage', id)).map(([id, name]) => el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+  const list = [...showParts().map(b => [b.id, partName(b)]), ...showParts().map(b => ['run-' + b.id, 'Run: ' + partName(b)]), ...AUDITION_TAKES];
+  const takes = list.filter(([id]) => store.has('stage', id)).map(([id, name]) => el('div', { class: 'row', style: 'justify-content:flex-start' }, [
     el('span', { text: name, style: 'min-width:150px' }),
     store.has('stage', id + '-first') ? el('button', { type: 'button', text: '▶ First take', onclick: () => play(id + '-first') }) : null,
     el('button', { type: 'button', text: '▶ Latest', onclick: () => play(id) })
   ]));
   return el('section', {}, [
-    el('h2', { text: 'Star Stage: Annie audition practice' + (when ? ' (audition ' + when + ')' : '') }),
-    el('div', { class: 'kpis' }, [kpi('Days practiced', days.length), kpi('Line practices', st.solos.line || 0), kpi('Song practices', st.solos.song || 0), kpi('Mock auditions', st.auditions), kpi('Heard the song', st.watched), kpi('Other lines tried', st.solos.other || 0)]),
+    el('h2', { text: 'Star Stage: Annie, Kate and Sandy' + (when ? ' (show ' + when + ')' : '') }),
+    el('div', { class: 'kpis' }, [kpi('Days practiced', days.length), kpi('Kate', st.solos.kate || 0), kpi('Orphan lines', st.solos.lines || 0), kpi('Songs', st.solos.songs || 0), kpi('Sandy', st.solos.sandy || 0), kpi('Run my lines', st.solos.run || 0), kpi('Heard the song', st.watched)]),
     el('p', {}, [el('strong', { text: 'By day: ' }), days.slice(-10).map(d => d.slice(5) + ' ' + Object.entries(st.days[d]).map(([k, n]) => (STAGE_WORDS[k] || k) + (n > 1 ? ' ×' + n : '')).join(', ')).join(' · ') || 'nothing yet.']),
     ...(takes.length ? takes : [el('p', { class: 'muted', text: 'Her recordings appear here after her first practice.' })]),
     wordsBlock(),
@@ -314,30 +319,43 @@ async function resetStage() {
   render();
 }
 
-// Her words, for the grown-up who helps (the line and the song, with the same pictures she sees), and the switch
-// that shows them under the pictures in Star Stage. Off unless turned on, and only on this device: the words show
-// only while she listens to Luna or the orphans, never on her own turns or in the auditions (shared/stage-plan.js
-// showsWords). Turning it off puts the practice screen back exactly as it was.
+// Her words, for the grown-up who helps: each part with the same pictures she sees and, in grey, its cue (the line
+// just before hers, and who says it), so you can run lines with her anywhere. And the switch that shows the words
+// under the pictures in Star Stage. Off unless turned on, and only on this device: the words show only while she
+// listens to Luna or the orphans, never on her own turns or in Run my lines (shared/stage-plan.js showsWords).
+// Turning it off puts the practice screen back exactly as it was.
 function wordsBlock() {
   const st = economy.save.stage;
-  const pieces = STAGE ? STAGE.pieces : [];
+  const sh = STAGE && STAGE.show;
   const name = (economy.save.child && economy.save.child.name) || 'Amelia';
-  const lines = pieces.map(p => el('div', { style: 'margin:8px 0' }, [
-    el('strong', { text: p.title }),
-    ...p.chunks.map(c => el('div', { style: 'margin:2px 0 2px 8px', text: c.pic + '  ' + c.text.replace(/\{name\}/g, name) }))
-  ]));
+  const part = b => el('div', { style: 'margin:6px 0 6px 8px' }, [
+    b.cue ? el('div', { class: 'muted', text: b.cue.who + ': ' + b.cue.text }) : null,
+    el('div', { style: 'font-weight:600', text: b.who + ':' }),
+    ...b.chunks.map(c => el('div', { style: 'margin-left:8px', text: c.pic + '  ' + c.text.replace(/\{name\}/g, name) }))
+  ]);
+  const group = (title, blocks) => el('details', { style: 'margin:8px 0' }, [el('summary', { text: title }), ...blocks.map(part)]);
+  const lines = !sh ? [] : [
+    group('Kate (' + sh.kate.length + ' parts)', sh.kate),
+    group('The orphans, spoken (' + sh.lines.length + ' lines)', sh.lines),
+    ...[...new Set(sh.songs.map(b => b.song))].map(song => group(song, sh.songs.filter(b => b.song === song))),
+    el('details', { style: 'margin:8px 0' }, [el('summary', { text: 'Sandy (Scene 2)' }), ...sh.sandy.map(x => el('div', { style: 'margin:4px 0 4px 8px' }, [
+      x.cue ? el('div', { class: 'muted', text: x.cue.who + ': ' + x.cue.text }) : null,
+      el('div', { text: (x.pic || '🎵') + '  ' + (x.do || x.narrate || '') })
+    ]))])
+  ];
   const box = el('input', { type: 'checkbox', id: 'stage-words', onchange: e => { st.words = e.target.checked; economy.persist(); } });
   box.checked = st.words === true;
   return el('div', { style: 'margin-top:12px' }, [
     el('h3', { text: 'Her words' }),
     ...lines,
     el('label', { class: 'toggle', style: 'margin-top:8px', for: 'stage-words' }, [box, el('span', { style: 'flex:1', text: 'Show the words under the pictures while Luna says them (this device)' })]),
-    el('p', { class: 'muted', text: 'Off unless you turn it on. The words never show on her own turns or in the mock auditions, so she still says it from memory. If they distract her, turn this off: the screen goes back to exactly how it was. With a paper card, read it together after practice, not right before, and keep it away during mock auditions.' })
+    el('p', { class: 'muted', text: 'Off unless you turn it on. The words never show on her own turns or in Run my lines, so she still says it from memory. If they distract her, turn this off: the screen goes back to exactly how it was. With a paper card, read it together after practice, not right before, and keep it away during Run my lines. Ask the director who sings the last Tomorrow (the script does not say), and what the orphans shout when they cheer.' })
   ]);
 }
 
-// The cast recording for My Song and Hear the orphans. Loaded from a file on this device and kept only here (the
-// app and its public site never contain it). The audition chorus inside it was found by analysis, not by ear:
+// The cast recording for Hear the orphans and the first Hard-Knock Life chorus in Orphan songs. Loaded from a file on
+// this device and kept only here (the app and its public site never contain it). The chorus inside it was found by
+// analysis, not by ear:
 // "Play my part" lets a grown-up check it and the buttons move its start and end half a second at a time.
 let songPlayer = null;
 function songBlock() {
@@ -352,12 +370,12 @@ function songBlock() {
     probe.release();
     if (!d) { alert('This device cannot play that file. Use the MP3 of the clip.'); e.target.value = ''; return; }
     await store.save('stage', 'song-audio', f);
-    if (base && d < base.end) alert('This recording is only ' + fmt(d) + ' long, so her part (' + fmt(base.start) + ' to ' + fmt(base.end) + ') is not in it. My Song will use Luna\'s chant; Hear the orphans still plays it.');
+    if (base && d < base.end) alert('This recording is only ' + fmt(d) + ' long, so her part (' + fmt(base.start) + ' to ' + fmt(base.end) + ') is not in it. Orphan songs will use Luna\'s chant; Hear the orphans still plays it.');
     else if (base && Math.abs(d - base.duration) > 2) alert('This recording is ' + fmt(d) + ' long, not ' + fmt(base.duration) + ' like the clip the times were set for. Use "Play my part" and the buttons to find "It\'s the hard-knock life for us" … "It\'s the hard-knock life!".');
     render();
   } });
   if (!rec) return el('div', { class: 'song-setup' }, [
-    el('p', {}, [el('strong', { text: 'The real song: ' }), 'not loaded. Load the movie clip audio (the "It\'s the Hard Knock Life" Full Clip MP3): My Song then plays the orphans singing her part and Hear the orphans plays the whole number, offline. The file stays on this device.']),
+    el('p', {}, [el('strong', { text: 'The real song: ' }), 'not loaded. Load the movie clip audio (the "It\'s the Hard Knock Life" Full Clip MP3): Orphan songs then plays the orphans singing the first chorus and Hear the orphans plays the whole number, offline. The file stays on this device.']),
     el('label', { class: 'toggle' }, ['Load the song ', load])
   ]);
   if (!songPlayer) songPlayer = createSongPlayer(rec);

@@ -387,7 +387,7 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
 .day-strip .day.done { background: var(--tint-gold); border-color: var(--gold); }
 .day-strip .day.missed { opacity: 0.5; }
 .day-strip .day.is-today { border-color: var(--gold); box-shadow: var(--glow-gold); }
-.day-strip .day.audition { width: clamp(52px, 11vw, 76px); height: clamp(52px, 11vw, 76px); background: linear-gradient(180deg, #E2688F, #B83A5E); border-color: #B83A5E; font-size: clamp(28px, 6vw, 44px); }
+.day-strip .day.show { width: clamp(52px, 11vw, 76px); height: clamp(52px, 11vw, 76px); background: linear-gradient(180deg, #E2688F, #B83A5E); border-color: #B83A5E; font-size: clamp(28px, 6vw, 44px); }
 .scene.stage .round-dots span.current { background: var(--rose); animation: pulse 1s ease-in-out infinite; }
 .scene.stage .cues { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; padding: 14px; border-radius: var(--radius); background: rgba(255,255,255,0.55); transition: background 0.4s; }
 .scene.stage .cue { min-width: clamp(84px, 19vw, 150px); min-height: clamp(84px, 19vw, 150px); padding: 6px 10px; border-radius: 22px; background: var(--cream); border: 4px solid transparent; box-shadow: var(--shadow-soft); font-size: clamp(48px, 11vw, 92px); line-height: 1; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s, transform 0.25s, border-color 0.3s, box-shadow 0.25s; }
@@ -476,7 +476,7 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
   .scene.stage .encounter-btn .icon { font-size: 34px; }
   .day-strip { padding: 4px; gap: 6px; }
   .day-strip .day { width: 32px; height: 32px; font-size: 18px; border-width: 2px; }
-  .day-strip .day.audition { width: 42px; height: 42px; font-size: 24px; }
+  .day-strip .day.show { width: 42px; height: 42px; font-size: 24px; }
   .plan-item { width: 46px; height: 46px; font-size: 24px; }
   .stage-curtain { height: 46vh; }
   .scene.stage.breath .bubble { width: 38vh; height: 38vh; }
@@ -524,7 +524,7 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
   .scene.stage .encounter-btn .icon { font-size: 34px; }
   .day-strip { padding: 4px; gap: 5px; }
   .day-strip .day { width: 30px; height: 30px; font-size: 17px; border-width: 2px; }
-  .day-strip .day.audition { width: 40px; height: 40px; font-size: 22px; }
+  .day-strip .day.show { width: 40px; height: 40px; font-size: 22px; }
   .plan-item { width: 42px; height: 42px; font-size: 22px; }
   .scene.stage .cues { padding: 8px; gap: 8px; }
   .scene.stage .cue { min-width: 72px; min-height: 72px; font-size: 42px; }
@@ -580,3 +580,8 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
   /* the acting cue (a big picture in the status line, no words then) needs the strip's room */
   .scene.stage.practice:has(> .mic-status.act) > .stage-words { display: none; }
 }
+/* Star Stage show mode: the gap between this week and the show's circle in the day strip; Sandy's acting turn
+   shows the thumbs-up like a turn without the microphone */
+.day-strip .day.gap { border: none; background: transparent; box-shadow: none; width: auto; min-width: 18px; color: var(--plum); font-weight: 700; }
+.scene.stage .mic[data-state="act"] { background: #FFF6E5; border-color: #F5B544; justify-content: center; }
+.scene.stage .mic[data-state="act"] .mic-icon, .scene.stage .mic[data-state="act"] .vmeter, .scene.stage .mic[data-state="act"] .vstar { display: none; }

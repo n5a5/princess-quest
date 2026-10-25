@@ -8,7 +8,7 @@ export const REGISTRY = [
   { id: 'caverns', place: 'caverns', name: 'Crystal Caverns', hint: 'Gems and numbers',        icon: '💎', strands: ['MA.K.NSO.1.1', 'MA.K.NSO.2.1', 'MA.K.NSO.3.1', 'MA.K.AR.1.1'], subskills: ['subitize-tenframe', 'number-relations', 'teen-compare', 'add-sub', 'decompose-stories', 'count-sequence'], entry: './games/princess-quest/caverns.js', minTier: 1, ready: true },
   { id: 'falls',   place: 'falls',   name: 'Rainbow Falls',   hint: 'Measure, sort, shapes',   icon: '🌈', strands: ['MA.K.M.1.2', 'MA.K.DP.1.1', 'MA.K.AR.1.2', 'MA.K.GR.1.1'], subskills: ['measure', 'data-sort', 'patterns', 'shapes'], entry: './games/princess-quest/falls.js', minTier: 1, ready: true },
   { id: 'castle',  place: 'castle',  name: 'Story Castle',    hint: 'Stories, poems and calm', icon: '🏰', strands: ['ELA.K.R.1.1', 'ELA.K.R.1.4'], subskills: ['comprehension'], entry: './games/princess-quest/castle.js', minTier: 3, ready: true },
-  { id: 'stage',   place: 'stage',   name: 'Star Stage',      hint: 'Practice for Annie',      icon: '🎭', strands: [], subskills: [], entry: './games/princess-quest/stage.js', minTier: 1, ready: true, spotlight: { until: '2026-10-14', label: 'Annie audition' } },
+  { id: 'stage',   place: 'stage',   name: 'Star Stage',      hint: 'Practice for Annie',      icon: '🎭', strands: [], subskills: [], entry: './games/princess-quest/stage.js', minTier: 1, ready: true, spotlight: { from: '2027-02-07', until: '2027-02-21', label: 'Annie show' } },
   { id: 'garden',  place: 'garden',  name: 'Squishy Garden',  hint: 'Your Squishies and gems',  icon: '🏡', strands: [], subskills: [], entry: './games/princess-quest/garden.js', minTier: 1, ready: true, reward: true }
 ];
 

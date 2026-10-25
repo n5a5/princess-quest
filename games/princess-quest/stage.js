@@ -1,19 +1,21 @@
-// games/princess-quest/stage.js — Star Stage: the audition trainer for the Annie audition (Broadway at the J,
-// grades K–5, Wed 10/14/2026). Amelia is six and only starting to read (slowly, a few words), so everything is by
-// ear, with a picture for each chunk, and every instruction is spoken. A grown-up can turn on the words under the
-// pictures (Parent Corner); they show only while she listens, never on her turns or in the auditions (showsWords).
-//   My Line / My Song: from the second practice she first tries it from memory; then she hears it whole; then
-//     backward chaining (the last chunk first, then the last two, up to the whole; she says each back); one
-//     acting cue; the song is sung along with the orphans (the cast recording, if loaded); then all of it by
-//     herself, with the pictures, faded pictures, or the curtain as her practice count grows. Her take plays
-//     back, then the model.
+// games/princess-quest/stage.js — Star Stage: practice for the Annie show (Broadway at the J, 2/21/2027). Amelia
+// plays Kate, one of the orphans, and Sandy, the dog. She is six and only starting to read (slowly, a few words),
+// so everything is by ear, with a picture for each chunk, and every instruction is spoken. A grown-up can turn on
+// the words under the pictures (Parent Corner); they show only while she listens, never on her turns or in the
+// run-through (showsWords). Content: content/stage.json `show` (her own parts and the line before each, as the
+// parent chose: the repo and site are public, the script is not in them).
+//   Every turn of hers starts with its CUE: the line just before hers, said by that character in their own voice
+//   (Annie, Miss Hannigan, Tessie...) with their picture, because on stage the cue, not Luna, tells her when.
+//   Kate: her Kate lines (the line after "Maybe", and two lines she sings in Hard-Knock Life).
+//   Orphan lines: what all the orphans say together, half of them a visit.
+//   Orphan songs: one section of a song a visit while it is new (from memory from the second time, hear it, echo
+//     it in pieces, the acting cue, then the cue and all of it alone with fading pictures); learned sections two
+//     or three at a time in a short form.
+//   Sandy: Scene 2 as a game: Luna tells the story, Annie and the officer say their cues, she acts (thumbs-up) and
+//     sings "Tomorrow" with Annie. Only the script's own moves: wander on, and come only when Annie calls.
+//   Run my lines: every spoken part in show order, cues only, behind the curtain, her takes played back.
 //   Hear the orphans: the whole number from the cast recording a grown-up loaded in Parent Corner (kept on the
 //     device only; the app and its public site never contain it). Offline, no ads, nothing that leaves the app.
-//   Audition time!: a brave breath, then the real order (say hi, the line, the song, thank you) with no
-//     coaching in between, applause, and her whole audition played back.
-//   Try another line: the other seven lines from the audition sheet, heard and echoed chunk by chunk (the sheet
-//     says she may be asked to try another). Nothing to memorise.
-//   Audition day warm-up: on the day, only a short warm-up.
 // The daily plan (shared/stage-plan.js dailyPlan) decides which tile glows; Luna says which one.
 // Whose turn it is always shows: Luna's (an ear, Luna bobbing, each picture lighting up as Luna says it) or hers
 // (a red microphone after a chime; a soft reminder after 3 s of quiet). The flow is hands-free: the pictures are
@@ -42,7 +44,7 @@ import { lunaSVG, svgFrom } from '../../shared/characters.js';
 import { flyGems } from '../../shared/encounter.js';
 import { canListen, openMic } from '../../shared/mic.js';
 import { createSongPlayer } from '../../shared/songclip.js';
-import { clipId, chainSteps, daysUntil, logPractice, bigVoiceThreshold, micGain, followTimes, dayStrip, dailyPlan, hiddenFromEnd, quietFloor, deadMic, showsWords } from '../../shared/stage-plan.js';
+import { clipId, chainSteps, daysUntil, logPractice, bigVoiceThreshold, micGain, followTimes, dayStrip, dailyPlan, hiddenFromEnd, quietFloor, deadMic, showsWords, songQueue, linesHalf } from '../../shared/stage-plan.js';
 
 let host = null, ctx = null, S = null, DUR = {};
 let run = null;     // the activity in progress, { live, noMic }; Back, Home or leaving the place turns it off
@@ -64,17 +66,19 @@ const CHIME_MS = 350;  // the chime is over before recording starts, so it is ne
 const NUDGE_MS = 3000; // her turn, no voice yet: a soft reminder (never more than 3 s of silence without a cue)
 const IDLE_MS = 8000;  // a button waiting: Luna says it again after 8 s, then less and less often
 
-const THANKS = { id: 'thanks', chunks: [{ text: 'Thank you!', pic: '🙇' }] };
 const BIG = ['Big stage voice!', 'Wow, the back row heard you!', 'Loud and clear. Bravo!'];
 const MORE = ['Good! Now even bigger!', 'Nice! Use your big stage voice!'];
-const ICON = { hear: '🎧', line: '🗣️', song: '🎵', audition: '⭐', dayof: '🌟', other: '🎭' };
+// a soft part (voice: 'soft', a dreamy song or a stage whisper): never "bigger", and the back row still hears
+const SOFT = ['Lovely! Soft, and the back row could still hear you.', 'Beautiful! Soft and clear.'];
+const ICON = { hear: '🎧', kate: '🗣️', lines: '👭', songs: '🎵', sandy: '🐶', run: '⭐' };
 // what Luna says on the menu about the glowing button (she cannot read the labels yet)
 const HINT = {
   hear: 'First, listen to the orphans sing. Tap the glowing button!',
-  line: 'Tap the glowing button to practice your line!',
-  song: 'Tap the glowing button to practice your song!',
-  audition: 'Tap the glowing button for audition time!',
-  dayof: 'Tap the glowing button to get ready for your audition!',
+  kate: 'Tap the glowing button to practice your Kate lines!',
+  lines: 'Tap the glowing button to practice the orphans\' lines!',
+  songs: 'Tap the glowing button to practice a song!',
+  sandy: 'Tap the glowing button to be Sandy!',
+  run: 'Tap the glowing button to run all your lines!',
   none: 'You did everything today. Bravo!',
   free: 'Pick anything you like!'
 };
@@ -85,11 +89,11 @@ const named = t => t.replace(/\{name\}/g, ctx.economy.save.child.name);
 const stage = () => ctx.economy.save.stage;
 // still running: not left, and not muted (Luna cannot talk, so nothing may go on or record unheard)
 const alive = r => !!r && r === run && r.live && !ctx.audio.muted;
-const piece = id => S.pieces.find(p => p.id === id);
+const SH = () => S.show;
 const blockText = (b, i, j) => named(b.chunks.slice(i, j).map(c => c.say || c.text).join(' '));
 const estimateMs = text => 3000 + text.split(/\s+/).length * 900;
 // How long she takes to say chunks i..j-1: Luna's model clip, or the chorus when she sings with the real song.
-const expectFor = (b, i, j) => (b.id === 'song' && i === 0 && j === b.chunks.length && song && chorusOK ? (chorus().to - chorus().from) * 1000 : DUR[clipId(b.id, i, j)] || estimateMs(blockText(b, i, j)) * 0.5);
+const expectFor = (b, i, j) => (b.id === 'hkl-1' && i === 0 && j === b.chunks.length && song && chorusOK ? (chorus().to - chorus().from) * 1000 : DUR[clipId(b.id, i, j)] || estimateMs(blockText(b, i, j)) * 0.5);
 const clearOverlays = () => document.querySelectorAll('.overlay').forEach(o => o.remove());
 
 // Tests only (?debug=1 exposes window.__pq): what is happening right now, so a test can measure how long each
@@ -283,17 +287,18 @@ function view(b, title, sub = '', steps = 0, { words = true } = {}) {
     // the last h pictures hidden (a question mark each); all of them: the curtain
     hideLast(h) { cues.forEach((c, k) => c.classList.toggle('gone', h > 0 && k >= cues.length - h)); cueRow.classList.toggle('curtain', h >= cues.length && h > 0); caption(-1); },
     progress(done) { dots.replaceChildren(...Array.from({ length: steps }, (_, n) => el('span', { class: n < done ? 'done' : n === done ? 'current' : '' }))); },
-    // 'luna' (listen), 'song' (listen to the orphans), 'sing' (sing along with them), 'you' (her turn, the
-    // microphone on), 'tap' (her turn, no microphone: the thumbs-up), 'me' (her own take playing back),
-    // 'big' / 'ok' (how her turn went), 'idle'
-    turn(t) {
+    // 'luna' (listen), 'cue' (listen for her cue: `who`, another character, says the line before hers), 'song'
+    // (listen to the orphans), 'sing' (sing along with them), 'you' (her turn, the microphone on), 'tap' (her
+    // turn, no microphone: the thumbs-up), 'act' (Sandy acts it out: the thumbs-up), 'me' (her own take playing
+    // back), 'big' / 'ok' (how her turn went), 'idle'
+    turn(t, who = '') {
       state = t;
       caption(-1); // a new turn starts with no words up; the next lit picture brings its own
       mic.dataset.state = t;
       mic.classList.remove('nudge');
       status.classList.remove('act');
-      icon.textContent = { you: '🎤', tap: '🎤', sing: '🎤', big: '🌟', song: '🎶', me: '👧' }[t] || '👂';
-      status.textContent = { you: '🎤 Your turn!', tap: '🎤 Your turn!', luna: '👂 Listen to Luna', song: '🎶 Listen to the orphans', sing: '🎤🎶 Sing along!', me: '👂 That was you!', big: '⭐ Big voice!', ok: 'Even bigger next time!' }[t] || '';
+      icon.textContent = { you: '🎤', tap: '🎤', sing: '🎤', big: '🌟', song: '🎶', me: '👧', act: '🐶' }[t] || '👂';
+      status.textContent = t === 'cue' ? '👂 ' + who : { you: '🎤 Your turn!', tap: '🎤 Your turn!', act: '🐶 Your turn!', luna: '👂 Listen to Luna', song: '🎶 Listen to the orphans', sing: '🎤🎶 Sing along!', me: '👂 That was you!', big: '⭐ Big voice!', ok: 'Even bigger next time!' }[t] || '';
       luna.classList.toggle('talking', t === 'luna');
       mark(t);
     },
@@ -319,12 +324,13 @@ function view(b, title, sub = '', steps = 0, { words = true } = {}) {
 // for a moment, the chime sounds, and it records until she stops. Without a microphone she taps the thumbs-up
 // (or it moves on by itself), so the practice still flows.
 // Resolves { heard, peakDb (null = no microphone), big, blob, noMic } or null if she left.
-async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000, follow = null }) {
+async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000, follow = null, act = false }) {
   if (lead) await lead();
   if (!alive(r)) return null;
   ctx.audio.stop();
   let m = null;
-  if (micOK && !r.noMic && canListen()) {
+  // act: a move, not words (Sandy), so no microphone: the thumbs-up when she has done it
+  if (!act && micOK && !r.noMic && canListen()) {
     try { m = await askMic(r, { scene: false, onSlow: () => v.nudge() }); } // the practice screen stays
     catch (e) { if (alive(r)) await micGone(e); }
   }
@@ -332,7 +338,7 @@ async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000, fol
     if (!alive(r)) return null;
     if (m) { const f = await m.floor(300, null); if (f !== null) rooms.push(f); if (!alive(r)) return null; }
     sfx().ding();
-    v.turn(m ? 'you' : 'tap');
+    v.turn(m ? 'you' : act ? 'act' : 'tap');
     await wait(CHIME_MS);
     if (!alive(r)) return null;
     if (!m) {
@@ -394,12 +400,14 @@ async function turnAgain(r, v, opts) {
   return res;
 }
 
-// Praise for effort and loudness only: the app never judges the words or the pitch.
-async function cheer(r, v, res) {
+// Praise for effort and loudness only: the app never judges the words or the pitch. A soft part is praised for
+// being soft and clear, never asked to be bigger.
+async function cheer(r, v, res, soft = false) {
   if (!res || !alive(r)) return;
   if (res.noMic) { sfx().sparkle(); return; } // nothing was measured: no praise for what nobody heard
   if (!res.heard) { await say('That\'s okay. Let\'s keep going.'); return; }
-  if (res.big) { v.turn('big'); sfx().sparkle(); await say(pick(BIG)); }
+  if (soft) { sfx().sparkle(); await say(pick(SOFT)); }
+  else if (res.big) { v.turn('big'); sfx().sparkle(); await say(pick(BIG)); }
   else { v.turn('ok'); await say(pick(MORE)); }
 }
 
@@ -453,25 +461,35 @@ async function braveBreath(r) {
   if (alive(r)) await say('Nice slow breaths. You can do this before every audition.');
 }
 
-// ---------- My Line, My Song ----------
-async function practice(p) {
-  const r = begin();
-  const n = p.chunks.length, isSong = p.id === 'song';
-  const done = stage().solos[p.id] || 0;
+// ---------- her part: cues and blocks ----------
+// The cue before one of her turns: the line just before hers, said by that character in their own voice
+// (tools/build-stage-audio.py gives each character a Kokoro voice, never Luna's) with their picture. On stage
+// the cue, not Luna, tells her when to come in. Luna says it instead only if the clip will not play.
+async function playCue(r, b, v) {
+  if (!b.cue || !alive(r)) return;
+  const who = b.cue.who;
+  if (v) v.turn('cue', (SH().people[who] || '🎭') + ' ' + who);
+  const ok = await ctx.audio.clip('./assets/audio/stage/' + b.id + '-cue.ogg');
+  if (ok === false && alive(r)) await say(b.cue.text);
+}
+
+// A block still new to her, the whole way (the old My Song): from the second practice she first tries it from
+// memory after its cue; then she hears it (the orphans on the cast recording for the first Hard-Knock Life
+// chorus, else Luna); echoes it in clause-sized pieces, from the end while it is new; the acting cue; then the cue
+// and all of it by herself, with fewer pictures each practice; her take, then the model. False if she left.
+async function learnBlock(r, b, title, sub) {
+  const n = b.chunks.length, isSong = !!b.sing, text = blockText(b, 0, n);
+  const done = stage().solos[b.id] || 0;
   const hidden = hiddenFromEnd(done, n); // pictures gone from the end, one more each practice
-  const chain = done < 2;                // backward chaining only while it is new (see chainSteps)
-  await readRoom(r);
-  if (!alive(r)) return;
-  await warmUp(r);
-  if (!alive(r)) return;
-  const real = isSong && !!song && chorusOK && !ctx.audio.muted; // the cast recording is loaded and playable
-  const v = view(p, p.title, isSong ? 'The orphans\' song' : 'The orphans\' line', (done ? 1 : 0) + 1 + (chain ? n : 1) + (real ? 1 : 0) + 1);
+  const chain = done < 2 && n > 1;       // backward chaining only while it is new (see chainSteps)
+  const real = b.id === 'hkl-1' && !!song && chorusOK && !ctx.audio.muted; // the cast recording holds this chorus
+  const v = view(b, title, sub, (done ? 1 : 0) + 1 + (chain ? n : 1) + 1);
   let step = 0;
-  const soloOpts = lead => ({ lead, maxMs: p.maxMs, endSilenceMs: isSong ? 2500 : 1500, waitMs: estimateMs(blockText(p, 0, n)), follow: [p, 0, n] });
+  const soloOpts = lead => ({ lead, maxMs: estimateMs(text) + (isSong ? 4000 : 2000), endSilenceMs: isSong ? 2500 : 1500, waitMs: estimateMs(text), follow: [b, 0, n] });
   v.light(0, n);
   v.turn('luna');
-  await say(p.intro);
-  if (!alive(r)) return;
+  await say(b.intro);
+  if (!alive(r)) return false;
   // From the second practice: try it from memory first, then hear it as feedback. Recall practice helps young
   // children when it is cued and followed straight away by the answer (Kliegl, Abel & Bäuml 2018, Front Psychol
   // 9:1446; Fritz et al. 2007, Q J Exp Psychol 60:991, preschoolers) and once they have had early success
@@ -479,73 +497,217 @@ async function practice(p) {
   if (done) {
     v.hideLast(hidden);
     v.turn('luna');
-    await say(isSong ? 'Can you sing it before the orphans do? Try it from memory!' : 'Can you say it before Luna does? Try it from memory!');
-    if (!alive(r)) return;
-    const res = await turnAgain(r, v, soloOpts(null));
-    await cheer(r, v, res);
+    await say(isSong ? 'Listen for your cue, then sing it from memory!' : 'Listen for your cue, then say it from memory!');
+    if (!alive(r)) return false;
+    const res = await turnAgain(r, v, soloOpts(() => playCue(r, b, v)));
+    await cheer(r, v, res, b.voice === 'soft');
     v.hideLast(0);
     v.progress(++step);
   }
-  if (!alive(r)) return;
+  if (!alive(r)) return false;
   v.turn('luna');
   if (real) await say('Listen to the orphans sing it.');
-  if (!real || (alive(r) && await playSong(r, v, chorus(), 'song', p) === 'error')) {
-    if (alive(r)) await say('Listen.');
-    if (!alive(r)) return;
-    await model(p, 0, n, v);
+  if (!real || (alive(r) && await playSong(r, v, chorus(), 'song', b) === 'error')) {
+    if (alive(r)) await say(isSong ? 'Here are the words.' : 'Listen.');
+    if (!alive(r)) return false;
+    await model(b, 0, n, v);
   }
   v.progress(++step);
   // Echo in clause-sized chunks: at six, a clause is one chunk and the limit is how many chunks (Gilchrist, Cowan
   // & Naveh-Benjamin 2009, J Exp Child Psychol 104:252; Cowan et al. 2010, Dev Psychol 46:1119).
   const echoes = chain ? chainSteps(n) : [[0, n]];
   for (const [i, j] of echoes) {
-    if (!alive(r)) return;
+    if (!alive(r)) return false;
     v.light(i, j);
     v.turn('luna');
     await say(!chain ? 'Say it all after me.' : i === n - 1 ? 'Let\'s learn it from the end. Say it after me.' : 'Now a little more. Say it after me.');
-    if (!alive(r)) return;
-    const text = blockText(p, i, j);
-    const res = await turnAgain(r, v, { lead: () => model(p, i, j, v), maxMs: estimateMs(text), endSilenceMs: isSong ? 1500 : 1200, waitMs: estimateMs(text) * 0.6, follow: [p, i, j] });
-    await cheer(r, v, res);
+    if (!alive(r)) return false;
+    const t = blockText(b, i, j);
+    const res = await turnAgain(r, v, { lead: () => model(b, i, j, v), maxMs: estimateMs(t), endSilenceMs: isSong ? 1500 : 1200, waitMs: estimateMs(t) * 0.6, follow: [b, i, j] });
+    await cheer(r, v, res, b.voice === 'soft');
     v.progress(++step);
   }
-  if (!alive(r)) return;
+  if (!alive(r)) return false;
   v.light(0, n);
-  v.act(p.act);
-  await say(p.tip);
+  v.act(b.act);
+  await say(b.tip);
   // The words and the tune together: sing along, then alone (Welch, Sergeant & White 1998, Res Stud Music Educ
   // 10:67: at 5-7 the words come well before the pitch; Persellin 2006, Bull Counc Res Music Educ 169:39).
   if (real && alive(r)) {
     await say('Now sing along with the orphans!');
-    await playSong(r, v, chorus(), 'sing', p);
-    v.progress(++step);
-  } else if (isSong && !song && alive(r)) await say('Sing it your way. A grown-up can add the real song for you.');
-  if (!alive(r)) return;
-  // her solo, with the pictures she still has; all gone, it is from memory
+    await playSong(r, v, chorus(), 'sing', b);
+  }
+  if (!alive(r)) return false;
+  // her solo after its cue, with the pictures she still has; all gone, it is from memory
   v.hideLast(hidden);
   v.turn('luna');
-  await say(hidden >= n ? (isSong ? 'Now sing it all by yourself, from memory!' : 'Now say it all by yourself, from memory!')
-    : (isSong ? 'Now sing it all by yourself! Look at the pictures.' : 'Now say it all by yourself! Look at the pictures.'));
-  if (!alive(r)) return;
-  const res = await turnAgain(r, v, soloOpts(() => { v.turn('luna'); return say('Ready, set, go!'); }));
+  await say(hidden >= n ? 'Now listen for your cue, then do it all by yourself, from memory!' : 'Now listen for your cue, then do it all by yourself! Look at the pictures.');
+  if (!alive(r)) return false;
+  const res = await turnAgain(r, v, soloOpts(() => playCue(r, b, v)));
   // the practice counts once her solo is done, even if she leaves while it plays back
-  if (res && alive(r)) { stage().solos[p.id] = done + 1; logPractice(stage(), ctx.economy.today(), p.id); ctx.economy.persist(); }
-  await cheer(r, v, res);
-  await keepTake(p.id, res);
+  if (res && alive(r)) { stage().solos[b.id] = done + 1; ctx.economy.persist(); }
+  await cheer(r, v, res, b.voice === 'soft');
+  await keepTake(b.id, res);
   v.hideLast(0);
   if (res && res.blob && res.heard && alive(r)) {
     v.turn('luna');
     await say('Listen to you!');
     if (alive(r)) { v.turn('me'); await ctx.audio.clip(res.blob); }
-    if (real && alive(r)) { v.turn('luna'); await say('Here are the orphans.'); if (await playSong(r, v, chorus(), 'song', p) === 'error' && alive(r)) await model(p, 0, n, v); }
+    if (real && alive(r)) { v.turn('luna'); await say('Here are the orphans.'); if (await playSong(r, v, chorus(), 'song', b) === 'error' && alive(r)) await model(b, 0, n, v); }
     else {
-      if (alive(r)) { v.turn('luna'); await say(isSong ? 'Here are the words again.' : 'And here is Luna.'); }
-      if (alive(r)) await model(p, 0, n, v);
+      if (alive(r)) { v.turn('luna'); await say('And here is Luna.'); }
+      if (alive(r)) await model(b, 0, n, v);
     }
   }
-  if (!alive(r)) return;
+  if (!alive(r)) return false;
   v.progress(++step);
-  finish(r, 2, isSong ? 'You practiced your song!' : 'You practiced your line!');
+  return true;
+}
+
+// A short part, or a song section she has practiced twice, on its own screen `v`. While it is new: Luna says it and
+// she echoes, the acting cue, then the cue and her turn. Once practiced: the cue and her turn from memory (fewer
+// pictures each time), then the answer straight after, Luna's model. False if she left.
+async function quickBlock(r, b, v) {
+  const n = b.chunks.length, isSong = !!b.sing, text = blockText(b, 0, n);
+  const done = stage().solos[b.id] || 0;
+  const opts = lead => ({ lead, maxMs: estimateMs(text) + (isSong ? 3000 : 1500), endSilenceMs: isSong ? 2000 : 1200, waitMs: estimateMs(text) * 0.6, follow: [b, 0, n] });
+  let res = null;
+  v.light(0, n);
+  v.turn('luna');
+  if (!done) {
+    await say(b.intro);
+    if (!alive(r)) return false;
+    res = await turnAgain(r, v, opts(() => model(b, 0, n, v)));
+    await cheer(r, v, res, b.voice === 'soft');
+    if (!alive(r)) return false;
+    v.act(b.act);
+    await say(b.tip);
+    if (!alive(r)) return false;
+    v.turn('luna');
+    await say('Now listen for your cue. Then it is your turn!');
+    if (!alive(r)) return false;
+    res = await turnAgain(r, v, opts(() => playCue(r, b, v)));
+    await cheer(r, v, res, b.voice === 'soft');
+  } else {
+    v.hideLast(hiddenFromEnd(done, n));
+    await say(pick(['Listen for your cue!', 'Here comes your cue!']));
+    if (!alive(r)) return false;
+    res = await turnAgain(r, v, opts(() => playCue(r, b, v)));
+    await cheer(r, v, res, b.voice === 'soft');
+    v.hideLast(0);
+    if (!alive(r)) return false;
+    v.turn('luna');
+    await say(isSong ? 'Here are the words.' : 'Here is how it goes.');
+    if (!alive(r)) return false;
+    await model(b, 0, n, v);
+  }
+  if (res && alive(r)) { stage().solos[b.id] = done + 1; ctx.economy.persist(); }
+  await keepTake(b.id, res);
+  return alive(r);
+}
+
+// ---------- the tiles ----------
+// the room and the warm-up shout before her first turn; false if she left
+async function startTile(r) {
+  await readRoom(r);
+  if (!alive(r)) return false;
+  await warmUp(r);
+  return alive(r);
+}
+// a tile done: one more visit, today's plan ticks, and the finish sheet
+function doneTile(r, id, gems, line) {
+  if (!alive(r)) return;
+  const s = stage();
+  s.solos[id] = (s.solos[id] || 0) + 1;
+  logPractice(s, ctx.economy.today(), id);
+  ctx.economy.persist();
+  finish(r, gems, line);
+}
+
+async function kateTile() {
+  const r = begin();
+  if (!await startTile(r)) return;
+  const items = SH().kate;
+  for (const [k, b] of items.entries()) {
+    const v = view(b, '🗣️ Kate', 'Your Kate lines', items.length);
+    v.progress(k);
+    if (!await quickBlock(r, b, v)) return;
+  }
+  doneTile(r, 'kate', 2, 'You practiced your Kate lines!');
+}
+
+async function linesTile() {
+  const r = begin();
+  if (!await startTile(r)) return;
+  const items = linesHalf(SH().lines, stage().solos.lines || 0);
+  for (const [k, b] of items.entries()) {
+    const v = view(b, '👭 The orphans', 'Orphan lines', items.length);
+    v.progress(k);
+    if (!await quickBlock(r, b, v)) return;
+  }
+  doneTile(r, 'lines', 2, 'You practiced the orphans\' lines!');
+}
+
+async function songsTile() {
+  const r = begin();
+  if (!await startTile(r)) return;
+  const q = songQueue(SH().songs, stage().solos);
+  if (q.length === 1 && (stage().solos[q[0].id] || 0) < 2) {
+    if (!await learnBlock(r, q[0], '🎵 ' + q[0].song, 'Orphan songs')) return;
+  } else {
+    for (const [k, b] of q.entries()) {
+      const v = view(b, '🎵 ' + b.song, 'Orphan songs', q.length);
+      v.progress(k);
+      if (!await quickBlock(r, b, v)) return;
+    }
+  }
+  doneTile(r, 'songs', 2, 'You practiced a song!');
+}
+
+// Scene 2 as a game. Only the script's moves: Sandy wanders on, and crosses to Annie only when she calls; the
+// rest is listening, and singing Tomorrow with Annie. A move is a thumbs-up turn (no microphone).
+async function sandyTile() {
+  const r = begin();
+  if (!await startTile(r)) return;
+  const steps = SH().sandy;
+  const stepBlock = { id: 'sandy', chunks: steps.map(st => ({ text: '', pic: st.pic || '🎵' })) };
+  for (const [k, st] of steps.entries()) {
+    if (!alive(r)) return;
+    if (st.kind === 'sing') {
+      const b = SH().songs.find(x => x.id === st.block), n = b.chunks.length, text = blockText(b, 0, n);
+      const v = view(b, '🐶 Sandy', 'Scene 2', steps.length);
+      v.progress(k);
+      v.light(0, n);
+      v.turn('luna');
+      await say(st.narrate);
+      if (!alive(r)) return;
+      const done = stage().solos[b.id] || 0;
+      const opts = lead => ({ lead, maxMs: estimateMs(text) + 3000, endSilenceMs: 2000, waitMs: estimateMs(text) * 0.6, follow: [b, 0, n] });
+      if (done < 2) {
+        await cheer(r, v, await turnAgain(r, v, opts(() => model(b, 0, n, v))));
+        if (!alive(r)) return;
+        v.turn('luna');
+        await say('Now listen for your cue. Then it is your turn!');
+        if (!alive(r)) return;
+      }
+      const res = await turnAgain(r, v, opts(() => playCue(r, b, v)));
+      await cheer(r, v, res, b.voice === 'soft');
+      if (res && alive(r)) { stage().solos[b.id] = done + 1; ctx.economy.persist(); }
+      continue;
+    }
+    const v = view(stepBlock, '🐶 Sandy', 'Scene 2', steps.length);
+    v.progress(k);
+    v.light(k, k + 1);
+    v.turn('luna');
+    if (st.narrate) { await say(st.narrate); if (!alive(r)) return; }
+    if (st.cue) { await playCue(r, st, v); if (!alive(r)) return; }
+    v.turn('luna');
+    await say(st.do);
+    if (!alive(r)) return;
+    if (st.kind === 'act') await turn(r, v, { act: true, waitMs: 6000 });
+    else if (st.kind === 'wait') { v.act('✋'); await wait(2500); if (alive(r)) { v.turn('luna'); await say('Stay.'); } }
+  }
+  doneTile(r, 'sandy', 2, 'You were a great Sandy!');
 }
 
 function finish(r, gems, line) {
@@ -623,54 +785,48 @@ function markHeard(r) {
   r.counted = true; stage().watched++; logPractice(stage(), ctx.economy.today(), 'hear'); ctx.economy.persist();
 }
 
-// ---------- Audition time! ----------
-async function audition() {
+// ---------- Run my lines ----------
+// Every spoken part (and her two Kate lines in Hard-Knock Life) in show order, like a run-through: each cue in its
+// character's voice, then her part, with no model and the curtain over the pictures; applause, and all her takes
+// played straight back. On show day it starts with three brave breaths.
+async function runTile() {
   const r = begin();
-  const s = stage(), firstTimes = s.auditions < 2;
+  const s = stage(), showDay = daysUntil(ctx.economy.today(), S.showDate) === 0;
   await readRoom(r); // first: the browser may have to ask for the microphone
   if (!alive(r)) return;
   const curtain = el('div', { class: 'stage-curtain' }, [el('div', { class: 'cl' }), el('div', { class: 'cr' }), el('div', { class: 'spot', text: '⭐' })]);
-  host.replaceChildren(el('div', { class: 'scene stage' }, [el('div', { class: 'scene-head' }, [el('div', { class: 'title', text: 'Audition time!' })]), curtain]));
+  host.replaceChildren(el('div', { class: 'scene stage' }, [el('div', { class: 'scene-head' }, [el('div', { class: 'title', text: 'Run my lines' })]), curtain]));
   mark('luna');
   await wait(80);
   if (!alive(r)) return;
   curtain.classList.add('open');
-  await say('Audition time! This is just like the real one. Walk to the middle, stand tall, and smile!');
+  await say('Run my lines! Just like the show. Listen for each cue, then it is your turn. No help from Luna!');
   if (!alive(r)) return;
   await warmUp(r, { words: false });
   if (!alive(r)) return;
-  await braveBreath(r);
-  if (!alive(r)) return;
-  const line = piece('line'), songPiece = piece('song');
-  const steps = [
-    { b: S.slate, key: 'slate', title: 'Say hi!', intro: firstTimes ? 'First, say hi to the director, like this.' : 'First, say hi to the director.', model: firstTimes, maxMs: 12000, endSilenceMs: 1500 },
-    { b: line, key: 'line', title: 'Your line', intro: 'Now your line!', hide: !firstTimes, maxMs: line.maxMs, endSilenceMs: 1500 },
-    { b: songPiece, key: 'song', title: 'Your song', intro: 'Now your song! Take a big breath.', hide: !firstTimes, maxMs: songPiece.maxMs, endSilenceMs: 2500 },
-    { b: THANKS, key: 'thanks', title: 'Thank you!', intro: 'Last, say thank you!', maxMs: 5000, endSilenceMs: 900 }
-  ];
+  if (showDay) { await braveBreath(r); if (!alive(r)) return; }
+  const all = [...SH().kate, ...SH().lines], ids = SH().run;
   const takes = [];
   let bigs = 0, measured = false;
-  for (const [k, st] of steps.entries()) {
+  for (const [k, id] of ids.entries()) {
     if (!alive(r)) return;
-    const n = st.b.chunks.length;
-    const v = view(st.b, st.title, 'Audition', steps.length, { words: false });
+    const b = all.find(x => x.id === id), n = b.chunks.length, text = blockText(b, 0, n);
+    const v = view(b, b.who, 'Run my lines', ids.length, { words: false });
     v.progress(k);
     v.light(0, n);
-    if (st.hide) v.hide(true);
-    v.turn('luna');
-    await say(st.intro);
-    if (!alive(r)) return;
-    const res = await turnAgain(r, v, { lead: st.model ? () => model(st.b, 0, n, v) : null, maxMs: st.maxMs, endSilenceMs: st.endSilenceMs, waitMs: estimateMs(blockText(st.b, 0, n)), follow: [st.b, 0, n] });
+    v.hide(true);
+    const res = await turnAgain(r, v, { lead: () => playCue(r, b, v), maxMs: estimateMs(text) + 2000, endSilenceMs: b.sing ? 2000 : 1300, waitMs: estimateMs(text), follow: [b, 0, n] });
     if (!alive(r)) return;
     if (res && res.peakDb !== null) measured = true;
     if (res && res.big) { bigs++; v.turn('big'); }
     if (res && res.blob && res.heard) takes.push(res.blob);
-    await keepTake('audition-' + st.key, res);
-    await wait(500);
+    await keepTake('run-' + b.id, res);
+    await wait(400);
   }
   if (!alive(r)) return;
-  s.auditions++;
-  logPractice(s, ctx.economy.today(), 'audition');
+  s.solos.run = (s.solos.run || 0) + 1;
+  logPractice(s, ctx.economy.today(), 'run');
+  ctx.economy.persist();
   const e = ctx.economy;
   e.addGems(3); e.addCompanionStars(1); e.markPlayedToday();
   ctx.refreshBar && ctx.refreshBar();
@@ -684,7 +840,7 @@ async function audition() {
     if (alive(r)) idleNudge('Tap the yellow button!');
   };
   const hearBtn = bigButton('▶ 👧', playTakes, 'soft');
-  hearBtn.setAttribute('aria-label', 'Hear my audition');
+  hearBtn.setAttribute('aria-label', 'Hear my lines');
   const o = sheet([
     svgFrom(lunaSVG({ state: 'yay', glow: e.companion().level })),
     el('h2', { text: 'Bravo!' }),
@@ -695,104 +851,10 @@ async function audition() {
   o.classList.add('below-bar');
   mark('waiting');
   rest();
-  await say('Take a bow! You did the whole audition!');
-  // her whole audition, played straight back (the replay button stays for later)
+  await say('Take a bow! You ran all your lines!');
+  // her whole run, played straight back (the replay button stays for later)
   if (takes.length && alive(r)) { await say('Listen to you!'); if (alive(r)) await playTakes(); }
   else if (alive(r)) idleNudge('Tap the yellow button!');
-}
-
-// ---------- Try another line ----------
-// One of the other seven lines on the sheet, in turn: hear it, echo each chunk, the acting cue, echo it whole.
-async function anotherLine() {
-  const r = begin();
-  const k = stage().solos.other || 0, b = S.others[k % S.others.length], n = b.chunks.length;
-  await readRoom(r);
-  if (!alive(r)) return;
-  await warmUp(r);
-  if (!alive(r)) return;
-  const v = view(b, b.pic + ' ' + b.role, 'Try another line', 1 + n + 1);
-  let step = 0;
-  v.light(0, n);
-  v.turn('luna');
-  await say('The director might ask you to try a different line. Let\'s try one!');
-  if (!alive(r)) return;
-  await say(b.intro);
-  if (!alive(r)) return;
-  await model(b, 0, n, v);
-  v.progress(++step);
-  if (!alive(r)) return;
-  v.turn('luna');
-  await say('Now say it after me, one little piece at a time.');
-  for (let i = 0; i < n; i++) {
-    if (!alive(r)) return;
-    v.light(i, i + 1);
-    const text = blockText(b, i, i + 1);
-    const res = await turnAgain(r, v, { lead: () => model(b, i, i + 1, v), maxMs: estimateMs(text), endSilenceMs: 1200, waitMs: estimateMs(text) * 0.6, follow: [b, i, i + 1] });
-    await cheer(r, v, res);
-    v.progress(++step);
-  }
-  if (!alive(r)) return;
-  v.light(0, n);
-  v.act(b.act);
-  await say(b.tip);
-  if (!alive(r)) return;
-  v.turn('luna');
-  await say('Now say the whole line after me.');
-  if (!alive(r)) return;
-  const whole = blockText(b, 0, n);
-  const res = await turnAgain(r, v, { lead: () => model(b, 0, n, v), maxMs: estimateMs(whole) + 2000, endSilenceMs: 1500, waitMs: estimateMs(whole) * 0.6, follow: [b, 0, n] });
-  await cheer(r, v, res);
-  await keepTake('other', res);
-  if (!alive(r)) return;
-  v.progress(++step);
-  stage().solos.other = k + 1;
-  logPractice(stage(), ctx.economy.today(), 'other');
-  finish(r, 1, 'You tried a new line!');
-}
-
-// ---------- Audition day warm-up ----------
-// On the day: stage voice, two brave breaths, the line once from memory, the song once, and a pep talk.
-async function dayOf() {
-  const r = begin();
-  await readRoom(r);
-  if (!alive(r)) return;
-  refDb = null; // a fresh warm-up shout on the day
-  await warmUp(r, { words: false });
-  if (!alive(r)) return;
-  await braveBreath(r);
-  if (!alive(r)) return;
-  const line = piece('line'), songPiece = piece('song');
-  let v = view(line, 'Your line', 'Audition day', 3, { words: false });
-  v.light(0, line.chunks.length);
-  v.hide(true);
-  v.turn('luna');
-  await say('Say your line one time, from memory.');
-  if (!alive(r)) return;
-  let res = await turnAgain(r, v, { maxMs: line.maxMs, endSilenceMs: 1500, waitMs: estimateMs(blockText(line, 0, line.chunks.length)), follow: [line, 0, line.chunks.length] });
-  await cheer(r, v, res);
-  if (!alive(r)) return;
-  v = view(songPiece, 'Your song', 'Audition day', 3, { words: false });
-  v.progress(1);
-  v.light(0, songPiece.chunks.length);
-  v.turn('luna');
-  if (song && chorusOK && !ctx.audio.muted) {
-    await say('Sing along with the orphans one time.');
-    await playSong(r, v, chorus(), 'sing', songPiece);
-  } else {
-    await say('Sing your song one time, in your big stage voice.');
-    if (!alive(r)) return;
-    res = await turnAgain(r, v, { maxMs: songPiece.maxMs, endSilenceMs: 2500, waitMs: estimateMs(blockText(songPiece, 0, songPiece.chunks.length)), follow: [songPiece, 0, songPiece.chunks.length] });
-    await cheer(r, v, res);
-  }
-  if (!alive(r)) return;
-  logPractice(stage(), ctx.economy.today(), 'dayof'); // done once she has sung; the pep talk is a bonus
-  ctx.economy.persist();
-  v.progress(2);
-  v.turn('luna');
-  await say('You know your line and your song. Use your big stage voice, smile, and have fun. Luna is so proud of you!');
-  if (!alive(r)) return;
-  v.progress(3);
-  finish(r, 3, 'You are ready!');
 }
 
 // ---------- menu ----------
@@ -824,22 +886,22 @@ function showMenu({ quiet = false, afterTap = false } = {}) {
   let launched = false; // two fingers on two buttons at once start one activity, not two
   const shownAt = afterTap ? Date.now() : 0;
   const s = stage(), today = ctx.economy.today(), done = s.days[today] || {};
-  const days = daysUntil(today, S.auditionDate);
-  const sub = days > 1 ? 'Your Annie audition is in ' + days + ' days.' : days === 1 ? 'Your Annie audition is tomorrow!' : days === 0 ? 'Audition day! You can do it!' : 'Keep shining for the Annie show!';
-  const plan = dailyPlan(today, S.auditionDate, { heard: s.watched > 0, canHear: !!song });
+  const days = daysUntil(today, S.showDate);
+  const sub = days > 1 ? 'Your Annie show is in ' + days + ' days.' : days === 1 ? 'Your Annie show is tomorrow!' : days === 0 ? 'Show day! You can do it!' : 'You were a star in Annie!';
+  const plan = dailyPlan(today, S.showDate, { heard: s.watched > 0, canHear: !!song });
   const next = plan.find(id => !done[id]) || null;
   const tiles = [
-    days === 0 ? { id: 'dayof', name: 'Audition day warm-up', run: dayOf, wide: true } : null,
-    { id: 'line', name: 'My Line', run: () => practice(piece('line')) },
-    { id: 'song', name: 'My Song', run: () => practice(piece('song')) },
-    { id: 'hear', name: 'Hear the orphans', run: song ? hear : noSong, off: !song },
-    { id: 'audition', name: 'Audition time!', run: audition },
-    { id: 'other', name: 'Try another line', run: anotherLine }
-  ].filter(Boolean);
-  // the days up to the audition, a star on each day she practiced: she counts circles, not "5 days"
+    { id: 'kate', name: 'Kate', run: kateTile },
+    { id: 'songs', name: 'Orphan songs', run: songsTile },
+    { id: 'lines', name: 'Orphan lines', run: linesTile },
+    { id: 'sandy', name: 'Sandy', run: sandyTile },
+    { id: 'run', name: 'Run my lines', run: runTile },
+    { id: 'hear', name: 'Hear the orphans', run: song ? hear : noSong, off: !song }
+  ];
+  // the days around today and the show's circle, a star on each day she practiced: she counts circles, not "5 days"
   const practiced = new Set(Object.keys(s.days).filter(d => Object.keys(s.days[d]).length));
-  const strip = dayStrip(today, S.auditionDate, practiced);
-  const DAY = { done: '⭐', missed: '·', today: '✨', future: '', audition: '🎭' };
+  const strip = dayStrip(today, S.showDate, practiced);
+  const DAY = { done: '⭐', missed: '·', today: '✨', future: '', gap: '…', show: '🎭' };
   host.replaceChildren(el('div', { class: 'scene stage menu' }, [
     el('div', { class: 'scene-head' }, [svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level })), el('div', {}, [el('div', { class: 'title', text: 'Star Stage' }), el('div', { class: 'line', text: sub })])]),
     strip.length ? el('div', { class: 'day-strip', 'aria-label': sub }, strip.map(d => el('div', { class: 'day ' + d.kind + (d.today ? ' is-today' : ''), text: DAY[d.kind] }))) : null,
@@ -857,7 +919,7 @@ function showMenu({ quiet = false, afterTap = false } = {}) {
   mark('waiting');
   const glow = host.querySelector('.next-up');
   if (glow && glow.scrollIntoView) glow.scrollIntoView({ block: 'nearest' }); // the glowing tile is always on screen
-  const hello = days > 0 ? 'Welcome to Star Stage! Let\'s get ready for your Annie audition.' : days === 0 ? 'Today is audition day! You can do it!' : 'Welcome to Star Stage!';
+  const hello = days > 0 ? 'Welcome to Star Stage! Let\'s practice for your Annie show.' : days === 0 ? 'Today is show day! You can do it!' : 'Welcome to Star Stage!';
   const hint = HINT[next || (days < 0 ? 'free' : 'none')];
   if (quiet) return;
   if (padOpen()) { if (next) idleNudge(hint); return; } // held while the grown-ups' pad is up, said once it is gone

@@ -77,15 +77,19 @@ def main():
     for fid, voice, speed, text in jobs:
         keep.add(fid)
         sig = f'{voice}|{speed}|{text}'
-        said[fid] = sig
         if not args.all and old.get(fid) == sig and (OUT / f'{fid}.ogg').exists() and fid in old_dur:
+            said[fid] = sig
             dur[fid] = old_dur[fid]
             continue
+        said[fid] = sig
         x, cut = render(v, text, speed, voice)
         if cut: print(f'  {fid}: cut a {cut} ms hiss after the last word')
         pa.encode_checked(x, OUT / f'{fid}.ogg', 32, target=pa.LOUDNESS_LUFS)
         dur[fid] = round(len(x) / pa.SR * 1000)
-        print(f'{fid}: {len(x) / pa.SR:.2f}s  [{voice}] {text}')
+        print(f'{fid}: {len(x) / pa.SR:.2f}s  [{voice}] {text}', flush=True)
+        # progress is saved clip by clip: a crash or a stop part way keeps what is done
+        TEXTS.write_text(json.dumps(dict(sorted({**old, **said}.items())), indent=0, ensure_ascii=False) + '\n', encoding='utf-8')
+        (ROOT / 'content' / 'stage-audio.json').write_text(json.dumps(dict(sorted({**old_dur, **dur}.items())), indent=0) + '\n', encoding='utf-8')
     for f in OUT.glob('*.ogg'):
         if f.stem not in keep: f.unlink()
     (ROOT / 'content' / 'stage-audio.json').write_text(json.dumps(dict(sorted(dur.items())), indent=0) + '\n', encoding='utf-8')
