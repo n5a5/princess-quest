@@ -362,6 +362,8 @@ function songBlock() {
   const s = economy.save.stage;
   const rec = store.get('stage', 'song-audio');
   const base = STAGE && STAGE.songCut;
+  // Star Stage content did not load (offline on a first visit): nothing to cut against, so no editor rather than a crash
+  if (!base) return el('p', { class: 'muted', text: 'Star Stage did not load, so the song settings are not available. Reload to try again.' });
   const fmt = t => Math.floor(t / 60) + ':' + (t % 60).toFixed(1).padStart(4, '0');
   const load = el('input', { type: 'file', accept: 'audio/*', onchange: async e => {
     const f = e.target.files[0]; if (!f) return;

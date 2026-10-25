@@ -66,6 +66,7 @@ const ASSETS = [
   'assets/audio/lines/0d0b17bd5c99.ogg',
   'assets/audio/lines/0d280629ba54.ogg',
   'assets/audio/lines/0d2897e2bdd7.ogg',
+  'assets/audio/lines/0d816aa454e5.ogg',
   'assets/audio/lines/0db7a60de635.ogg',
   'assets/audio/lines/0dc117ad30e1.ogg',
   'assets/audio/lines/0de1e338ed1b.ogg',

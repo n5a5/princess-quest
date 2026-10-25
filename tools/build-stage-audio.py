@@ -6,7 +6,7 @@
 # the same loudness (pqaudio.normalise_loudness; needs pyloudnorm). Each clip's length goes to
 # content/stage-audio.json { id: ms }, so the place can light each picture as Luna says its words.
 # Usage: python tools/build-stage-audio.py --model <kokoro-v1.0.onnx> --voices <voices-v1.0.bin> [--name Amelia]
-import argparse, json, sys
+import argparse, json, os, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pqaudio as pa
@@ -81,10 +81,14 @@ def main():
             said[fid] = sig
             dur[fid] = old_dur[fid]
             continue
-        said[fid] = sig
+        # a clip being rebuilt no longer counts as done until its new file is in place (a stop part way re-renders it)
+        old.pop(fid, None)
         x, cut = render(v, text, speed, voice)
         if cut: print(f'  {fid}: cut a {cut} ms hiss after the last word')
-        pa.encode_checked(x, OUT / f'{fid}.ogg', 32, target=pa.LOUDNESS_LUFS)
+        tmp = pa.TMP / f'{fid}.ogg'
+        pa.encode_checked(x, tmp, 32, target=pa.LOUDNESS_LUFS)
+        os.replace(tmp, OUT / f'{fid}.ogg')  # whole files only: never a half-encoded clip in place
+        said[fid] = sig
         dur[fid] = round(len(x) / pa.SR * 1000)
         print(f'{fid}: {len(x) / pa.SR:.2f}s  [{voice}] {text}', flush=True)
         # progress is saved clip by clip: a crash or a stop part way keeps what is done

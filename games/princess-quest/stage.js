@@ -93,7 +93,7 @@ const SH = () => S.show;
 const blockText = (b, i, j) => named(b.chunks.slice(i, j).map(c => c.say || c.text).join(' '));
 const estimateMs = text => 3000 + text.split(/\s+/).length * 900;
 // How long she takes to say chunks i..j-1: Luna's model clip, or the chorus when she sings with the real song.
-const expectFor = (b, i, j) => (b.id === 'hkl-1' && i === 0 && j === b.chunks.length && song && chorusOK ? (chorus().to - chorus().from) * 1000 : DUR[clipId(b.id, i, j)] || estimateMs(blockText(b, i, j)) * 0.5);
+const expectFor = (b, i, j, byModel = false) => (!byModel && b.id === 'hkl-1' && i === 0 && j === b.chunks.length && song && chorusOK ? (chorus().to - chorus().from) * 1000 : DUR[clipId(b.id, i, j)] || estimateMs(blockText(b, i, j)) * 0.5);
 const clearOverlays = () => document.querySelectorAll('.overlay').forEach(o => o.remove());
 
 // Tests only (?debug=1 exposes window.__pq): what is happening right now, so a test can measure how long each
@@ -291,13 +291,13 @@ function view(b, title, sub = '', steps = 0, { words = true } = {}) {
     // (listen to the orphans), 'sing' (sing along with them), 'you' (her turn, the microphone on), 'tap' (her
     // turn, no microphone: the thumbs-up), 'act' (Sandy acts it out: the thumbs-up), 'me' (her own take playing
     // back), 'big' / 'ok' (how her turn went), 'idle'
-    turn(t, who = '') {
+    turn(t, who = '', face = '') {
       state = t;
       caption(-1); // a new turn starts with no words up; the next lit picture brings its own
       mic.dataset.state = t;
       mic.classList.remove('nudge');
       status.classList.remove('act');
-      icon.textContent = { you: '🎤', tap: '🎤', sing: '🎤', big: '🌟', song: '🎶', me: '👧', act: '🐶' }[t] || '👂';
+      icon.textContent = t === 'cue' && face ? face : { you: '🎤', tap: '🎤', sing: '🎤', big: '🌟', song: '🎶', me: '👧', act: '🐶' }[t] || '👂';
       status.textContent = t === 'cue' ? '👂 ' + who : { you: '🎤 Your turn!', tap: '🎤 Your turn!', act: '🐶 Your turn!', luna: '👂 Listen to Luna', song: '🎶 Listen to the orphans', sing: '🎤🎶 Sing along!', me: '👂 That was you!', big: '⭐ Big voice!', ok: 'Even bigger next time!' }[t] || '';
       luna.classList.toggle('talking', t === 'luna');
       mark(t);
@@ -394,7 +394,8 @@ async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000, fol
 async function turnAgain(r, v, opts) {
   let res = await turn(r, v, opts);
   if (res && !res.heard && !r.noMic && alive(r)) {
-    await say('I did not hear you. After the ding, say it nice and loud!');
+    // a soft part (a stage whisper, a dreamy song) is never asked to be loud
+    await say(opts.soft ? 'I did not hear you. After the ding, try again, soft and clear!' : 'I did not hear you. After the ding, say it nice and loud!');
     if (alive(r)) res = await turn(r, v, opts);
   }
   return res;
@@ -468,7 +469,8 @@ async function braveBreath(r) {
 async function playCue(r, b, v) {
   if (!b.cue || !alive(r)) return;
   const who = b.cue.who;
-  if (v) v.turn('cue', (SH().people[who] || '🎭') + ' ' + who);
+  const face = SH().people[who] || '🎭';
+  if (v) v.turn('cue', face + ' ' + who, face); // the speaker's face in the big circle, and their name below
   const ok = await ctx.audio.clip('./assets/audio/stage/' + b.id + '-cue.ogg');
   if (ok === false && alive(r)) await say(b.cue.text);
 }
@@ -485,7 +487,7 @@ async function learnBlock(r, b, title, sub) {
   const real = b.id === 'hkl-1' && !!song && chorusOK && !ctx.audio.muted; // the cast recording holds this chorus
   const v = view(b, title, sub, (done ? 1 : 0) + 1 + (chain ? n : 1) + 1);
   let step = 0;
-  const soloOpts = lead => ({ lead, maxMs: estimateMs(text) + (isSong ? 4000 : 2000), endSilenceMs: isSong ? 2500 : 1500, waitMs: estimateMs(text), follow: [b, 0, n] });
+  const soloOpts = lead => ({ lead, maxMs: estimateMs(text) + (isSong ? 4000 : 2000), endSilenceMs: isSong ? 2500 : 1500, waitMs: estimateMs(text), follow: [b, 0, n], soft: b.voice === 'soft' });
   v.light(0, n);
   v.turn('luna');
   await say(b.intro);
@@ -523,7 +525,7 @@ async function learnBlock(r, b, title, sub) {
     await say(!chain ? 'Say it all after me.' : i === n - 1 ? 'Let\'s learn it from the end. Say it after me.' : 'Now a little more. Say it after me.');
     if (!alive(r)) return false;
     const t = blockText(b, i, j);
-    const res = await turnAgain(r, v, { lead: () => model(b, i, j, v), maxMs: estimateMs(t), endSilenceMs: isSong ? 1500 : 1200, waitMs: estimateMs(t) * 0.6, follow: [b, i, j] });
+    const res = await turnAgain(r, v, { lead: () => model(b, i, j, v), maxMs: estimateMs(t), endSilenceMs: isSong ? 1500 : 1200, waitMs: estimateMs(t) * 0.6, follow: [b, i, j, true], soft: b.voice === 'soft' });
     await cheer(r, v, res, b.voice === 'soft');
     v.progress(++step);
   }
@@ -570,7 +572,7 @@ async function learnBlock(r, b, title, sub) {
 async function quickBlock(r, b, v) {
   const n = b.chunks.length, isSong = !!b.sing, text = blockText(b, 0, n);
   const done = stage().solos[b.id] || 0;
-  const opts = lead => ({ lead, maxMs: estimateMs(text) + (isSong ? 3000 : 1500), endSilenceMs: isSong ? 2000 : 1200, waitMs: estimateMs(text) * 0.6, follow: [b, 0, n] });
+  const opts = lead => ({ lead, maxMs: estimateMs(text) + (isSong ? 3000 : 1500), endSilenceMs: isSong ? 2000 : 1200, waitMs: estimateMs(text) * 0.6, follow: [b, 0, n], soft: b.voice === 'soft' });
   let res = null;
   v.light(0, n);
   v.turn('luna');
@@ -670,7 +672,6 @@ async function sandyTile() {
   const r = begin();
   if (!await startTile(r)) return;
   const steps = SH().sandy;
-  const stepBlock = { id: 'sandy', chunks: steps.map(st => ({ text: '', pic: st.pic || '🎵' })) };
   for (const [k, st] of steps.entries()) {
     if (!alive(r)) return;
     if (st.kind === 'sing') {
@@ -681,7 +682,8 @@ async function sandyTile() {
       v.turn('luna');
       await say(st.narrate);
       if (!alive(r)) return;
-      const done = stage().solos[b.id] || 0;
+      // Sandy's choruses keep their own count (sandy-tomorrow), so Orphan songs still teaches this section itself
+      const done = stage().solos['sandy-tomorrow'] || 0;
       const opts = lead => ({ lead, maxMs: estimateMs(text) + 3000, endSilenceMs: 2000, waitMs: estimateMs(text) * 0.6, follow: [b, 0, n] });
       if (done < 2) {
         await cheer(r, v, await turnAgain(r, v, opts(() => model(b, 0, n, v))));
@@ -691,19 +693,25 @@ async function sandyTile() {
         if (!alive(r)) return;
       }
       const res = await turnAgain(r, v, opts(() => playCue(r, b, v)));
-      await cheer(r, v, res, b.voice === 'soft');
-      if (res && alive(r)) { stage().solos[b.id] = done + 1; ctx.economy.persist(); }
+      await cheer(r, v, res);
+      if (done >= 2 && alive(r)) { v.turn('luna'); await say('Here are the words.'); if (alive(r)) await model(b, 0, n, v); }
+      if (res && alive(r) && st.id === 'sandy-sing') { stage().solos['sandy-tomorrow'] = done + 1; ctx.economy.persist(); }
       continue;
     }
-    const v = view(stepBlock, '🐶 Sandy', 'Scene 2', steps.length);
+    // one big picture of what to do now (the dots count the steps), so the thumbs-up always fits under it
+    const v = view({ id: 'sandy', chunks: [{ text: '', pic: st.pic }] }, '🐶 Sandy', 'Scene 2', steps.length);
     v.progress(k);
-    v.light(k, k + 1);
+    v.light(0, 1);
     v.turn('luna');
     if (st.narrate) { await say(st.narrate); if (!alive(r)) return; }
+    // listening: the instruction first, then Annie's line; a move or a wait: the cue, then what to do
+    if (st.kind === 'listen') { await say(st.do); if (!alive(r)) return; }
     if (st.cue) { await playCue(r, st, v); if (!alive(r)) return; }
-    v.turn('luna');
-    await say(st.do);
-    if (!alive(r)) return;
+    if (st.kind !== 'listen') {
+      v.turn('luna');
+      await say(st.do);
+      if (!alive(r)) return;
+    }
     if (st.kind === 'act') await turn(r, v, { act: true, waitMs: 6000 });
     else if (st.kind === 'wait') { v.act('✋'); await wait(2500); if (alive(r)) { v.turn('luna'); await say('Stay.'); } }
   }
@@ -815,10 +823,12 @@ async function runTile() {
     v.progress(k);
     v.light(0, n);
     v.hide(true);
-    const res = await turnAgain(r, v, { lead: () => playCue(r, b, v), maxMs: estimateMs(text) + 2000, endSilenceMs: b.sing ? 2000 : 1300, waitMs: estimateMs(text), follow: [b, 0, n] });
+    const soft = b.voice === 'soft';
+    const res = await turnAgain(r, v, { lead: () => playCue(r, b, v), maxMs: estimateMs(text) + 2000, endSilenceMs: b.sing ? 2000 : 1300, waitMs: estimateMs(text), follow: [b, 0, n], soft });
     if (!alive(r)) return;
     if (res && res.peakDb !== null) measured = true;
-    if (res && res.big) { bigs++; v.turn('big'); }
+    if (soft && res && res.heard && !res.noMic) { bigs++; sfx().sparkle(); } // soft and heard is the goal here
+    else if (!soft && res && res.big) { bigs++; v.turn('big'); }
     if (res && res.blob && res.heard) takes.push(res.blob);
     await keepTake('run-' + b.id, res);
     await wait(400);

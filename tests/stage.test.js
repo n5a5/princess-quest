@@ -36,7 +36,7 @@ test('content: her parts, cues, pictures, dates', () => {
     assert.ok(b.chunks.length >= 1 && b.chunks.length <= 4, b.id + ': at most four pieces, so a visit stays short');
   }
   for (const b of sh.songs) assert.ok(b.sing && b.song, b.id + ' is a song section');
-  // every cue is said by a character with their own voice and picture, never Luna's voice, and no two share one
+  // every cue is said by a character with their own voice and picture, never Luna's voice
   for (const b of withCue) { assert.ok(sh.voices[b.cue.who], b.id + ' voice for ' + b.cue.who); assert.ok(sh.people[b.cue.who], b.id + ' picture for ' + b.cue.who); }
   const KOKORO = ['af_sky', 'af_bella', 'af_nicole', 'af_aoede', 'af_kore', 'af_jessica', 'am_puck', 'am_michael', 'am_adam'];
   for (const [who, v] of Object.entries(sh.voices)) { assert.notEqual(v, 'af_heart', who + ' is not Luna'); assert.ok(KOKORO.includes(v), who + ': ' + v); }
@@ -50,7 +50,9 @@ test('content: her parts, cues, pictures, dates', () => {
   assert.ok(sh.run.length >= 10 && new Set(sh.run).size === sh.run.length);
   for (const id of sh.run) assert.ok([...sh.kate, ...sh.lines].some(b => b.id === id), 'run: ' + id);
   for (const b of [...sh.kate, ...sh.lines]) assert.ok(sh.run.includes(b.id), b.id + ' is in Run my lines');
-  assert.ok(!JSON.stringify(parts.map(b => [b.chunks, b.cue.text])).includes('Mr.') || parts.every(b => b.chunks.every(c => !c.text.includes('Mr.') || c.say)), 'Mr. is read as a sentence end: give it a say');
+  // Kokoro stops at "Mr." as at a sentence end: every spoken text with it needs a say
+  for (const b of blocks) for (const c of b.chunks) assert.ok(!c.text.includes('Mr.') || c.say, b.id);
+  for (const b of withCue) assert.ok(!b.cue.text.includes('Mr.') || b.cue.say, b.id + ' cue');
   assert.match(stage.showDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(stage.videos, undefined, 'no YouTube: it could lead out of the app');
   const reg = REGISTRY.find(r => r.id === 'stage');

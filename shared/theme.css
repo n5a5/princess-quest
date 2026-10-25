@@ -585,3 +585,8 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
 .day-strip .day.gap { border: none; background: transparent; box-shadow: none; width: auto; min-width: 18px; color: var(--plum); font-weight: 700; }
 .scene.stage .mic[data-state="act"] { background: #FFF6E5; border-color: #F5B544; justify-content: center; }
 .scene.stage .mic[data-state="act"] .mic-icon, .scene.stage .mic[data-state="act"] .vmeter, .scene.stage .mic[data-state="act"] .vstar { display: none; }
+/* very short landscape phones (640x360): Hear the orphans fits without scrolling */
+@media (orientation: landscape) and (max-height: 400px) {
+  .scene.stage .song-play { width: 76px; height: 76px; font-size: 38px; }
+  .scene.stage .hear-row .big-btn { min-height: 52px; }
+}
