@@ -60,3 +60,25 @@ Quarter past/to and five-minute times (grade 2), the exact minute and elapsed ti
   merging, voice coverage for every sentence.
 - Headless Chromium at 360x640, 412x915, 800x1280, 915x412, 640x360: every mode completes with a real mouse drag on
   Set cards; no page scroll; nothing off screen; no errors; right and wrong paths (scaffold, reveal) both run.
+
+## Review (10/25/2026)
+
+Two review rounds (correctness, child learning, layout and touch, red team; every finding checked by a skeptic): 33
+confirmed in the first, 9 in the second (0 rejected), all applied. The main ones:
+
+- Touch: a finger out at the numbers always turns the long hand; turning the short hand changes only the hour; at
+  the o'clock level letting go settles on o'clock; a resting thumb never moves the hands (a second touch drives only
+  once it really moves).
+- Teaching: every Read/Match card offers the next-hour slip and a long-hand mistake, so she reads both hands; Luna
+  says what she picked, the one rule that fixes it, and lights that hand; Set hints are one step at a time (long
+  hand, then the short hand by its number), so following them always reaches the time; right answers say the time
+  back; the thirty level opens with its own short intro ("halfway between the three and the four").
+- My day: each routine time once as Read and once as Set, ordinary cards fill the rest; no two cards share an id.
+- Shared engine: a re-presented card is recognised by its queue entry (not its id or its word), so two cards with
+  the same id, or one Wishing Well word in two activities, are each scored.
+- Layout: Kindle Fire 7 and Fire HD landscape, Chromebook, four-choice cards, bigger Match clocks on tall phones.
+
+Measured after the fixes: 155 unit tests; headless Chromium at 360x640, 412x915, 800x1280, 915x412, 640x360,
+1024x600 and 1280x800, every mode with wrong answers on purpose: no scroll, nothing off screen, no errors, every
+clip found, a Squishy freed each round, rounds of 60-80 s; touch checks (tap on a number, short-hand turn, resting
+thumb); one round each in Wishing Well, Meadow, Falls, Caverns and Whisper Woods with reveals.

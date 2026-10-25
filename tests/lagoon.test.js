@@ -95,9 +95,10 @@ test('set-the-clock hints: the long hand first, then the short hand, by its numb
   assert.match(setHint({ h: 3, m: 30 }, { h: 3, m: 0 }), /down to the six/);
   assert.match(setHint({ h: 3, m: 0 }, { h: 4, m: 30 }), /up to the twelve/);
   assert.equal(setHint({ h: 3, m: 0 }, { h: 5, m: 0 }), 'Now move the short hand to the three.');
-  assert.equal(setHint({ h: 3, m: 30 }, { h: 5, m: 30 }), 'Now move the short hand just past the three.');
+  assert.equal(setHint({ h: 3, m: 30 }, { h: 5, m: 30 }), 'Now move the short hand past the three.');
   assert.equal(whyLine('minute', { h: 3, m: 30 }, { h: 3, m: 0 }, 'match'), "This clock says three o'clock. " + longHandRule({ m: 30 }));
-  assert.equal(whyLine('next', { h: 3, m: 30 }, { h: 4, m: 30 }), 'That says four thirty. The short hand has just passed the three.');
+  assert.equal(whyLine('next', { h: 3, m: 30 }, { h: 4, m: 30 }), 'That says four thirty. The short hand has passed the three.');
+  assert.equal(whyLine('next', { h: 3, m: 30 }, { h: 4, m: 30 }, 'match'), 'This clock says four thirty. We want three thirty. The short hand has passed the three.');
 });
 
 test('card generators: one right answer, the level\'s times only, a set card starts a few turns away', () => {
@@ -192,7 +193,7 @@ test('every Lagoon sentence has Luna\'s recording (whole, or spliced from record
     "When the long hand points straight up to the twelve, we say o'clock. The short hand points to the three. Three o'clock!",
     'Watch! When the long hand goes all the way around, the short hand moves to the next number.', "Now it is four o'clock.",
     'Now watch the long hand go halfway round.', 'The long hand points straight down to the six. That means thirty.',
-    'The short hand has gone halfway. It has just passed the three, so it is three thirty!'];
+    'The short hand is halfway between the three and the four. It has passed the three, but not reached the four, so it is three thirty!'];
   const say = [
     'Welcome to Tick-Tock Lagoon! Tell the time to free the sea Squishies!', 'What time does the clock say?', 'Watch the hands.', ...intro,
     ...ROUTINES.map(r => r.line + ' What time does the clock say?'),

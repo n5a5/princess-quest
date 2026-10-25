@@ -47,7 +47,8 @@ const readIt = {
       clock.el.classList.remove('show-hour', 'show-minute');
       for (const h of HAND_OF[picked.kind] || []) clock.el.classList.add('show-' + h);
     };
-    const grid = choiceGrid({ audio, prompt, items, praise: timePraise(it.time, praiseLine), revealText: 'It is ' + phrase(it.time) + '.', onWrong });
+    // after a miss Luna asks just the question again (not "Time for bed!" in the middle of a correction)
+    const grid = choiceGrid({ audio, prompt: 'What time does the clock say?', items, praise: timePraise(it.time, praiseLine), revealText: 'It is ' + phrase(it.time) + '.', onWrong });
     grid.el.classList.add('times');
     stage.setBody(el('div', { class: 'clock-play' }, [clock.el, grid.el]));
     await audio.say(prompt);
@@ -89,20 +90,25 @@ const setIt = {
       if (d) (d <= 360 ? clock.fwd : clock.back).dataset.answer = '1';
       if (d) delete done.dataset.done; else done.dataset.done = '1';
     };
-    clock = clockEl({ time: it.start, interactive: true, step, label: 'clock you can turn', tick: () => audio.sfx && audio.sfx.tick && audio.sfx.tick(), onChange: () => mark() });
+    // a hint lights the hand it names; the glow goes as soon as she changes the clock
+    const light = h => { clock.el.classList.remove('show-hour', 'show-minute'); if (h) clock.el.classList.add('show-' + h); };
+    clock = clockEl({ time: it.start, interactive: true, step, label: 'clock you can turn', tick: () => audio.sfx && audio.sfx.tick && audio.sfx.tick(), onChange: () => { light(null); mark(); } });
     mark();
     stage.setBody(el('div', { class: 'clock-play set' }, [clock.el, done]));
     const live = () => done.isConnected;
-    let misses = 0;
-    // Done works from the start (a tap stops Luna mid-sentence). While a hint plays, a second tap counts only if
-    // she has changed the clock since the miss: two quick taps on the same wrong clock are one mistake.
+    let misses = 0, asking = true, asks = 0;
+    // Done works from the start (a tap stops Luna mid-sentence). A tap on the untouched clock while she is still
+    // asking just asks again (no miss). While a hint plays, a second tap counts only if she has changed the clock
+    // since the miss: two quick taps on the same wrong clock are one mistake. Each hint is one step: the long hand
+    // first, then (if she fixed it) the short hand, so following the hints always reaches the time.
     const answer = new Promise(resolve => {
       let busy = false, missedAt = null, turn = 0;
       done.addEventListener('click', async () => {
         const made = clock.get();
+        if (asking && sameTime(made, it.start)) { audio.stop(); const n = ++asks; audio.say(prompt).then(() => { if (n === asks) asking = false; }); return; }
         if (busy && !(missedAt && !sameTime(made, missedAt))) return;
         const mine = ++turn;
-        busy = true; audio.stop();
+        busy = true; audio.stop(); light(null);
         if (sameTime(made, it.time)) {
           clock.lock(); done.setAttribute('disabled', ''); done.classList.add('right');
           confetti(24); if (audio.sfx) audio.sfx.sparkle();
@@ -113,9 +119,11 @@ const setIt = {
         misses++;
         noteMistake(made.m !== it.time.m ? 'set-minute' : 'set-hour');
         stage.luna('think', 1200);
-        if (misses === 1) {
+        const fixedLong = misses === 2 && missedAt && missedAt.m !== it.time.m && made.m === it.time.m;
+        if (misses === 1 || fixedLong) {
           missedAt = made;
-          await audio.say('Your clock says ' + phrase(made) + '. ' + setHint(it.time, made));
+          light(made.m !== it.time.m ? 'minute' : 'hour');
+          await audio.say('Your clock says ' + phrase(made) + '. ' + setHint(it.time, made) + ' Make the clock say ' + phrase(it.time) + '.');
           if (mine === turn) busy = false;
           return;
         }
@@ -128,6 +136,7 @@ const setIt = {
       });
     });
     await audio.say(prompt);
+    if (!asks) asking = false; // an early tap started the question again: it stays "asking" until that ends
     const r = await answer;
     return { outcome: outcomeOf(r), choices: 3, gpc: it.time.m ? 'half' : 'hour' };
   }
@@ -201,7 +210,8 @@ async function handsIntro({ hours = true, thirty = false } = {}) {
   if (hours) {
     await say('This is the short hand. It shows the hour.', 'show-hour');
     await say('This is the long hand. It shows the minutes.', 'show-minute');
-    await say('When the long hand points straight up to the twelve, we say o\'clock. The short hand points to the three. Three o\'clock!', 'show-minute');
+    await say('When the long hand points straight up to the twelve, we say o\'clock.', 'show-minute');
+    await say('The short hand points to the three. Three o\'clock!', 'show-hour');
     await say('Watch! When the long hand goes all the way around, the short hand moves to the next number.', 'show-minute');
     if (live()) await clock.animateTo({ h: 4, m: 0 }, 3200);
     await say('Now it is four o\'clock.', 'show-hour');
@@ -211,7 +221,7 @@ async function handsIntro({ hours = true, thirty = false } = {}) {
     await say('Now watch the long hand go halfway round.', 'show-minute');
     if (live()) await clock.animateTo({ h: 3, m: 30 }, 2200);
     await say('The long hand points straight down to the six. That means thirty.', 'show-minute');
-    await say('The short hand has gone halfway. It has just passed the three, so it is three thirty!', 'show-hour');
+    await say('The short hand is halfway between the three and the four. It has passed the three, but not reached the four, so it is three thirty!', 'show-hour');
   }
   if (!live()) return false;
   if (hours) clockSave().intro = ctx.economy.today();

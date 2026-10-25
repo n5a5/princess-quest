@@ -146,7 +146,7 @@ PIECES = [
     'They are the same length.', 'They weigh the same.', 'They are the same height.', 'They have the same.', 'They hold the same.',
     # Tick-Tock Lagoon (lagoon.js): the time goes in the slot ("Which clock says" + "three thirty?")
     'Which clock says', 'Make the clock say', 'Your clock says', 'This clock says', 'That says',
-    'Now move the short hand to the', 'Now move the short hand just past the', 'The short hand points to the', 'The short hand has just passed the',
+    'Now move the short hand to the', 'Now move the short hand past the', 'The short hand points to the', 'The short hand has passed the', 'We want',
 ]
 SQUISHY_TOWER_NAMES = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'Finn', 'Pinchy', 'Inky']  # shared/characters.js SQUISHY_KINDS
 SLOT_WORDS = ['pink Squishy', 'green Squishy', 'yellow Squishy', 'tulip', 'blossom', 'daisy', 'caterpillar', 'bee', 'butterfly', 'apple',

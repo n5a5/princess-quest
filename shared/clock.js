@@ -77,7 +77,9 @@ export function whyLine(kind, target, picked, card = 'read') {
   const said = (card === 'match' ? 'This clock says ' : 'That says ') + phrase(picked) + '.';
   if (kind === 'minute') return said + ' ' + longHandRule(target);
   if (kind === 'swap') return said + ' The short hand shows the hour. The long hand shows the minutes.';
-  return said + ' ' + (target.m === 0 ? 'The short hand points to the ' : 'The short hand has just passed the ') + WORD[target.h] + '.';
+  // on Match the rule is about the time she was asked for, not the clock she tapped, so it names that time first
+  const want = card === 'match' ? ' We want ' + phrase(target) + '.' : '';
+  return said + want + ' ' + (target.m === 0 ? 'The short hand points to the ' : 'The short hand has passed the ') + WORD[target.h] + '.';
 }
 // Which hand a mistake is about, for lighting it up on the clock.
 export const HAND_OF = { next: ['hour'], near: ['hour'], across: ['hour'], minute: ['minute'], swap: ['hour', 'minute'] };
@@ -86,7 +88,7 @@ export const HAND_OF = { next: ['hour'], near: ['hour'], across: ['hour'], minut
 // carries the hour hand with it; then the short hand, by name of its number.
 export function setHint(target, made) {
   if (made.m !== target.m) return longHandRule(target);
-  return (target.m === 0 ? 'Now move the short hand to the ' : 'Now move the short hand just past the ') + WORD[target.h] + '.';
+  return (target.m === 0 ? 'Now move the short hand to the ' : 'Now move the short hand past the ') + WORD[target.h] + '.';
 }
 
 // Turning the minute hand. The finger's path is followed continuously (`cont`, minutes, not wrapped), so a
@@ -209,25 +211,33 @@ export function clockEl({ time, size = 220, interactive = false, step = 30, onCh
     const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
     return { angle: (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360, dist: Math.hypot(dx, dy) / (r.width / 2) };
   };
-  // One finger drives the clock: the newest touch takes over, and only its lift ends the turn (a resting thumb
-  // never moves the hands). Letting go of the long hand settles it on the level's step (o'clock at that level).
+  // One finger drives the clock. A second touch while one is turning (a resting thumb, a palm) does nothing until
+  // it really moves; then it takes over from where it is. Letting go of the long hand settles it on the level's
+  // step (o'clock at that level).
   let grab = null, cont = 0, prev = 0, hOff = 0, activeId = null;
-  svg.addEventListener('pointerdown', e => {
-    if (locked) return;
-    const { angle, dist } = angleAt(e);
-    if (dist > 1.08) return;
+  const waiting = new Map(); // pointerId → { x, y } of touches that landed while another finger was turning
+  const start = (e, jump) => {
+    const { angle } = angleAt(e);
     if (activeId !== null && activeId !== e.pointerId) { try { svg.releasePointerCapture(activeId); } catch {} }
-    activeId = e.pointerId;
-    grab = pickHand(angle, dist, total);
+    activeId = e.pointerId; waiting.delete(e.pointerId);
+    grab = pickHand(angle, angleAt(e).dist, total);
     cont = minuteGrab(total, angle); prev = angle;
     hOff = wrapTo(angle - handAngles(fromTotal(total)).hour, 180);
     wrap.classList.remove('hour', 'minute');
     wrap.classList.add('turning', grab);
     try { svg.setPointerCapture(e.pointerId); } catch {}
+    if (jump && grab === 'minute') move(e);
+  };
+  svg.addEventListener('pointerdown', e => {
+    if (locked) return;
+    if (angleAt(e).dist > 1.08) return;
     e.preventDefault();
-    if (grab === 'minute') move(e);
+    if (activeId !== null && activeId !== e.pointerId) { waiting.set(e.pointerId, { x: e.clientX, y: e.clientY }); return; }
+    start(e, true);
   });
   const move = e => {
+    const w = waiting.get(e.pointerId);
+    if (w) { if (!locked && Math.hypot(e.clientX - w.x, e.clientY - w.y) > 8) start(e, false); return; }
     if (!grab || locked || e.pointerId !== activeId) return;
     const { angle } = angleAt(e);
     if (grab === 'hour') { setTotal(hourTurn(angle - hOff, ((total % 60) + 60) % 60)); return; }
@@ -236,6 +246,7 @@ export function clockEl({ time, size = 220, interactive = false, step = 30, onCh
   };
   svg.addEventListener('pointermove', move);
   const end = e => {
+    waiting.delete(e.pointerId);
     if (e.pointerId !== activeId) return;
     activeId = null;
     if (grab === 'minute' && !locked && total % step) setTotal(snap(cont, step));
