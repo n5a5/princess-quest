@@ -7,7 +7,8 @@ import { el, wait, pick, withName, confetti, sheet, bigButton, roundDots } from 
 import { lunaSVG, squishySVG, svgFrom, SQUISHY_KINDS } from './characters.js';
 import { SQUISHIES } from '../games/registry.js';
 
-export function createStage({ host, place, ctx }) {
+// trail(total, done) → node: a place may draw its own progress row (the Lagoon's reef path) instead of the dots.
+export function createStage({ host, place, ctx, trail = null }) {
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level }));
   const objectArea = el('div', { class: 'object' });
   const dots = el('div', { class: 'round-dots' });
@@ -31,7 +32,7 @@ export function createStage({ host, place, ctx }) {
     setObject(node) { objectArea.replaceChildren(node || ''); },
     setPrompt(node) { promptArea.replaceChildren(node || ''); },
     setBody(...nodes) { body.replaceChildren(...nodes); },
-    setDots(total, done) { dots.replaceChildren(...roundDots(total, done).childNodes); }
+    setDots(total, done) { dots.replaceChildren(...(trail ? [trail(total, done)] : roundDots(total, done).childNodes)); }
   };
   return stage;
 }
@@ -65,7 +66,8 @@ function idleNudge(stage, audio) {
 // item answered after pointing counts as "not known yet". Families opt in by marking the answer with
 // data-answer (and data-order on tiles, data-done on a Done button); the marker is never shown.
 const DEMO_FAMILIES = new Set(['gpc', 'spell', 'read', 'swap', 'scroll', 'seeds', 'blend', 'count', 'cavecount', 'oralswap', 'takeaway', 'rhyme', 'beats',
-  'onsetrime', 'heartap', 'spellheart', 'note', 'frames', 'trail', 'road', 'bridge', 'teen', 'stories', 'measure', 'patterns', 'shapes']);
+  'onsetrime', 'heartap', 'spellheart', 'note', 'frames', 'trail', 'road', 'bridge', 'teen', 'stories', 'measure', 'patterns', 'shapes',
+  'clockread', 'clockmatch', 'clockset']);
 function answerTarget(root) {
   if (root.querySelector('.tile.picked')) return root.querySelector('.slot:not(.filled)');
   const tile = [...root.querySelectorAll('.tile[data-order]:not([disabled]):not(.used)')].sort((a, b) => a.dataset.order - b.dataset.order)[0];
@@ -124,8 +126,8 @@ function showMeButton(stage) {
 }
 
 // Runs a round. items: [{ family, item }] pairs. Returns { stars, ratio, rescued, companion }.
-export async function runEncounterRound({ host, ctx, place, cabinetId, items, review = new Set() }) {
-  const stage = createStage({ host, place, ctx });
+export async function runEncounterRound({ host, ctx, place, cabinetId, items, review = new Set(), trail = null }) {
+  const stage = createStage({ host, place, ctx, trail });
   const praise = ctx.praise && ctx.praise.praise ? ctx.praise.praise : ['Great job!'];
   const name = ctx.economy.save.child.name;
   const queue = items.slice();

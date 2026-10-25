@@ -17,6 +17,7 @@ import { mouthSVG } from '../shared/mouths.js';
 import { canListen, openMic } from '../shared/mic.js';
 import { createSongPlayer } from '../shared/songclip.js';
 import { stageDefaults } from '../shared/stage-plan.js';
+import { ROUTINES, routineTimes, digital } from '../shared/clock.js';
 
 const economy = createEconomy({ storage: localStorage, onSaveError: () => alert('This device could not store the save (storage full or blocked). Use Export now to keep a copy.') });
 const adaptive = createAdaptive({ economy });
@@ -167,6 +168,7 @@ function render() {
   app.replaceChildren(
     weekSection(),
     stageSection(),
+    lagoonSection(),
     focusSection(),
     el('section', {}, [
       el('h2', { text: 'Is it working?' }),
@@ -190,7 +192,7 @@ function render() {
           const place = REGISTRY.find(r => r.id === d.cabinet);
           return el('tr', { class: (d.tier === 1 ? 'tier1 ' : '') + (adaptive.needsReteach(d.id) ? 'reteach' : '') }, [
             el('td', {}, [d.name + ' ', el('span', { class: 'muted', text: d.strand })]),
-            el('td', { text: place ? place.name.replace(/^(Unicorn|Whisper|Wishing|Crystal|Rainbow|Story) /, '') : d.cabinet }),
+            el('td', { text: place ? place.name.replace(/^(Unicorn|Whisper|Wishing|Crystal|Rainbow|Story|Tick-Tock) /, '') : d.cabinet }),
             el('td', { text: d.tier === 1 ? 'focus' : d.tier === 2 ? 'secondary' : 'strength' }),
             el('td', { text: adaptive.accuracy(d.id) === null ? '—' : LEVEL_WORD[adaptive.level(d.id)] }),
             el('td', { text: adaptive.stage(d.id) }),
@@ -474,6 +476,44 @@ function focusSection() {
     el('div', { class: 'row', style: 'justify-content:flex-start' }, [el('button', { type: 'button', text: 'Start a 7-day focus', onclick: () => { adaptive.setFocus({ sound: sel.value || null, words: [...picked] }); render(); } })])
   );
   return section;
+}
+// Tick-Tock Lagoon: her clock level, the mistakes she makes most, and her day's times for the My day cards.
+// Telling time is a grade 1 benchmark (MA.1.M.2.1), so the whole place is a stretch, and free play: it never takes
+// a quest stop or Star Stage time.
+const CLOCK_MISTAKES = {
+  next: 'reads the next hour at half past (3:30 as "four thirty")', minute: 'misses what the long hand says (3:30 as "three o\'clock")',
+  swap: 'mixes up the two hands', near: 'reads an hour next to the right one', across: 'reads the number across the clock',
+  'set-minute': 'sets the long hand wrong', 'set-hour': 'sets the short hand wrong'
+};
+const CLOCK_LEVEL = { hour: "o'clock", half: 'half past ("three thirty")' };
+function lagoonSection() {
+  const s = economy.save;
+  const id = 'time-tell';
+  const acc = adaptive.accuracy(id);
+  const mistakes = Object.entries(s.clock.mistakes).sort((a, b) => b[1] - a[1]);
+  const inputs = ROUTINES.map(r => el('input', { type: 'time', step: '1800', id: 'routine-' + r.id, value: s.settings.routine[r.id] || '' }));
+  const fits = routineTimes(s.settings.routine, adaptive.stage(id));
+  const inGame = list => 'In the game now: ' + (list.length ? list.map(x => x.name + ' ' + digital(x.time)).join(', ') : 'none at this level yet') + '.';
+  const saved = el('span', { class: 'muted', text: ' ' + inGame(fits) });
+  return el('section', {}, [
+    el('h2', { text: 'Tick-Tock Lagoon: telling time' }),
+    el('p', { text: acc === null ? 'Not played yet.' : `Level: ${CLOCK_LEVEL[adaptive.stage(id)] || adaptive.stage(id)}. First try ${Math.round(acc * 100)}% on the last 20 cards. Mastery ${Math.round(adaptive.mastery(id) * 100)}%.` }),
+    el('p', {}, [el('strong', { text: 'Her mistakes so far: ' }), mistakes.length ? mistakes.map(([k, n]) => (CLOCK_MISTAKES[k] || k) + ' ×' + n).join('; ') : 'none yet.']),
+    el('p', { class: 'muted', text: 'Florida teaches telling time in grade 1 (MA.1.M.2.1: hours and half hours on analog and digital clocks), so all of this is a stretch above kindergarten. The Lagoon is free play: it never replaces Star Stage or the daily quest. Hours come first; half past ("three thirty") unlocks after two good days of o\'clock.' }),
+    el('h3', { text: 'Her day (for the My day cards)' }),
+    el('p', { class: 'muted', text: 'Times stay on this device. At the o\'clock level only times on the hour show up; half-hour times join at the next level. Leave a box empty to skip it.' }),
+    el('div', { class: 'row', style: 'justify-content:flex-start;flex-wrap:wrap;gap:10px' }, ROUTINES.map((r, i) => el('label', {}, [r.pic + ' ' + r.name + ' ', inputs[i]]))),
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+      el('button', { type: 'button', text: 'Save times', onclick: () => {
+        const out = {};
+        ROUTINES.forEach((r, i) => { const v = inputs[i].value; if (/^\d{2}:\d{2}$/.test(v)) out[r.id] = v; });
+        s.settings.routine = out; economy.persist();
+        const now = routineTimes(out, adaptive.stage(id));
+        saved.textContent = ' Saved. ' + inGame(now);
+      } }),
+      saved
+    ])
+  ]);
 }
 function weekSection() {
   const today = economy.today();

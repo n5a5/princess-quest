@@ -82,7 +82,7 @@ def from_code():
         src = f.read_text(encoding='utf-8')
         for m in LIT.finditer(src):
             text = m.group(1).replace("\\'", "'")
-            if re.match(r'^(ELA|MA)\.[A-Z]', text):  # curriculum codes, never spoken
+            if re.match(r'^(ELA|MA)\.[A-Z0-9]', text):  # curriculum codes, never spoken
                 continue
             before = src[:m.start()].rstrip()[-1:] if src[:m.start()].rstrip() else ''
             after = src[m.end():].lstrip()[:1]
@@ -112,7 +112,7 @@ def vocab():
     pw = [w['w'] for st in J('phonics.json')['stages'] for w in st['words']]
     sw = [w for lst in J('sight-words.json')['lists'].values() for w in lst]
     kw = [s['word'] for s in J('sounds.json')['sounds'] if s.get('word')]
-    squishies = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble']
+    squishies = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'Finn', 'Pinchy', 'Inky']
     sort_names = ['pink Squishy', 'green Squishy', 'yellow Squishy', 'tulip', 'blossom', 'daisy', 'caterpillar', 'bee', 'butterfly', 'apple', 'strawberry', 'lemon']
     sort_bins = {'pink Squishy': 'pink', 'green Squishy': 'green', 'yellow Squishy': 'yellow', 'tulip': 'flowers', 'blossom': 'flowers', 'daisy': 'flowers',
                  'caterpillar': 'bugs', 'bee': 'bugs', 'butterfly': 'bugs', 'apple': 'fruit', 'strawberry': 'fruit', 'lemon': 'fruit'}
@@ -144,12 +144,14 @@ PIECES = [
     'There were', 'gems long.', 'without', 'has the most.', 'has the fewest.', 'We can measure', 'how long it is.',
     'how heavy it is.', 'how much it holds.', 'is longer.', 'is heavier.', 'is taller.', 'has more.', 'holds more.',
     'They are the same length.', 'They weigh the same.', 'They are the same height.', 'They have the same.', 'They hold the same.',
+    # Tick-Tock Lagoon (lagoon.js): the time goes in the slot ("Which clock says" + "three thirty?")
+    'Which clock says', 'Make the clock say', 'Your clock says', 'This clock says',
 ]
-SQUISHY_TOWER_NAMES = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble']  # shared/characters.js SQUISHY_KINDS
+SQUISHY_TOWER_NAMES = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'Finn', 'Pinchy', 'Inky']  # shared/characters.js SQUISHY_KINDS
 SLOT_WORDS = ['pink Squishy', 'green Squishy', 'yellow Squishy', 'tulip', 'blossom', 'daisy', 'caterpillar', 'bee', 'butterfly', 'apple',
               'strawberry', 'lemon', 'pink', 'green', 'yellow', 'flowers', 'bugs', 'fruit', 'circle', 'square', 'triangle', 'rectangle',
               'sphere', 'cube', 'cone', 'cylinder', 'Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud',
-              'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'gem', 'gems', 'more', 'less',
+              'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'Finn', 'Pinchy', 'Inky', 'gem', 'gems', 'more', 'less',
               # Rainbow Path pattern names (falls.js PAT_NAME)
               'heart', 'clover', 'star', 'moon', 'fire', 'purple', 'blue', 'orange',
               # Measure the Falls things (falls.js OBJECTS, HEAVY, HOLDS) and the jars
@@ -174,8 +176,21 @@ def _check(p):
 TEMPLATE_CHECKS = sorted({_check(p) for p in PIECES if len(p) > 3})
 
 
+# Clock times as she says them (shared/clock.js phrase()), at the levels the Lagoon has: o'clock and thirty.
+CLOCK_MINUTES = [0, 30]
+HOUR_WORDS = ['twelve', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+def clock_phrases():
+    out = []
+    for h in range(1, 13):
+        for m in CLOCK_MINUTES:
+            p = HOUR_WORDS[h] + (" o'clock" if m == 0 else ' thirty')
+            out += [p, p + '.', p + '?']
+    return out
+
+
 def from_templates(name):
     L = [(p, True) for p in PIECES] + [(w, True) for w in SLOT_WORDS] + [(name + '!', True), (name + '.', True), (name, True)]
+    L += [(p, True) for p in clock_phrases()]
     L += [(str(n), True) for n in list(range(0, 21)) + [30, 40, 50, 60, 70, 80, 90, 100]]
     return L
 

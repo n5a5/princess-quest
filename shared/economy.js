@@ -42,10 +42,13 @@ export function defaultSave() {
     feelingsLog: [],    // Calm Tower check-ins: { day, feeling }
     scenariosSeen: [],  // Uh-Oh Courtyard scenario ids already shown
     stage: stageDefaults(), // Star Stage practice log (shared/stage-plan.js)
+    // Tick-Tock Lagoon: the day she saw how a clock works, and her mistakes by kind (shared/clock.js WHY)
+    clock: { intro: null, mistakes: {} },
     // voice: 'device' = the device's text-to-speech for instructions; 'luna' = the pre-recorded story voice
     // (the same voice as the words and letter sounds). Stays 'device' until the parent picks in Parent Corner.
+    // routine: her day's times for the Lagoon's My day cards, { wake: 'HH:MM', ... } (Parent Corner; this device only)
     // focus: what the parent asked the app to lean on for a week: { sound, words: [], until: 'YYYY-MM-DD' } or null
-    settings: { muted: false, rate: 0.9, voiceName: '', modulesOff: [], voice: 'device', focus: null },
+    settings: { muted: false, rate: 0.9, voiceName: '', modulesOff: [], voice: 'device', focus: null, routine: {} },
     log: []
   };
 }
@@ -92,6 +95,8 @@ export function migrate(raw) {
   out.feelingsLog = out.feelingsLog.filter(f => isObj(f) && typeof f.day === 'string');
   out.scenariosSeen = out.scenariosSeen.filter(x => typeof x === 'string');
   out.stage = cleanStage(out.stage);
+  out.clock = { intro: typeof out.clock.intro === 'string' ? out.clock.intro : null, mistakes: Object.fromEntries(Object.entries(isObj(out.clock.mistakes) ? out.clock.mistakes : {}).filter(([, n]) => Number.isInteger(n) && n > 0)) };
+  out.settings.routine = Object.fromEntries(Object.entries(out.settings.routine).filter(([k, v]) => /^[a-z]+$/.test(k) && typeof v === 'string' && /^\d{2}:\d{2}$/.test(v)));
   // saves from before the wallet: everything she has now counts as earned
   if (!isObj(raw.wallet)) out.wallet = { legacy: { earned: out.gems, spent: 0 } };
   for (const [id, w] of Object.entries(out.wallet)) if (!isObj(w) || typeof w.earned !== 'number' || typeof w.spent !== 'number') delete out.wallet[id];
@@ -272,6 +277,9 @@ export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date(),
       a.stage = mergeStage(a.stage, b.stage);
       for (const [k, v] of Object.entries(b.books)) if (!a.books[k] || (v.reads || 0) > (a.books[k].reads || 0)) a.books[k] = v;
       for (const [k, v] of Object.entries(b.demos)) if (!a.demos[k]) a.demos[k] = v;
+      // the Lagoon: the clock intro counts once seen anywhere; mistakes keep the larger count of each kind
+      if (!a.clock.intro) a.clock.intro = b.clock.intro;
+      for (const [k, n] of Object.entries(b.clock.mistakes)) a.clock.mistakes[k] = Math.max(a.clock.mistakes[k] || 0, n);
       trimLog();
       return persist() ? true : 'full';
     },

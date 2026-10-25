@@ -97,8 +97,19 @@ export const SQUISHY_KINDS = [
   { id: 'moss', color: '#CFE8B8', dark: '#94C070', name: 'Moss' },
   { id: 'fern', color: '#A9DFC6', dark: '#5FB894', name: 'Fern' },
   { id: 'dawn', color: '#FFD9B8', dark: '#F0A870', name: 'Dawn' },
-  { id: 'pebble', color: '#C9D6E8', dark: '#8FA6C4', name: 'Pebble' }
+  { id: 'pebble', color: '#C9D6E8', dark: '#8FA6C4', name: 'Pebble' },
+  // sea Squishies of Tick-Tock Lagoon: the same soft blob with a fin, claws or wiggly arms
+  { id: 'finn', color: '#9CCFF5', dark: '#4F98D6', name: 'Finn', sea: 'fin' },
+  { id: 'pinchy', color: '#FFAE9C', dark: '#E0614C', name: 'Pinchy', sea: 'claws' },
+  { id: 'inky', color: '#CDB0F4', dark: '#9466D0', name: 'Inky', sea: 'arms' }
 ];
+// drawn behind the body, so the body's outline covers where they join
+function seaParts(k) {
+  if (k.sea === 'fin') return `<path d="M60 44 L76 32 Q72 46 76 60 Z" fill="${k.color}" stroke="${k.dark}" stroke-width="2.5" stroke-linejoin="round"/><path d="M32 26 Q40 10 52 24" fill="${k.color}" stroke="${k.dark}" stroke-width="2.5"/>`;
+  if (k.sea === 'claws') { const claw = `<path d="M18 46 Q6 44 6 32 Q6 24 12 22 Q12 30 17 31 Q15 24 20 21 Q25 26 22 34 Q24 42 18 46 Z" fill="${k.color}" stroke="${k.dark}" stroke-width="2.5" stroke-linejoin="round"/>`; return claw + `<g transform="translate(80 0) scale(-1 1)">${claw}</g>`; }
+  if (k.sea === 'arms') return `<path d="M24 62 q-6 8 0 13 M33 64 q-3 9 3 12 M47 64 q3 9 -3 12 M56 62 q6 8 0 13" stroke="${k.dark}" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M24 62 q-6 8 0 13 M33 64 q-3 9 3 12 M47 64 q3 9 -3 12 M56 62 q6 8 0 13" stroke="${k.color}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  return '';
+}
 
 export function squishySVG(kind, { size = 64, bubble = false, sleepy = false } = {}) {
   const k = typeof kind === 'string' ? SQUISHY_KINDS.find(s => s.id === kind) || SQUISHY_KINDS[0] : kind;
@@ -106,7 +117,7 @@ export function squishySVG(kind, { size = 64, bubble = false, sleepy = false } =
 <svg class="squishy" viewBox="0 0 80 80" width="${size}" height="${size}" xmlns="${NS}" aria-label="${k.name} the Squishy" role="img">
   ${bubble ? '<circle cx="40" cy="40" r="37" fill="rgba(160,210,255,0.35)" stroke="rgba(255,255,255,0.9)" stroke-width="2.5"/><path d="M18 26 Q24 16 34 14" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.9"/>' : ''}
   <g class="blob">
-    <ellipse cx="40" cy="70" rx="22" ry="4" fill="#33254F" opacity="0.08"/>
+    <ellipse cx="40" cy="70" rx="22" ry="4" fill="#33254F" opacity="0.08"/>${seaParts(k)}
     <path d="M16 52 Q12 26 40 22 Q68 26 64 52 Q62 68 40 68 Q18 68 16 52 Z" fill="${k.color}" stroke="${k.dark}" stroke-width="2.5"/>
     <ellipse cx="30" cy="34" rx="7" ry="5" fill="#fff" opacity="0.55"/>
     ${sleepy
@@ -143,6 +154,7 @@ export function placeArtSVG(id) {
     garden: `<svg viewBox="0 0 64 64" xmlns="${NS}" aria-hidden="true"><ellipse cx="32" cy="50" rx="28" ry="9" fill="#B8E39A"/><path d="M14 44 Q14 24 32 22 Q50 24 50 44 Q48 56 32 56 Q16 56 14 44 Z" fill="#F5A3BD" stroke="#D97A97" stroke-width="2"/><circle cx="26" cy="38" r="3" fill="#33254F"/><circle cx="38" cy="38" r="3" fill="#33254F"/><path d="M27 46 Q32 50 37 46" stroke="#33254F" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="12" cy="30" r="5" fill="#F9D77B"/><circle cx="52" cy="28" r="5" fill="#8FDCCB"/><path d="M8 20 l2 -5 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 z" fill="#E9B949"/></svg>`,
     woods: `<svg viewBox="0 0 64 64" xmlns="${NS}" aria-hidden="true"><ellipse cx="32" cy="54" rx="28" ry="7" fill="#7FC2A5"/><path d="M14 52 L22 26 L30 52 Z" fill="#4DB6A4"/><path d="M26 52 L36 14 L46 52 Z" fill="#3A9C89"/><path d="M40 52 L48 30 L56 52 Z" fill="#5FB894"/><rect x="34" y="46" width="4" height="8" fill="#8A5530"/><path d="M8 20 q4 -6 8 0 q-4 6 -8 0 z" fill="#FFF8EE" opacity="0.9"/><path d="M6 24 q3 -3 6 0" stroke="#33254F" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M4 22 q2 -2 4 0 M8 19 q2 -2 4 0" stroke="#7C5CC4" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.8"/><circle cx="50" cy="16" r="3" fill="#F9D77B"/><circle cx="56" cy="24" r="2" fill="#F9D77B"/><circle cx="12" cy="40" r="2" fill="#F5A3BD"/></svg>`,
     stage: `<svg viewBox="0 0 64 64" xmlns="${NS}" aria-hidden="true"><rect x="4" y="48" width="56" height="10" rx="2" fill="#B07A45"/><ellipse cx="32" cy="49" rx="16" ry="3.5" fill="#F9D77B" opacity="0.7"/><rect x="4" y="6" width="56" height="7" rx="2" fill="#B83A5E"/><path d="M4 13 Q16 13 18 22 Q12 34 14 48 L4 48 Z" fill="#E2688F"/><path d="M60 13 Q48 13 46 22 Q52 34 50 48 L60 48 Z" fill="#E2688F"/><path d="M8 16 Q10 30 8 46 M56 16 Q54 30 56 46" stroke="#C9466E" stroke-width="2" fill="none"/><path d="M32 20 l3.5 7.5 h8 l-6.5 4.8 l2.5 7.7 l-7.5 -4.8 l-7.5 4.8 l2.5 -7.7 l-6.5 -4.8 h8 z" fill="#E9B949" stroke="#C99A2E" stroke-width="1"/></svg>`,
+    lagoon: `<svg viewBox="0 0 64 64" xmlns="${NS}" aria-hidden="true"><path d="M4 50 Q12 44 20 50 T36 50 T52 50 T68 50 V62 H4 Z" fill="#7CC7F0"/><path d="M4 56 Q12 50 20 56 T36 56 T52 56 T68 56 V64 H4 Z" fill="#4FB7C2"/><circle cx="32" cy="26" r="18" fill="#FFFDF7" stroke="#4FB7C2" stroke-width="4"/><path d="M32 26 L32 13" stroke="#2F7FC0" stroke-width="3" stroke-linecap="round"/><path d="M32 26 L41 31" stroke="#D94F7E" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="26" r="2.5" fill="#E9B949"/><circle cx="10" cy="20" r="4" fill="none" stroke="#9FD3F2" stroke-width="2"/><circle cx="55" cy="12" r="3" fill="none" stroke="#9FD3F2" stroke-width="2"/><circle cx="54" cy="36" r="5" fill="none" stroke="#9FD3F2" stroke-width="2"/></svg>`,
     castle: `<svg viewBox="0 0 64 64" xmlns="${NS}" aria-hidden="true"><rect x="12" y="28" width="40" height="28" rx="3" fill="#F3D9A4"/><rect x="8" y="20" width="12" height="36" rx="2" fill="#E9C27E"/><rect x="44" y="20" width="12" height="36" rx="2" fill="#E9C27E"/><path d="M8 20 L14 8 L20 20 Z" fill="#E2688F"/><path d="M44 20 L50 8 L56 20 Z" fill="#E2688F"/><path d="M26 32 Q32 22 38 32 L38 56 L26 56 Z" fill="#7C5CC4"/><rect x="28" y="12" width="8" height="12" fill="#F3D9A4"/><path d="M28 12 L32 4 L36 12 Z" fill="#E9B949"/></svg>`
   };
   return arts[id] || arts.meadow;

@@ -41,6 +41,8 @@ export const SUBSKILLS = [
   { id: 'data-sort',         strand: 'MA.K.DP.1.1', cabinet: 'falls',   tier: 1, name: 'Sorting and data',      stages: ['two', 'three', 'chart'] },
   { id: 'patterns',          strand: 'MA.K.AR.1.2', cabinet: 'falls',   tier: 2, name: 'Patterns',              stages: ['ab', 'abb', 'abc', 'fix'] },
   { id: 'shapes',            strand: 'MA.K.GR.1.1', cabinet: 'falls',   tier: 3, name: 'Shapes',                stages: ['2d', '3d', 'compose'] },
+  // ---- math: telling time, a grade 1 stretch (Tick-Tock Lagoon; free play, never a quest stop) ----
+  { id: 'time-tell',         strand: 'MA.1.M.2.1',  cabinet: 'lagoon',  tier: 2, name: 'Telling time',          stages: ['hour', 'half'] },
   // ---- strengths kept warm (Story Castle) ----
   { id: 'comprehension',     strand: 'ELA.K.R.1.1', cabinet: 'castle',  tier: 3, name: 'Understanding stories', stages: ['literary', 'informational', 'poems'] }
 ];

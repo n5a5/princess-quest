@@ -2,6 +2,7 @@
 //   tap      soft pop when a tile or choice is pressed
 //   sparkle  rising shimmer when a word blends or an answer is right
 //   yay      three-note chime for a finished round
+//   tick     a soft click as a clock hand snaps to the next step (Tick-Tock Lagoon)
 //   ding     two-note "your turn" chime (Star Stage, right before the microphone listens)
 //   applause a crowd clapping (Star Stage, the end of an audition)
 // Respects settings.muted. Silently does nothing where AudioContext is missing or locked.
@@ -22,6 +23,7 @@ export function createSfx({ settings }) {
     tap() { tone(520, { dur: 0.08, type: 'triangle', gain: 0.08, slide: 380 }); },
     sparkle() { [880, 1175, 1568, 2093].forEach((f, i) => tone(f, { at: i * 0.07, dur: 0.22, gain: 0.07 })); },
     yay() { [523, 659, 784].forEach((f, i) => tone(f, { at: i * 0.14, dur: 0.3, type: 'triangle', gain: 0.1 })); tone(1047, { at: 0.42, dur: 0.5, gain: 0.08 }); },
+    tick() { tone(1800, { dur: 0.03, type: 'square', gain: 0.025 }); },
     ding() { tone(988, { dur: 0.14, gain: 0.09 }); tone(1319, { at: 0.1, dur: 0.22, gain: 0.08 }); },
     // claps: short band-passed noise bursts, dense at first and thinning out over about three seconds
     applause() {
