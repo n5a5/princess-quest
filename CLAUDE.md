@@ -16,3 +16,12 @@ kokoro-onnx venv; see docs). New tracked files must be `git add`ed before regene
 - **Roll back:** `git revert <commit>` (or `git revert <oldest>..<newest>` for a range) with a new
   `VERSION` in `sw.js`, then push `main`. Never force-push: Pages deploys whatever `main` points at, and a
   device that already cached a version keeps it until it sees a newer `VERSION`.
+
+## Message suffixes
+
+- **qq:** if my message ends with "qq," ask all the questions you need before you start, at once. If
+  nothing is unclear, just go ahead.
+- **zz:** if my message ends with "zz," we're only planning or brainstorming. Change nothing outside the
+  chat: no file edits, commits, branches, pushes, PRs, deploys, installs, or migrations. Reading code and
+  running tests are fine; show drafts and proposed diffs in chat. Stays on until I reply "go." When there's
+  a plan, end with what you'd do on "go."
