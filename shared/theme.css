@@ -574,27 +574,52 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
 .scene.stage .their.on { background: #FFF6E5; border: 3px solid var(--gold); color: var(--ink); box-shadow: var(--glow-gold); }
 .scene.stage .cues.script { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; padding: 10px; }
 .scene.stage .cues.script .cue { min-width: 0; min-height: 0; justify-content: flex-start; gap: 12px; padding: 6px 12px; border-radius: 16px; font-size: clamp(30px, 7vw, 46px); text-align: left; }
+.scene.stage .cues.script > * { flex: none; } /* rows keep their height; the box scrolls instead */
 .scene.stage .cues.script .cue .pic { flex: none; }
 .scene.stage .cues.script .you-tag { font-family: var(--display); font-weight: 700; font-size: clamp(15px, 3.6vw, 20px); color: var(--plum); padding-left: 4px; }
 .scene.stage .cues.curtain .you-tag { visibility: hidden; }
 .scene.stage .cues.script .cue .w { font-family: var(--read); font-weight: 700; font-size: clamp(19px, 5vw, 30px); line-height: 1.25; color: var(--ink); }
 .scene.stage .cues.script .cue.now { transform: none; background: #FFF3C4; }
 .scene.stage .cues.script .cue.gone::after { justify-content: flex-start; padding-left: 18px; font-size: 30px; }
+/* Portrait: the practice screen never grows past the screen. Her lines get what is left and scroll inside their
+   own box (the lit row scrolls into view), so the turn panel and "Your turn!" always stay on screen. */
+@media (orientation: portrait) {
+  main:has(.scene.stage.practice) { padding-bottom: 8px; }
+  .scene.stage.practice { max-height: calc(100vh - var(--bar) - 20px); max-height: calc(100dvh - var(--bar) - 20px); }
+  .scene.stage.practice > * { flex: none; }
+  .scene.stage.practice > .cues.script { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+}
 @media (orientation: portrait) and (max-height: 720px) {
-  .scene.stage .cues.script .cue { font-size: 28px; padding: 4px 10px; }
-  .scene.stage .cues.script .cue .w { font-size: 18px; }
-  .scene.stage .their { font-size: 15px; padding: 6px 10px; }
-  .scene.stage .their .face { font-size: 28px; }
+  .scene.stage .cues.script { gap: 4px; padding: 6px; }
+  .scene.stage .cues.script .cue { font-size: 24px; padding: 3px 8px; gap: 8px; }
+  .scene.stage .cues.script .cue .w { font-size: 17px; line-height: 1.2; }
+  .scene.stage .their { font-size: 15px; padding: 5px 10px; }
+  .scene.stage .their .face { font-size: 26px; }
 }
 /* phones on their side: the line before hers across the top, her lines in the left column, the turn panel right */
 @media (orientation: landscape) and (max-height: 600px) {
-  .scene.stage.practice:has(> .their) { grid-template-areas: "head head" "dots dots" "their their" "cues mic" "cues status"; }
+  /* the screen's own height: Luna's line and the dots share the top row, her lines scroll in their box */
+  main:has(.scene.stage.practice) { padding-bottom: 6px; }
+  .scene.stage.practice:has(> .cues.script) { height: calc(100vh - var(--bar) - 14px); height: calc(100dvh - var(--bar) - 14px); grid-template-columns: minmax(0, 1fr) 200px; grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "head dots" "their their" "cues mic" "cues status"; align-items: center; row-gap: 6px; }
+  .scene.stage.practice:has(> .cues.script):not(:has(> .their)) { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "head dots" "cues mic" "cues status"; }
+  .scene.stage.practice:has(> .cues.script) > .scene-head .line { display: none; }
+  .scene.stage.practice:has(> .cues.script) > .scene-head .companion { width: 40px; height: 40px; }
+  .scene.stage.practice > .cues.script { align-self: stretch; min-height: 0; overflow-y: auto; }
+  .scene.stage.practice:has(> .their) { grid-template-areas: "head dots" "their their" "cues mic" "cues status"; }
   .scene.stage.practice > .their { grid-area: their; font-size: 14px; padding: 4px 10px; }
   .scene.stage.practice > .their .face { font-size: 24px; }
+  /* Sandy's big acting picture needs the room: the line before it has already played */
+  .scene.stage.practice:has(> .mic-status.act) > .their { display: none; }
   .scene.stage .cues.script { gap: 4px; padding: 6px; }
   .scene.stage .cues.script .cue { font-size: 24px; padding: 2px 8px; gap: 8px; }
   .scene.stage .cues.script .cue .w { font-size: 16px; }
   .scene.stage .cues.script .you-tag { font-size: 13px; }
+}
+/* Kindle Fire 7 on its side (1024x600): a reader's size, there is room */
+@media (orientation: landscape) and (max-height: 600px) and (min-width: 960px) {
+  .scene.stage .cues.script .cue .w { font-size: 20px; }
+  .scene.stage.practice > .their { font-size: 17px; }
+  .scene.stage .cues.script .you-tag { font-size: 15px; }
 }
 /* Star Stage show mode: the gap between this week and the show's circle in the day strip; Sandy's acting turn
    shows the thumbs-up like a turn without the microphone */

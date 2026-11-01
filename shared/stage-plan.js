@@ -103,15 +103,26 @@ export function cleanStage(x) {
   return out;
 }
 
-// The line before hers, as the screen shows it: a long one keeps only its last words (the ones that tell her it is
-// her turn next).
-export const CUE_WORDS = 7;
-export const shortCue = t => { const w = String(t).trim().split(/\s+/); return w.length > CUE_WORDS + 1 ? '…' + w.slice(-CUE_WORDS).join(' ') : String(t).trim(); };
-// What Luna says before her turn, in a six-year-old's words (never "cue"): who goes first, then her. `alone`: with
-// fewer pictures and words, all by herself.
-// ("Mr." is spoken as Mister: a full stop there would split the sentence and its recording.)
-export const firstThen = (cue, alone = false) => (cue && cue.who ? 'First ' + (cue.who === 'Everybody' ? 'everybody' : cue.who.replace(/^Mr\. /, 'Mister ')) + '. Then you' : 'Now you')
-  + (alone ? ', all by yourself!' : '!');
+// The line before hers, as the screen shows it: the whole line when it is short (up to 12 words); a longer one from
+// the start of its last sentence (two sentences when the last is only a word or two), so it never starts mid-phrase.
+export const CUE_WORDS = 12;
+export function shortCue(t) {
+  const text = String(t).trim(), words = s => s.split(/\s+/).filter(Boolean).length;
+  if (words(text) <= CUE_WORDS) return text;
+  const parts = text.split(/(?<=[.!?…])\s+/);
+  if (parts.length < 2) return text;
+  let tail = parts[parts.length - 1];
+  if (words(tail) < 3 && parts.length > 2) tail = parts[parts.length - 2] + ' ' + tail;
+  return '…' + tail;
+}
+// The lines the whole company sings: the line before hers is hers too (she sings along and keeps going).
+export const GROUP = new Set(['Everybody', 'Annie and the orphans']);
+// What Luna says before her turn, in a six-year-old's words (never "cue"): who goes first, then her; for the
+// group's line, sing along and keep going. ("Mr." is spoken as Mister: a full stop there would split the sentence
+// and its recording.)
+export const firstThen = cue => !cue || !cue.who ? 'Now you!'
+  : GROUP.has(cue.who) ? 'Sing along, then keep going!'
+  : 'First ' + cue.who.replace(/^Mr\. /, 'Mister ') + '. Then you!';
 
 export function logPractice(stage, day, kind) {
   const row = stage.days[day] || (stage.days[day] = {});

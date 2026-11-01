@@ -246,6 +246,9 @@ class Voice:
         self.name = name
 
     def say(self, text, phonemes=False, speed=0.85, voice=None):
-        a, sr = self.k.create(text, voice=voice or self.name, speed=speed, lang='en-us', is_phonemes=phonemes, trim=False)
+        voice = voice or self.name
+        # 'af_nicole+af_kore+af_jessica': a group, the average of those voices' styles (one clip, many voices)
+        if '+' in voice: voice = np.mean([self.k.get_voice_style(n) for n in voice.split('+')], axis=0).astype(np.float32)
+        a, sr = self.k.create(text, voice=voice, speed=speed, lang='en-us', is_phonemes=phonemes, trim=False)
         assert sr == SR
         return np.asarray(a, dtype=np.float32)

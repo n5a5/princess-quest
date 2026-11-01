@@ -26,8 +26,8 @@
    "Bundles": "am_puck",
    "Officer Ward": "am_michael",
    "Mr. Warbucks": "am_adam",
-   "Everybody": "af_sky",
-   "Annie and the orphans": "af_sky"
+   "Everybody": "af_nicole+af_kore+af_jessica",
+   "Annie and the orphans": "af_nicole+af_kore+af_jessica"
   },
   "people": {
    "Annie": "👧",
@@ -52,12 +52,12 @@
      "text": "So maybe now this prayer's the last one of its kind... won't you please come get your baby?"
     },
     "intro": "Your first Kate line!",
-    "tip": "Say it surprised! Annie is sneaking away.",
+    "tip": "Sing Maybe with everybody. Wait for Annie to sneak away. Then say it surprised!",
     "act": "😮",
     "chunks": [
      {
       "text": "Maybe.",
-      "pic": "🌙"
+      "pic": "🎵"
      },
      {
       "text": "Annie,",

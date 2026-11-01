@@ -45,7 +45,7 @@ import { lunaSVG, svgFrom } from '../../shared/characters.js';
 import { flyGems } from '../../shared/encounter.js';
 import { canListen, openMic } from '../../shared/mic.js';
 import { createSongPlayer } from '../../shared/songclip.js';
-import { clipId, chainSteps, daysUntil, logPractice, bigVoiceThreshold, micGain, followTimes, dayStrip, dailyPlan, hiddenFromEnd, quietFloor, deadMic, shortCue, firstThen, songQueue, linesHalf } from '../../shared/stage-plan.js';
+import { clipId, chainSteps, daysUntil, logPractice, bigVoiceThreshold, micGain, followTimes, dayStrip, dailyPlan, hiddenFromEnd, quietFloor, deadMic, shortCue, firstThen, GROUP, songQueue, linesHalf } from '../../shared/stage-plan.js';
 
 let host = null, ctx = null, S = null, DUR = {};
 let run = null;     // the activity in progress, { live, noMic }; Back, Home or leaving the place turns it off
@@ -268,7 +268,7 @@ function view(b, title, sub = '', steps = 0, { words = true } = {}) {
   const who = b.cue && b.cue.who;
   const their = who ? el('div', { class: 'their', 'aria-label': who + ' says: ' + b.cue.text }, [
     el('span', { class: 'face', text: SH().people[who] || '🎭' }),
-    el('span', { class: 'said' }, [el('b', { text: who + ': ' }), el('span', { text: shortCue(b.cue.text) })])
+    el('span', { class: 'said' }, [el('b', { text: who + (GROUP.has(who) ? ' (you too!)' : '') + ': ' }), el('span', { text: shortCue(b.cue.text) })])
   ]) : null;
   const dots = el('div', { class: 'round-dots' });
   const fill = el('div', { class: 'fill' });
@@ -285,7 +285,8 @@ function view(b, title, sub = '', steps = 0, { words = true } = {}) {
   ]));
   const v = {
     light(i, j) { cues.forEach((c, k) => { c.classList.toggle('lit', k >= i && k < j); c.classList.toggle('dim', k < i || k >= j); }); },
-    now(k) { cues.forEach((c, n) => c.classList.toggle('now', n === k)); },
+    // the lit row scrolls into view inside her lines (a long song on a small phone)
+    now(k) { cues.forEach((c, n) => c.classList.toggle('now', n === k)); if (cues[k] && cues[k].scrollIntoView) cues[k].scrollIntoView({ block: 'nearest' }); },
     hide(on) { cueRow.classList.toggle('curtain', on); },
     // the last h pictures hidden (a question mark each); all of them: the curtain
     hideLast(h) { cues.forEach((c, k) => c.classList.toggle('gone', h > 0 && k >= cues.length - h)); cueRow.classList.toggle('curtain', h >= cues.length && h > 0); },
@@ -296,6 +297,7 @@ function view(b, title, sub = '', steps = 0, { words = true } = {}) {
     // back), 'big' / 'ok' (how her turn went), 'idle'
     turn(t, who = '', face = '') {
       if (their) their.classList.toggle('on', t === 'cue');
+      if (['you', 'tap', 'act'].includes(t) && mic.scrollIntoView) mic.scrollIntoView({ block: 'nearest' }); // her turn is always on screen
       mic.dataset.state = t;
       mic.classList.remove('nudge');
       status.classList.remove('act');
@@ -367,11 +369,22 @@ async function turn(r, v, { lead = null, maxMs, endSilenceMs, waitMs = 4000, fol
       return alive(r) ? { heard: true, noMic: true, peakDb: null, big: false, blob: null } : null;
     }
     const thr = bigVoiceThreshold(refDb, micGain(quietFloor(rooms)));
-    const res = await m.listen({
-      floorDb: quietFloor(rooms, refDb), maxMs, endSilenceMs, noVoiceMs: 7000,
-      nudgeMs: NUDGE_MS, onNudge: () => { sfx().ding(); v.nudge(); },
-      onLevel: db => v.level(db, thr), live: () => alive(r)
-    });
+    const floorDb = quietFloor(rooms, refDb);
+    // her rows light one by one at the pace she should say them, starting when she starts (never ahead of a slow start)
+    let paced = null;
+    const pace = () => {
+      if (paced || !follow) return;
+      const [b, i, j] = follow;
+      paced = followTimes(b.chunks.slice(i, j).map(c => c.say || c.text), Math.max(1500, expectFor(...follow))).map((at, k) => setTimeout(() => { if (alive(r)) v.now(i + k); }, at));
+    };
+    let res;
+    try {
+      res = await m.listen({
+        floorDb, maxMs, endSilenceMs, noVoiceMs: 7000,
+        nudgeMs: NUDGE_MS, onNudge: () => { sfx().ding(); v.nudge(); },
+        onLevel: db => { v.level(db, thr); if (db >= floorDb + 6) pace(); }, live: () => alive(r)
+      });
+    } finally { (paced || []).forEach(clearTimeout); v.now(-1); }
     if (!alive(r)) return null;
     if (res.quietDb !== null && res.quietDb !== undefined) rooms.push(res.quietDb); // the room as heard during her take
     // Set the microphone aside only when it delivers digital silence (a muted or dead input) two takes running, or
@@ -501,7 +514,7 @@ async function learnBlock(r, b, title, sub) {
   if (done) {
     v.hideLast(hidden);
     v.turn('luna');
-    await say(firstThen(b.cue, true));
+    await say(firstThen(b.cue));
     if (!alive(r)) return false;
     const res = await turnAgain(r, v, soloOpts(() => playCue(r, b, v)));
     await cheer(r, v, res, b.voice === 'soft');
@@ -545,7 +558,7 @@ async function learnBlock(r, b, title, sub) {
   // her solo after its cue, with the pictures she still has; all gone, it is from memory
   v.hideLast(hidden);
   v.turn('luna');
-  await say(firstThen(b.cue, hidden > 0));
+  await say(firstThen(b.cue));
   if (!alive(r)) return false;
   const res = await turnAgain(r, v, soloOpts(() => playCue(r, b, v)));
   // the practice counts once her solo is done, even if she leaves while it plays back
@@ -581,6 +594,8 @@ async function quickBlock(r, b, v) {
   if (!done) {
     await say(b.intro);
     if (!alive(r)) return false;
+    await say(isSong ? 'Sing it after me.' : 'Say it after me.');
+    if (!alive(r)) return false;
     res = await turnAgain(r, v, opts(() => model(b, 0, n, v)));
     await cheer(r, v, res, b.voice === 'soft');
     if (!alive(r)) return false;
@@ -594,7 +609,7 @@ async function quickBlock(r, b, v) {
     await cheer(r, v, res, b.voice === 'soft');
   } else {
     v.hideLast(hiddenFromEnd(done, n));
-    await say(firstThen(b.cue, true));
+    await say(firstThen(b.cue));
     if (!alive(r)) return false;
     res = await turnAgain(r, v, opts(() => playCue(r, b, v)));
     await cheer(r, v, res, b.voice === 'soft');

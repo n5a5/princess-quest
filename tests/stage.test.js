@@ -39,7 +39,7 @@ test('content: her parts, cues, pictures, dates', () => {
   // every cue is said by a character with their own voice and picture, never Luna's voice
   for (const b of withCue) { assert.ok(sh.voices[b.cue.who], b.id + ' voice for ' + b.cue.who); assert.ok(sh.people[b.cue.who], b.id + ' picture for ' + b.cue.who); }
   const KOKORO = ['af_sky', 'af_bella', 'af_nicole', 'af_aoede', 'af_kore', 'af_jessica', 'am_puck', 'am_michael', 'am_adam'];
-  for (const [who, v] of Object.entries(sh.voices)) { assert.notEqual(v, 'af_heart', who + ' is not Luna'); assert.ok(KOKORO.includes(v), who + ': ' + v); }
+  for (const [who, v] of Object.entries(sh.voices)) { assert.notEqual(v, 'af_heart', who + ' is not Luna'); assert.ok(v.split('+').every(x => KOKORO.includes(x)), who + ': ' + v); }
   // Sandy: only the kinds the game knows, and every song it sings exists
   for (const st of sh.sandy) {
     assert.ok(['act', 'listen', 'sing', 'wait'].includes(st.kind), st.id);
@@ -424,23 +424,29 @@ test('her lines are written out unless a grown-up turned them off, and the switc
   assert.equal(mergeStage({ script: false }, { script: true }).script, false);
 });
 
-test('the line before hers: the last words of a long one, and Luna names who goes first (never "cue")', () => {
+test('the line before hers: whole when short, else from the start of a sentence; Luna names who goes first (never "cue")', () => {
   assert.equal(shortCue('Hi, kids!'), 'Hi, kids!');
+  assert.equal(shortCue("Don't it feel like the wind is always howlin'?"), "Don't it feel like the wind is always howlin'?", 'a short line is shown whole');
   assert.equal(shortCue("So maybe now this prayer's the last one of its kind... won't you please come get your baby"), "…won't you please come get your baby");
+  assert.equal(shortCue('...and clean this dump until it shines like the top of the Chrysler Building! Get to work.'), '…Get to work.', 'a long line from its last sentence');
+  assert.equal(shortCue('You call this clean, Annie, you lazy little girl, after all this time? Annie? Annie?'), '…Annie? Annie?', 'a one-word last sentence takes the one before it');
   for (const b of [...parts, ...sh.sandy].filter(x => x.cue)) {
-    const c = shortCue(b.cue.text), w = c.replace('…', '').trim().split(/\s+/);
-    assert.ok(w.length <= CUE_WORDS + 1, b.id + ': ' + c);
-    assert.ok(b.cue.text.trim().endsWith(c.replace('…', '')), b.id + ' keeps the end of the line');
+    const c = shortCue(b.cue.text);
+    assert.ok(b.cue.text.trim().endsWith(c.replace(/^…/, '')), b.id + ' keeps the end of the line');
+    if (c.startsWith('…')) { const t = b.cue.text.trim(); assert.match(t.slice(0, t.length - c.length + 1), /[.!?…]\s+$/, b.id + ' starts at a sentence: ' + c); }
   }
   assert.equal(firstThen({ who: 'Annie' }), 'First Annie. Then you!');
-  assert.equal(firstThen({ who: 'Everybody' }, true), 'First everybody. Then you, all by yourself!');
+  assert.equal(firstThen({ who: 'Everybody' }), 'Sing along, then keep going!', 'the group\'s line is hers too');
+  assert.equal(firstThen({ who: 'Annie and the orphans' }), 'Sing along, then keep going!');
   assert.equal(firstThen({ who: 'Mr. Warbucks' }), 'First Mister Warbucks. Then you!', 'no full stop inside the name');
   assert.equal(firstThen(null), 'Now you!');
+  for (const w of ['Everybody', 'Annie and the orphans']) assert.notEqual(sh.voices[w], sh.voices.Annie, w + ' is not Annie\'s voice');
   const src = readFileSync(join(ROOT, 'games/princess-quest/stage.js'), 'utf8');
   const spoken = [...src.matchAll(/say\('((?:[^'\\]|\\.)*)'/g)].map(m => m[1]);
   assert.ok(!spoken.some(t => /\bcue\b/i.test(t)), 'Luna never says "cue": ' + spoken.filter(t => /\bcue\b/i.test(t)).join(' | '));
   for (const p of parts) assert.ok(!/\bcue\b/i.test(p.intro + ' ' + p.tip), p.id);
   for (const p of parts) assert.ok(p.intro.split(/\s+/).length <= 10, p.id + ' intro is short: ' + p.intro);
+  assert.match(src, /await say\(isSong \? 'Sing it after me\.' : 'Say it after me\.'\);/, 'a new part says what to do: repeat after Luna');
 });
 
 test('Run my lines shows no words (her lines under the curtain); the practice screens are a script', () => {

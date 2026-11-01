@@ -66,9 +66,9 @@ def from_json(name):
     for p in sh['kate'] + sh['lines'] + sh['songs']: lines += sentences(p['intro']) + sentences(p['tip'])
     for st in sh['sandy']: lines += sentences(st.get('narrate', '')) + sentences(st.get('do', ''))
     # before each of her turns Luna says who goes first, then her (shared/stage-plan.js firstThen): "First Annie. Then you!"
-    whos = sorted({b['cue']['who'] for b in sh['kate'] + sh['lines'] + sh['songs'] if b.get('cue')})
+    whos = sorted({b['cue']['who'] for b in sh['kate'] + sh['lines'] + sh['songs'] if b.get('cue')} - {'Everybody', 'Annie and the orphans'})
     lines += ['First ' + ('everybody' if w == 'Everybody' else re.sub(r'^Mr\. ', 'Mister ', w)) + '.' for w in whos]
-    lines += ['Then you!', 'Then you, all by yourself!', 'Now you!', 'Now you, all by yourself!']
+    lines += ['Then you!', 'Now you!', 'Sing along, then keep going!', 'Sing it after me.', 'Say it after me.']
     for b in J('books.json')['books']:
         lines.append(b['title'] + '.'); lines.append(b['question']['prompt'])
         for p in b['pages']: lines += sentences(p['text'])
