@@ -64,3 +64,19 @@ help" tap to thin out what she knows; a "rehearsing this week" setting.
   no microphone left open; longest dead air <= 3 s; sessions <= 4 min; the words switch still shows words only
   while she listens.
 - Reviews (correctness, child usability, red team) until clean; deploy only after the parent says so.
+
+## The script screen (11/1/2026)
+
+The parent reported that Annie's lines, the explanations of the cues, and her lines not being written out made it
+hard for Amelia to follow. Changed:
+
+- The practice screen reads like a little script. On top, the line before hers: the speaker's face, name and the
+  last words of their line (`shortCue`, at most seven words), lit while it plays. Under it, "🎤 You:" and her lines
+  written out, one row per phrase with its picture; the row being said lights up (Luna's model and her own turn).
+- Words are on by default (`stage.script`, Parent Corner "Show her lines written out", this device only). A
+  from-memory try hides the rows whose pictures it hides, words included (a question mark); Run my lines shows no
+  words, only the line before hers.
+- Luna never says "cue": before each turn she says who goes first, then her ("First Annie. Then you!", `firstThen`;
+  "...Then you, all by yourself!" when rows are hidden). Intros are a few words ("You sing this with Tessie.");
+  the scene explanations are gone (the line on screen shows who comes before her).
+- The old words strip (only while listening, off by default) is removed.

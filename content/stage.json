@@ -51,8 +51,8 @@
      "who": "Annie",
      "text": "So maybe now this prayer's the last one of its kind... won't you please come get your baby?"
     },
-    "intro": "This is your line as Kate! Everybody sings Maybe, then Annie sneaks away, and you say your line.",
-    "tip": "Sing Maybe dreamy. Then say your line like you just woke up and see Annie sneaking away. Surprised!",
+    "intro": "Your first Kate line!",
+    "tip": "Say it surprised! Annie is sneaking away.",
     "act": "😮",
     "chunks": [
      {
@@ -78,7 +78,7 @@
      "who": "Annie",
      "text": "Don't it feel like the wind is always howlin'?"
     },
-    "intro": "In Hard-Knock Life, you sing this line with Tessie.",
+    "intro": "You sing this with Tessie.",
     "tip": "Sing it sad and spooky, like the lights went out.",
     "act": "🌑",
     "chunks": [
@@ -101,7 +101,7 @@
      "who": "Annie",
      "text": "No one's there when your dreams at night get creepy!"
     },
-    "intro": "Then you sing this line with Molly.",
+    "intro": "You sing this with Molly.",
     "tip": "Stand up tall on grow, and squish down small on shrink!",
     "act": "🌱",
     "chunks": [
@@ -125,7 +125,7 @@
      "who": "Pepper",
      "text": "We have left half of a silver locket around her neck, and kept the other half..."
     },
-    "tip": "Say it in a silly teasing voice. The orphans have heard Annie's note a thousand times!",
+    "tip": "Say it in a silly teasing voice.",
     "act": "😜",
     "chunks": [
      {
@@ -137,7 +137,7 @@
       "pic": "👶"
      }
     ],
-    "intro": "All the orphans say this together."
+    "intro": "All the orphans say this."
    },
    {
     "id": "or-luck",
@@ -160,7 +160,7 @@
       "pic": "👋"
      }
     ],
-    "intro": "All the orphans say this together, but not Pepper.",
+    "intro": "All the orphans whisper this.",
     "voice": "soft"
    },
    {
@@ -179,7 +179,7 @@
       "pic": "🙄"
      }
     ],
-    "intro": "Annie and the orphans say this together."
+    "intro": "Everybody says this."
    },
    {
     "id": "or-morning",
@@ -197,7 +197,7 @@
       "pic": "☀️"
      }
     ],
-    "intro": "The orphans say this together."
+    "intro": "All the orphans say this."
    },
    {
     "id": "or-love",
@@ -215,7 +215,7 @@
       "pic": "💖"
      }
     ],
-    "intro": "After good morning, Miss Hannigan says, Well? Then the orphans say this one at a time. Wait for your turn!"
+    "intro": "Each orphan says this, one at a time."
    },
    {
     "id": "or-bundles",
@@ -233,7 +233,7 @@
       "pic": "🧺"
      }
     ],
-    "intro": "The orphans say this together."
+    "intro": "All the orphans say this."
    },
    {
     "id": "or-aint",
@@ -251,7 +251,7 @@
       "pic": "🤷"
      }
     ],
-    "intro": "The orphans say this together."
+    "intro": "All the orphans say this."
    },
    {
     "id": "or-cheer",
@@ -269,7 +269,7 @@
       "pic": "🎉"
      }
     ],
-    "intro": "The orphans say this together."
+    "intro": "All the orphans cheer!"
    },
    {
     "id": "or-hikids",
@@ -291,7 +291,7 @@
       "pic": "🤗"
      }
     ],
-    "intro": "The orphans say this together."
+    "intro": "All the orphans say this."
    },
    {
     "id": "or-hooray",
@@ -309,7 +309,7 @@
       "pic": "🎉"
      }
     ],
-    "intro": "The orphans say this together."
+    "intro": "All the orphans say this."
    }
   ],
   "songs": [
@@ -339,7 +339,7 @@
       "pic": "😇"
      }
     ],
-    "intro": "This is from Maybe. Annie and the orphans sing this together.",
+    "intro": "From the song Maybe.",
     "voice": "soft"
    },
    {
@@ -368,7 +368,7 @@
       "pic": "👶"
      }
     ],
-    "intro": "This is from Maybe. Annie and the orphans sing this together.",
+    "intro": "From the song Maybe.",
     "voice": "soft"
    },
    {
@@ -403,7 +403,7 @@
       "pic": "🪣"
      }
     ],
-    "intro": "This is from Hard-Knock Life. Annie and the orphans sing this together."
+    "intro": "From Hard-Knock Life."
    },
    {
     "id": "hkl-2",
@@ -427,7 +427,7 @@
       "pic": "🌾"
      }
     ],
-    "intro": "This is from Hard-Knock Life. Annie and the orphans sing this together."
+    "intro": "From Hard-Knock Life."
    },
    {
     "id": "hkl-3",
@@ -457,7 +457,7 @@
       "pic": "🪣"
      }
     ],
-    "intro": "This is from Hard-Knock Life. Annie and the orphans sing this together."
+    "intro": "From Hard-Knock Life."
    },
    {
     "id": "hkl-4",
@@ -481,7 +481,7 @@
       "pic": "🍽️"
      }
     ],
-    "intro": "This is from Hard-Knock Life. Everybody sings this part."
+    "intro": "From Hard-Knock Life."
    },
    {
     "id": "hkl-5",
@@ -509,7 +509,7 @@
       "pic": "🌧️"
      }
     ],
-    "intro": "This is from Hard-Knock Life. Everybody sings this part."
+    "intro": "From Hard-Knock Life."
    },
    {
     "id": "hkl-6",
@@ -533,7 +533,7 @@
       "pic": "🪣"
      }
     ],
-    "intro": "This is from Hard-Knock Life. Everybody sings this part."
+    "intro": "From Hard-Knock Life."
    },
    {
     "id": "hkl-7",
@@ -565,7 +565,7 @@
       "pic": "💖"
      }
     ],
-    "intro": "This is from Hard-Knock Life. The orphans sing this part."
+    "intro": "From Hard-Knock Life."
    },
    {
     "id": "hkl-8",
@@ -597,7 +597,7 @@
       "pic": "🪣"
      }
     ],
-    "intro": "This is from Hard-Knock Life. Everybody sings this part."
+    "intro": "From Hard-Knock Life."
    },
    {
     "id": "smile-1",
@@ -629,7 +629,7 @@
       "pic": "😁"
      }
     ],
-    "intro": "This is from the Smile song. All the orphans sing this together."
+    "intro": "From the Smile song."
    },
    {
     "id": "smile-2",
@@ -657,7 +657,7 @@
       "pic": "✨"
      }
     ],
-    "intro": "This is from the Smile song. All the orphans sing this together."
+    "intro": "From the Smile song."
    },
    {
     "id": "smile-3",
@@ -681,7 +681,7 @@
       "pic": "😊"
      }
     ],
-    "intro": "This is from the Smile song. All the orphans sing this together."
+    "intro": "From the Smile song."
    },
    {
     "id": "tomorrow-1",
@@ -713,7 +713,7 @@
       "pic": "🕸️"
      }
     ],
-    "intro": "This is from Tomorrow. Everybody sings this part."
+    "intro": "From Tomorrow."
    },
    {
     "id": "tomorrow-2",
@@ -745,7 +745,7 @@
       "pic": "🤞"
      }
     ],
-    "intro": "This is from Tomorrow. Everybody sings this part."
+    "intro": "From Tomorrow."
    },
    {
     "id": "tomorrow-3",
@@ -773,7 +773,7 @@
       "pic": "📅"
      }
     ],
-    "intro": "This is from Tomorrow. Sandy sings this with Annie!"
+    "intro": "From Tomorrow. You sing it with Annie, as Sandy!"
    },
    {
     "id": "tomorrow-4",
@@ -805,7 +805,7 @@
       "pic": "🌟"
      }
     ],
-    "intro": "This is from Tomorrow. Everybody sings this part."
+    "intro": "From Tomorrow."
    }
   ],
   "sandy": [

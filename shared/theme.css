@@ -565,22 +565,36 @@ main:has(> #cabinet .scene.stage) { max-width: 760px; }
   .overlay.pin-pad .pin-key { min-height: 52px; }
   .overlay.pin-pad .big-btn { grid-area: cancel; }
 }
-/* Star Stage words (a grown-up's switch in Parent Corner, off unless turned on): the words of the picture lit right
-   now, while she listens. A fixed height (set by the strip's own font size; a long chunk only shrinks the letters
-   inside), so nothing moves when they come and go; two lines at most. The strip only exists with the switch on,
-   so with it off the screen is exactly as before. */
-.scene.stage .stage-words { height: 2.6em; overflow: hidden; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 8px; font-family: var(--display); font-weight: 700; font-size: clamp(20px, 4.6vw, 30px); line-height: 1.25; color: var(--plum); }
-.scene.stage .stage-words .long { font-size: 0.85em; }
+/* Star Stage script: the line just before hers (who says it and its last words, lit while it plays), then her own
+   lines written out, one row per phrase: the picture, then the words. The row being said lights up. With the
+   grown-up's switch off (Parent Corner) the rows show only their pictures, side by side as before. */
+.scene.stage .their { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 18px; background: rgba(255,255,255,0.6); border: 3px dashed #D8CCEB; font-family: var(--read); font-size: clamp(16px, 4vw, 22px); line-height: 1.25; color: #6B5A8C; transition: background 0.25s, border-color 0.25s, box-shadow 0.25s; }
+.scene.stage .their .face { flex: none; font-size: clamp(30px, 7vw, 44px); line-height: 1; }
+.scene.stage .their b { color: var(--plum); }
+.scene.stage .their.on { background: #FFF6E5; border: 3px solid var(--gold); color: var(--ink); box-shadow: var(--glow-gold); }
+.scene.stage .cues.script { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; padding: 10px; }
+.scene.stage .cues.script .cue { min-width: 0; min-height: 0; justify-content: flex-start; gap: 12px; padding: 6px 12px; border-radius: 16px; font-size: clamp(30px, 7vw, 46px); text-align: left; }
+.scene.stage .cues.script .cue .pic { flex: none; }
+.scene.stage .cues.script .you-tag { font-family: var(--display); font-weight: 700; font-size: clamp(15px, 3.6vw, 20px); color: var(--plum); padding-left: 4px; }
+.scene.stage .cues.curtain .you-tag { visibility: hidden; }
+.scene.stage .cues.script .cue .w { font-family: var(--read); font-weight: 700; font-size: clamp(19px, 5vw, 30px); line-height: 1.25; color: var(--ink); }
+.scene.stage .cues.script .cue.now { transform: none; background: #FFF3C4; }
+.scene.stage .cues.script .cue.gone::after { justify-content: flex-start; padding-left: 18px; font-size: 30px; }
 @media (orientation: portrait) and (max-height: 720px) {
-  .scene.stage .stage-words { font-size: 18px; }
+  .scene.stage .cues.script .cue { font-size: 28px; padding: 4px 10px; }
+  .scene.stage .cues.script .cue .w { font-size: 18px; }
+  .scene.stage .their { font-size: 15px; padding: 6px 10px; }
+  .scene.stage .their .face { font-size: 28px; }
 }
-/* phones on their side: the words go in the right-hand column, under the turn panel and its status, where there
-   is room; the pictures keep the whole left column */
+/* phones on their side: the line before hers across the top, her lines in the left column, the turn panel right */
 @media (orientation: landscape) and (max-height: 600px) {
-  .scene.stage.practice:has(> .stage-words) { grid-template-areas: "head head" "dots dots" "cues mic" "cues status" "cues words"; }
-  .scene.stage.practice > .stage-words { grid-area: words; font-size: 15px; }
-  /* the acting cue (a big picture in the status line, no words then) needs the strip's room */
-  .scene.stage.practice:has(> .mic-status.act) > .stage-words { display: none; }
+  .scene.stage.practice:has(> .their) { grid-template-areas: "head head" "dots dots" "their their" "cues mic" "cues status"; }
+  .scene.stage.practice > .their { grid-area: their; font-size: 14px; padding: 4px 10px; }
+  .scene.stage.practice > .their .face { font-size: 24px; }
+  .scene.stage .cues.script { gap: 4px; padding: 6px; }
+  .scene.stage .cues.script .cue { font-size: 24px; padding: 2px 8px; gap: 8px; }
+  .scene.stage .cues.script .cue .w { font-size: 16px; }
+  .scene.stage .cues.script .you-tag { font-size: 13px; }
 }
 /* Star Stage show mode: the gap between this week and the show's circle in the day strip; Sandy's acting turn
    shows the thumbs-up like a turn without the microphone */

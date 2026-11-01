@@ -311,7 +311,7 @@ function stageSection() {
     // a grown-up tried it out first: start Star Stage over for her (the song and its times stay)
     el('div', { class: 'row', style: 'justify-content:flex-start; margin-top:12px' }, [
       el('button', { type: 'button', class: 'danger', text: 'Reset Star Stage practice', onclick: resetStage }),
-      el('span', { class: 'muted', text: 'Clears practice days, counts and recordings, as if she never started. The loaded song and the words switch stay.' })
+      el('span', { class: 'muted', text: 'Clears practice days, counts and recordings, as if she never started. The loaded song and the written-lines switch stay.' })
     ]),
     el('p', { class: 'muted', text: 'The microphone only checks that she spoke and how loud (the star), never the words. Hear the orphans plays the recording loaded below, which stays on this device; everything works offline. Recordings stay on this device and play here exactly as loud as she was.' })
   ]);
@@ -319,18 +319,16 @@ function stageSection() {
 
 async function resetStage() {
   if (!confirm('Reset Star Stage? This clears every practice day, count and recording on this device, so the plan starts again from the beginning. The loaded song stays. (Combining progress from another device later would bring that device\'s Star Stage practice back.)')) return;
-  const { songCut, words } = economy.save.stage;
-  economy.save.stage = { ...stageDefaults(), songCut, words };
+  const { songCut, script } = economy.save.stage;
+  economy.save.stage = { ...stageDefaults(), songCut, script };
   economy.persist();
   for (const id of store.ids('stage')) if (id !== 'song-audio') await store.remove('stage', id);
   render();
 }
 
 // Her words, for the grown-up who helps: each part with the same pictures she sees and, in grey, its cue (the line
-// just before hers, and who says it), so you can run lines with her anywhere. And the switch that shows the words
-// under the pictures in Star Stage. Off unless turned on, and only on this device: the words show only while she
-// listens to Luna or the orphans, never on her own turns or in Run my lines (shared/stage-plan.js showsWords).
-// Turning it off puts the practice screen back exactly as it was.
+// just before hers, and who says it), so you can run lines with her anywhere. And the switch for her lines written
+// out on the practice screens: on unless turned off, this device only. Off, each row shows only its picture.
 function wordsBlock() {
   const st = economy.save.stage;
   const sh = STAGE && STAGE.show;
@@ -350,13 +348,13 @@ function wordsBlock() {
       el('div', { text: (x.pic || '🎵') + '  ' + (x.do || x.narrate || '') })
     ]))])
   ];
-  const box = el('input', { type: 'checkbox', id: 'stage-words', onchange: e => { st.words = e.target.checked; economy.persist(); } });
-  box.checked = st.words === true;
+  const box = el('input', { type: 'checkbox', id: 'stage-words', onchange: e => { st.script = e.target.checked; economy.persist(); } });
+  box.checked = st.script !== false;
   return el('div', { style: 'margin-top:12px' }, [
     el('h3', { text: 'Her words' }),
     ...lines,
-    el('label', { class: 'toggle', style: 'margin-top:8px', for: 'stage-words' }, [box, el('span', { style: 'flex:1', text: 'Show the words under the pictures while Luna says them (this device)' })]),
-    el('p', { class: 'muted', text: 'Off unless you turn it on. The words never show on her own turns or in Run my lines, so she still says it from memory. If they distract her, turn this off: the screen goes back to exactly how it was. With a paper card, read it together after practice, not right before, and keep it away during Run my lines. Ask the director who sings the last Tomorrow (the script does not say), and what the orphans shout when they cheer.' })
+    el('label', { class: 'toggle', style: 'margin-top:8px', for: 'stage-words' }, [box, el('span', { style: 'flex:1', text: 'Show her lines written out, under the line before hers (this device)' })]),
+    el('p', { class: 'muted', text: 'On unless you turn it off. The practice screen reads like a little script: who speaks just before her and their last words, then her lines, one row per phrase with its picture; the row being said lights up. On a from-memory try the rows whose pictures are hidden hide their words too, and Run my lines shows none, so she still practises saying it without reading. Ask the director who sings the last Tomorrow (the script does not say), and what the orphans shout when they cheer.' })
   ]);
 }
 
