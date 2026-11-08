@@ -96,7 +96,7 @@ export function migrate(raw) {
   if (!['device', 'luna'].includes(out.settings.voice)) out.settings.voice = 'device';
   const f = out.settings.focus;
   if (!isObj(f) || typeof f.until !== 'string' || (f.sound !== null && f.sound !== undefined && typeof f.sound !== 'string')) out.settings.focus = null;
-  else out.settings.focus = { sound: f.sound || null, words: Array.isArray(f.words) ? f.words.filter(w => typeof w === 'string') : [], until: f.until };
+  else out.settings.focus = { sound: f.sound || null, words: Array.isArray(f.words) ? f.words.filter(w => typeof w === 'string') : [], skill: typeof f.skill === 'string' ? f.skill : null, until: f.until };
   out.schemaVersion = SCHEMA_VERSION;
   return out;
 }

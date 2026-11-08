@@ -64,7 +64,7 @@ function idleNudge(stage, audio) {
 // onecourse's demo-first design). A 👆 button then stays beside Luna: it points at the answer, and an
 // item answered after pointing counts as "not known yet". Families opt in by marking the answer with
 // data-answer (and data-order on tiles, data-done on a Done button); the marker is never shown.
-const DEMO_FAMILIES = new Set(['gpc', 'spell', 'read', 'swap', 'scroll', 'seeds', 'blend', 'count', 'cavecount', 'oralswap', 'takeaway', 'rhyme', 'beats',
+const DEMO_FAMILIES = new Set(['gpc', 'spell', 'read', 'swap', 'scroll', 'seeds', 'blend', 'count', 'cavecount', 'tens', 'oralswap', 'takeaway', 'rhyme', 'beats',
   'onsetrime', 'heartap', 'spellheart', 'note', 'frames', 'trail', 'road', 'bridge', 'teen', 'stories', 'measure', 'patterns', 'shapes']);
 function answerTarget(root) {
   if (root.querySelector('.tile.picked')) return root.querySelector('.slot:not(.filled)');

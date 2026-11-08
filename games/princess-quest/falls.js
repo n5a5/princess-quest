@@ -435,10 +435,11 @@ function buildRound(kind) {
   };
   if (FAMILIES[kind]) { for (let i = 0; i < 6; i++) take(FAMILIES[kind]); return items; }
   // Today's rainbow: the planner's target twice, measuring and sorting always, one pattern, shapes only as a treat.
-  const target = ctx.adaptive.targetFor('falls');
+  const fs = (ctx.adaptive.focus() || {}).skill;
+  const target = fs && Object.values(FAMILIES).some(f => f.subskill === fs) ? fs : ctx.adaptive.targetFor('falls');
   const tf = Object.values(FAMILIES).find(f => f.subskill === target) || measure;
   const others = [measure, dataSort, patterns].filter(f => f !== tf);
-  take(tf); take(others[0]); take(others[1]); take(tf); take(others[0]); take(Math.random() < 0.5 ? shapes : others[1]);
+  take(tf); take(others[0]); take(others[1]); take(tf); take(others[0]); take(fs ? tf : Math.random() < 0.5 ? shapes : others[1]);
   return items;
 }
 

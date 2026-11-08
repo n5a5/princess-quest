@@ -8,7 +8,7 @@ kokoro-onnx venv; see docs). New tracked files must be `git add`ed before regene
 
 - **Deploy:** push `main` to GitHub. GitHub Pages serves the repo root at
   https://n5a5.github.io/princess-quest/ within about a minute. Before pushing, bump `VERSION` in
-  `sw.js` and regenerate its `ASSETS` list (`node <scratchpad>/regen_sw.js arcade-vX.Y.Z`, which reads the
+  `sw.js` and regenerate its `ASSETS` list (`node tools/regen-sw.js arcade-vX.Y.Z`, which reads the
   SKIP rule from `tests/precache.test.js`); the precache test fails until the list matches `git ls-files`.
 - **Check what is live:** `curl -s https://n5a5.github.io/princess-quest/sw.js | grep VERSION`.
   Devices pick the new version up on their next reload (a first install can fail while Pages is still

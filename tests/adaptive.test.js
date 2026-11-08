@@ -11,8 +11,8 @@ function setup() {
   return { clock, economy, adaptive: createAdaptive({ economy }) };
 }
 
-test('subskill table: 20 entries, every cabinet is a place, ids unique', () => {
-  assert.equal(SUBSKILLS.length, 20);
+test('subskill table: 21 entries, every cabinet is a place, ids unique', () => {
+  assert.equal(SUBSKILLS.length, 21);
   const places = new Set(['meadow', 'woods', 'well', 'caverns', 'falls', 'castle']);
   const ids = new Set();
   SUBSKILLS.forEach(s => { assert.ok(places.has(s.cabinet), s.id); assert.ok(s.stages.length >= 2); assert.ok(!ids.has(s.id)); ids.add(s.id); assert.ok([1, 2, 3].includes(s.tier)); });
@@ -95,7 +95,7 @@ test('accuracy and trend from the log', () => {
 test('a saved stage beyond a shrunken stage list is clamped, never crashes', () => {
   const { adaptive, economy } = setup();
   economy.save.subskills['count-sequence'] = { stage: 9, p: 0.5, firstTryDays: {}, lastPracticed: null, promotions: 0, gpc: {} };
-  assert.equal(adaptive.stage('count-sequence'), 'backward');
+  assert.equal(adaptive.stage('count-sequence'), 'decades', 'the last stage');
 });
 
 test('quest trail has one reading stop and one math stop, chosen by weakness', () => {

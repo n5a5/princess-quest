@@ -1,7 +1,8 @@
 // sw.js — cache-first with a versioned precache. Bump VERSION on every release.
-const VERSION = 'arcade-v4.4.0';
+const VERSION = 'arcade-v4.5.0';
 const ASSETS = [
   '',
+  'CLAUDE.md',
   'assets/audio/lines/0002394db9cd.ogg',
   'assets/audio/lines/00259d3cadd5.ogg',
   'assets/audio/lines/00c001f77ef6.ogg',
@@ -1392,6 +1393,7 @@ const ASSETS = [
   'icon-512.png',
   'index.html',
   'manifest.json',
+  'parent/home-card-tens.html',
   'parent/index.html',
   'parent/parent.css',
   'parent/parent.js',

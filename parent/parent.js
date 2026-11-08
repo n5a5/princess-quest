@@ -35,7 +35,7 @@ const BASELINE = [
   ['Phonics / word analysis', 'Emerging K', '70', 'weak, both agree', ['phonics-gpc', 'phonics-encode', 'phonics-decode', 'decodable-reading']],
   ['High-frequency words', 'Emerging K', '—', 'weak', ['sight-words']],
   ['Phonological awareness', 'Early/Mid K', '69', 'weak', ['pa-sounds', 'pa-blend-segment', 'pa-manipulate', 'pa-rhyme']],
-  ['Number sense', 'Early K', '59', 'weak', ['subitize-tenframe', 'number-relations', 'teen-compare']],
+  ['Number sense', 'Early K', '59', 'weak', ['subitize-tenframe', 'number-relations', 'teen-compare', 'tens-ones']],
   ['Number operations', 'Early K', '57', 'weak', ['add-sub', 'decompose-stories']],
   ['Measurement & data', 'Emerging K', '66', 'weak, both agree', ['measure', 'data-sort']],
   ['Algebraic thinking / patterns', 'Mid K', '50', 'weak on Star only', ['patterns', 'decompose-stories']],
@@ -131,6 +131,7 @@ const TONIGHT = {
   'teen-compare': 'Make 14 with a group of ten crayons and 4 more. Which is more, 14 or 17?',
   'add-sub': 'Toy stories: 3 cars are in the garage and 2 drive in. How many now? Act it out.',
   'decompose-stories': 'Hide some of 7 coins under a cup. She works out how many are hiding.',
+  'tens-ones': 'Beans into cups of ten. Count the cups by tens, then the loose beans. Add one more cup: how many now, without recounting?',
   'count-sequence': 'Count the stairs going up, then count back down. Start counting from 13 sometimes.',
   'measure': 'Which is longer, a spoon or a fork? Line them up to check. Which is heavier, a shoe or a sock?',
   'data-sort': 'Sort the socks by color, count each pile, and ask which pile has the most.',
@@ -278,14 +279,17 @@ function focusSection() {
     const parts = [];
     if (active.sound) parts.push('the sound ' + soundName(active.sound));
     if (active.words.length) parts.push(active.words.length + ' wish words: ' + active.words.join(', '));
+    if (active.skill) { const d = SUBSKILLS.find(x => x.id === active.skill); parts.push('the math skill ' + (d ? d.name : active.skill)); }
     section.append(
       el('p', {}, [el('strong', { text: 'Focusing on ' + parts.join(' and ') + ' until ' + active.until + '.' })]),
-      el('p', { class: 'muted', text: 'Letter Sounds and Whisper Woods draw this sound in almost half their items, Word Spell, Letter Stones and Sound Swap prefer its words, and the focus wish words are introduced and practised first. The planner also sends the trail to those skills more often.' }),
-      el('button', { type: 'button', text: 'Stop the focus', onclick: () => { adaptive.clearFocus(); render(); } })
+      el('p', { class: 'muted', text: 'Letter Sounds and Whisper Woods draw this sound in almost half their items, Word Spell, Letter Stones and Sound Swap prefer its words, and the focus wish words are introduced and practised first. The planner also sends the trail to those skills more often. A math skill fills half of Today\'s crystals or Today\'s rainbow.' }),
+      el('button', { type: 'button', text: 'Stop the focus', onclick: () => { adaptive.clearFocus(); render(); } }),
+      el('p', {}, [el('a', { href: 'home-card-tens.html', target: '_blank', text: 'Print the home card: tens and ten more (one page)' })])
     );
     return section;
   }
   const sel = el('select', {}, [el('option', { value: '', text: 'no sound' }), ...SOUNDS.map(x => el('option', { value: x.id, text: x.label + ' as in ' + x.word }))]);
+  const skillSel = el('select', {}, [el('option', { value: '', text: 'no math skill' }), ...SUBSKILLS.filter(d => ['caverns', 'falls'].includes(d.cabinet)).map(d => el('option', { value: d.id, text: d.name }))]);
   const chips = el('div', { class: 'row', style: 'justify-content:flex-start;flex-wrap:wrap;gap:6px' });
   const picked = new Set();
   const allWords = SW ? [...SW.lists.prePrimer, ...SW.lists.primer] : [];
@@ -302,10 +306,11 @@ function focusSection() {
   sel.addEventListener('change', refreshChips);
   refreshChips();
   section.append(
-    el('p', { class: 'muted', text: 'Pick a sound she is finding hard, and any wish words to bring forward. For seven days the app leans on them: that letter stone and its words come up far more often, the Woods listen for that sound, and those wish words are introduced and practised first. Picking a sound pre-selects the wish words spelled with it; tap words to add or remove them.' }),
-    el('div', { class: 'row', style: 'justify-content:flex-start' }, [el('label', { text: 'Sound ' }), sel]),
+    el('p', { class: 'muted', text: 'Pick a sound she is finding hard, and any wish words to bring forward. For seven days the app leans on them: that letter stone and its words come up far more often, the Woods listen for that sound, and those wish words are introduced and practised first. Picking a sound pre-selects the wish words spelled with it; tap words to add or remove them. A math skill fills half of the daily math round.' }),
+    el('div', { class: 'row', style: 'justify-content:flex-start;flex-wrap:wrap' }, [el('label', { text: 'Sound ' }), sel, el('label', { text: ' Math skill ' }), skillSel]),
     chips,
-    el('div', { class: 'row', style: 'justify-content:flex-start' }, [el('button', { type: 'button', text: 'Start a 7-day focus', onclick: () => { adaptive.setFocus({ sound: sel.value || null, words: [...picked] }); render(); } })])
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [el('button', { type: 'button', text: 'Start a 7-day focus', onclick: () => { adaptive.setFocus({ sound: sel.value || null, words: [...picked], skill: skillSel.value || null }); render(); } })]),
+    el('p', {}, [el('a', { href: 'home-card-tens.html', target: '_blank', text: 'Print the home card: tens and ten more (one page)' })])
   );
   return section;
 }
@@ -330,8 +335,8 @@ function weekSection() {
     el('div', { class: 'kpis' }, [kpi('Days played', days), kpi('Minutes (est.)', minutes), kpi('First try, this week', rate(week)), kpi('First try, week before', rate(prev))]),
     el('p', {}, [el('strong', { text: 'Moved up a level: ' }), moved.length ? moved.join(', ') : 'nothing yet this week (levels move after two good days)']),
     bySkill.length ? el('table', {}, [
-      el('thead', {}, [el('tr', {}, ['Practised', 'Items', 'First try'].map(h => el('th', { text: h })))]),
-      el('tbody', {}, bySkill.map(x => el('tr', {}, [el('td', { text: x.d.name + (x.movedUp ? ' ⬆' : '') }), el('td', { text: String(x.n) }), el('td', { text: x.rate })])))
+      el('thead', {}, [el('tr', {}, ['Practised', 'Now at', 'Items', 'First try'].map(h => el('th', { text: h })))]),
+      el('tbody', {}, bySkill.map(x => el('tr', {}, [el('td', { text: x.d.name + (x.movedUp ? ' ⬆' : '') }), el('td', { text: adaptive.stage(x.d.id) }), el('td', { text: String(x.n) }), el('td', { text: x.rate })])))
     ]) : el('p', { class: 'muted', text: 'No practice yet this week.' }),
     el('p', {}, [el('strong', { text: 'Next: ' }), nextFocus()]),
     el('p', { class: 'muted', text: 'App practice data only. First try = answered right without a hint. Minutes are estimated at about 30 seconds per item.' })

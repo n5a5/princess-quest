@@ -35,7 +35,10 @@ export const SUBSKILLS = [
   { id: 'teen-compare',      strand: 'MA.K.NSO.2.2', cabinet: 'caverns', tier: 1, name: 'Teens and compare',     stages: ['teens', 'compare', 'numberline'] },
   { id: 'add-sub',           strand: 'MA.K.NSO.3.1', cabinet: 'caverns', tier: 1, name: 'Add and take away',     stages: ['within5', 'within10', 'related'] },
   { id: 'decompose-stories', strand: 'MA.K.AR.1.2', cabinet: 'caverns', tier: 1, name: 'Number stories',        stages: ['bonds', 'decompose', 'problems', 'truefalse', 'match'] },
-  { id: 'count-sequence',    strand: 'MA.K.NSO.2.1', cabinet: 'caverns', tier: 2, name: 'Counting on',           stages: ['ones', 'tens', 'backward'] },
+  { id: 'count-sequence',    strand: 'MA.K.NSO.2.1', cabinet: 'caverns', tier: 2, name: 'Counting on',           stages: ['ones', 'tens', 'backward', 'decades'] },
+  // Tens as things: bundles of ten, "ten more" read off the picture, the road to 100. The idea under
+  // place value and under first grade's "ten more in your head".
+  { id: 'tens-ones',         strand: 'MA.K.NSO.1.4', cabinet: 'caverns', tier: 1, name: 'Tens and ones',         stages: ['bundles', 'tenmore', 'road100'] },
   // ---- math: measurement, data, patterns, shapes (Rainbow Falls) ----
   { id: 'measure',           strand: 'MA.K.M.1.2',  cabinet: 'falls',   tier: 1, name: 'Measuring',             stages: ['attribute', 'compare', 'order', 'units'] },
   { id: 'data-sort',         strand: 'MA.K.DP.1.1', cabinet: 'falls',   tier: 1, name: 'Sorting and data',      stages: ['two', 'three', 'chart'] },
@@ -188,13 +191,14 @@ export function createAdaptive({ economy }) {
     focus() {
       const f = save().settings.focus;
       if (!f || !f.until || f.until < economy.today()) return null;
-      if (!f.sound && !(f.words || []).length) return null;
-      return { sound: f.sound || null, words: f.words || [], until: f.until };
+      if (!f.sound && !(f.words || []).length && !f.skill) return null;
+      return { sound: f.sound || null, words: f.words || [], skill: f.skill || null, until: f.until };
     },
-    setFocus({ sound = null, words = [] } = {}) {
+    // skill: a subskill id (a math skill from Parent Corner); half of that place's daily round goes to it.
+    setFocus({ sound = null, words = [], skill = null } = {}) {
       const [y, m, d] = economy.today().split('-').map(Number);
       const until = localDay(new Date(y, m - 1, d + FOCUS_DAYS));
-      save().settings.focus = sound || words.length ? { sound, words, until } : null;
+      save().settings.focus = sound || words.length || skill ? { sound, words, skill, until } : null;
       economy.persist();
       return save().settings.focus;
     },
@@ -224,7 +228,7 @@ export function createAdaptive({ economy }) {
       const targeted = recent.length === 2 && recent.every(stops => stops.some(st => st.subskill === id));
       const variety = targeted ? 0.5 : 1;
       const f = api.focus();
-      const focused = f && ((f.sound && (id === 'phonics-gpc' || id === 'pa-sounds')) || (f.words.length && id === 'sight-words'));
+      const focused = f && ((f.sound && (id === 'phonics-gpc' || id === 'pa-sounds')) || (f.words.length && id === 'sight-words') || f.skill === id);
       return TIER_WEIGHT[d.tier] * (1 - e.p) * recency * variety * (focused ? FOCUS_BOOST : 1);
     },
     // Best stop inside a set of cabinets: the place hosting the highest-scoring skill, avoiding a

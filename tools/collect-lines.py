@@ -141,6 +141,8 @@ PIECES = [
     'There were', 'gems long.', 'without', 'has the most.', 'has the fewest.', 'We can measure', 'how long it is.',
     'how heavy it is.', 'how much it holds.', 'is longer.', 'is heavier.', 'is taller.', 'has more.', 'holds more.',
     'They are the same length.', 'They weigh the same.', 'They are the same height.', 'They have the same.', 'They hold the same.',
+    # Gem Bundles reveals: "30 and 7 is 37", "27 and ten more is 37", "3 bundles of ten is 30"
+    'and ten more is', 'bundles of ten is',
 ]
 SQUISHY_TOWER_NAMES = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble']  # shared/characters.js SQUISHY_KINDS
 SLOT_WORDS = ['pink Squishy', 'green Squishy', 'yellow Squishy', 'tulip', 'blossom', 'daisy', 'caterpillar', 'bee', 'butterfly', 'apple',
@@ -165,6 +167,7 @@ def _check(p):
     if p.startswith('Which basket has the '): return 'Which basket has the '
     if p.startswith('They '): return p[5:-1]  # 'They ' + sameWord + '.', sameWord literal in falls.js
     if p in ('has the most.', 'has the fewest.'): return ' has the '
+    if p == 'and ten more is': return ' more is '
     p = p.replace('Now take away the first sound,', 'Now take away the ').replace('Now take away the last sound,', 'Now take away the ')
     p = p.replace('and one more is', ' and one ').replace('and one less is', ' and one ')
     return p
@@ -173,7 +176,7 @@ TEMPLATE_CHECKS = sorted({_check(p) for p in PIECES if len(p) > 3})
 
 def from_templates(name):
     L = [(p, True) for p in PIECES] + [(w, True) for w in SLOT_WORDS] + [(name + '!', True), (name + '.', True), (name, True)]
-    L += [(str(n), True) for n in list(range(0, 21)) + [30, 40, 50, 60, 70, 80, 90, 100]]
+    L += [(str(n), True) for n in range(0, 101)]  # every number to 100: Gem Bundles count by tens and on by ones
     return L
 
 

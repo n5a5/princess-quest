@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tens and ten more: two minutes a day</title>
+<style>
+  @page { size: letter; margin: 0.6in; }
+  :root { --ink: #33254F; --plum: #7C5CC4; --gold: #C9971F; --tint: #FFF4D6; --lav: #EFEAFB; }
+  * { box-sizing: border-box; }
+  body { font: 15px/1.4 Georgia, "Times New Roman", serif; color: var(--ink); margin: 0; padding: 20px; background: #fff; max-width: 760px; margin-inline: auto; }
+  h1 { font-size: 26px; margin: 0 0 4px; color: var(--plum); }
+  .sub { margin: 0 0 14px; color: #5b4a7a; }
+  h2 { font-size: 17px; margin: 14px 0 6px; color: var(--plum); border-bottom: 2px solid var(--lav); padding-bottom: 2px; }
+  .idea { background: var(--tint); border-left: 5px solid var(--gold); padding: 8px 12px; border-radius: 6px; margin: 0 0 10px; }
+  ol, ul { margin: 0; padding-left: 20px; }
+  li { margin: 0 0 6px; }
+  li b { color: var(--plum); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; }
+  .chart { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; max-width: 320px; margin: 6px 0; font-size: 11px; text-align: center; }
+  .chart span { border: 1px solid #d9d0ee; border-radius: 3px; padding: 2px 0; }
+  .chart .on { background: var(--tint); font-weight: 700; border-color: var(--gold); }
+  .chart .nx { background: var(--lav); font-weight: 700; border-color: var(--plum); }
+  .small { font-size: 12.5px; color: #5b4a7a; }
+  .print { position: fixed; right: 16px; top: 12px; font: 14px system-ui, sans-serif; padding: 8px 14px; border-radius: 10px; border: 2px solid var(--plum); background: #fff; color: var(--plum); }
+  @media print { .print { display: none; } body { padding: 0; } }
+  @media (max-width: 560px) { .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<button class="print" type="button" onclick="window.print()">Print</button>
+<h1>Tens and ten more</h1>
+<p class="sub">Two minutes a day, no screen. Pick one. Stop while it is still fun.</p>
+
+<p class="idea"><b>The one idea:</b> a ten is a thing you can hold. 27 is two tens and seven. Ten more is just one more ten. Every game below makes the ten visible before it becomes a word.</p>
+
+<div class="two">
+<div>
+<h2>Games</h2>
+<ol>
+  <li><b>Cups of ten.</b> Beans or pasta into cups, ten in each. Touch each cup: "ten, twenty, thirty." Then the loose ones: "thirty-one, thirty-two." Then add one more cup and ask for the new total <i>without</i> recounting.</li>
+  <li><b>Dimes and pennies.</b> Same game, more fun. "You have 27 cents. Here is a dime. Now?"</li>
+  <li><b>The fridge chart.</b> Point to any number. Ten more is the number straight below it. Three a day.</li>
+  <li><b>Decade walks.</b> Count up the stairs by ones and stop at 29, 39, 49: "What comes next?"</li>
+  <li><b>Make ten.</b> Hold up some fingers. She shows how many more make ten.</li>
+  <li><b>Backwards from 20</b> while brushing teeth.</li>
+</ol>
+<h2>Mirror numbers</h2>
+<p>Normal until about seven. Put a small green dot where the numeral starts and have her trace from the dot. Praise the start, not the shape.</p>
+</div>
+<div>
+<h2>Ten more is one row down</h2>
+<div class="chart" id="chart"></div>
+<p class="small">27 is lit. Ten more, 37, is straight below it. Ask: "Where does 47 live?"</p>
+<h2>By the end of kindergarten</h2>
+<ul class="small">
+  <li>Counts to 100 by ones and by tens; counts on from any number.</li>
+  <li>Counts up to 20 things and knows the last number is how many.</li>
+  <li>Reads and writes 0 to 20. Compares two groups: more, fewer, same.</li>
+  <li>Adds and takes away within 10 with objects; knows the pairs within 5.</li>
+  <li>For any number 1 to 9, knows what makes 10. Sees 11 to 19 as a ten and some ones.</li>
+  <li>Compares length, weight and capacity; sorts and counts groups; names basic shapes.</li>
+</ul>
+<p class="small">"Ten more in your head" is a first-grade skill. Counting on her fingers at six is fine; these games grow the picture she will use instead.</p>
+</div>
+</div>
+<script>
+  const c = document.getElementById('chart');
+  for (let n = 1; n <= 100; n++) { const s = document.createElement('span'); s.textContent = n; if (n === 27) s.className = 'on'; if (n === 37) s.className = 'nx'; c.appendChild(s); }
+</script>
+</body>
+</html>

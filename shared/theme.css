@@ -364,3 +364,18 @@ button:focus-visible, .choice:focus-visible, .tile:focus-visible, .place:focus-v
 .mouth-small svg { width: 44px; height: 44px; }
 .chip-toggle { border: 2px solid var(--lilac, #C7B4F0); background: #fff; border-radius: 999px; padding: 4px 12px; font-size: 16px; }
 .chip-toggle.on { background: var(--lilac, #C7B4F0); font-weight: 700; }
+
+/* Gem Bundles: bundles of ten, loose gems, the Cave Wall (a 100 chart as a picture) */
+.bundles { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+.bundle { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; padding: 6px; border-radius: 12px; background: rgba(255,255,255,0.75); border: 3px solid #C2B3EA; font-size: 15px; line-height: 1; transition: transform 0.15s; }
+.bundle span { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+.bundle.now { border-color: var(--gold); box-shadow: var(--glow-gold); transform: scale(1.08); }
+.loose-gems { display: flex; flex-wrap: wrap; gap: 4px; font-size: 26px; max-width: 170px; }
+.loose { display: inline-block; transition: transform 0.15s; }
+.loose.now { transform: scale(1.35); filter: drop-shadow(0 0 6px var(--gold)); }
+.arrive { animation: arrive 0.5s ease-out; }
+@keyframes arrive { from { transform: translateX(-40px) scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.cave-wall { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; max-width: 360px; margin: 0 auto 8px; padding: 6px; background: rgba(255,255,255,0.6); border: 2px solid #C2B3EA; border-radius: 12px; }
+.cave-wall span { font-size: 12px; text-align: center; padding: 3px 0; border-radius: 4px; color: var(--ink); background: rgba(255,255,255,0.7); font-variant-numeric: tabular-nums; }
+.cave-wall span.on { background: var(--tint-gold); font-weight: 700; outline: 2px solid var(--gold); }
+.cave-wall span.now { background: var(--lavender); font-weight: 700; outline: 2px solid var(--violet); }
