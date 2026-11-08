@@ -201,7 +201,7 @@ def clock_phrases():
 
 
 def from_templates(name):
-    L = [(p, True) for p in PIECES] + [(w, True) for w in SLOT_WORDS] + [(name + '!', True), (name + '.', True), (name, True)]
+    L = [(p, True) for p in PIECES] + [(w, True) for w in SLOT_WORDS] + [(name + '!', True), (name + '.', True), (name, True), ('Hello, ' + name + '!', True)]  # the map's greeting
     L += [(p, True) for p in clock_phrases()]
     L += [(str(n), True) for n in range(0, 101)]  # every number to 100: Gem Bundles count by tens and on by ones
     return L
