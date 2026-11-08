@@ -247,7 +247,7 @@ async function startRound(kind) {
     items: buildRound(kind, { stage: ctx.adaptive.stage(SKILL), choices: ctx.adaptive.choiceCount(SKILL, 3), days: routinesNow() }) });
   if (!result || cancelled) return;
   ctx.refreshBar && ctx.refreshBar();
-  celebrateRound(ctx, result, () => { ctx.nav && ctx.nav.pop(); showMenu(); });
+  celebrateRound(ctx, result, () => { ctx.nav && ctx.nav.pop(); if (!(ctx.afterRound && ctx.afterRound())) showMenu(); });
 }
 
 function showMenu() {

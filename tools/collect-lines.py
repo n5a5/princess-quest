@@ -150,6 +150,8 @@ PIECES = [
     'They are the same length.', 'They weigh the same.', 'They are the same height.', 'They have the same.', 'They hold the same.',
     # Gem Bundles reveals: "30 and 7 is 37", "27 and ten more is 37", "3 bundles of ten is 30"
     'and ten more is', 'bundles of ten is',
+    # the map: "Hello, Amelia! Luna is waiting at" + "Crystal Caverns." + "Tap Go!"
+    'Luna is waiting at', 'Tap Go!', 'Open it!',
     # Tick-Tock Lagoon (lagoon.js): the time goes in the slot ("Which clock says" + "three thirty?")
     'Which clock says', 'Make the clock say', 'Your clock says', 'This clock says', 'That says',
     'Now move the short hand to the', 'Now move the short hand past the', 'The short hand points to the', 'The short hand has passed the', 'We want',
@@ -165,6 +167,8 @@ SLOT_WORDS = ['pink Squishy', 'green Squishy', 'yellow Squishy', 'tulip', 'bloss
               'wand', 'ribbon', 'vine', 'scarf', 'ladder', 'A', 'An', 'rock', 'feather', 'pumpkin', 'leaf', 'book', 'balloon', 'apple',
               'spoon', 'cup', 'bottle', 'jug', 'bucket', 'bathtub', 'pink jar', 'green jar', 'The']
 SLOT_WORDS += [n + "'s tower" for n in SQUISHY_TOWER_NAMES]
+PLACES = ['Unicorn Meadow', 'Whisper Woods', 'Wishing Well', 'Crystal Caverns', 'Rainbow Falls', 'Tick-Tock Lagoon', 'Story Castle', 'Star Stage', 'Squishy Garden', 'the meadow']  # games/registry.js
+SLOT_WORDS += PLACES + [n + '.' for n in PLACES]
 # The code builds some pieces from parts ('gems' comes from gems(n), names from a list), so each check is
 # the part of the piece that is literally in the code.
 def _check(p):

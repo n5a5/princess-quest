@@ -8,7 +8,7 @@ import { createSpeech } from './shared/speech.js';
 import { createAudioStore } from './shared/audiostore.js';
 import { createAudio, createWebAudioPlayer } from './shared/audio.js';
 import { createSfx } from './shared/sfx.js';
-import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick } from './shared/ui.js';
+import { el, bigButton, sheet, toast, confetti, breathingBubble } from './shared/ui.js';
 import { lunaSVG, gemSVG, chestSVG, placeArtSVG, svgFrom, starFieldEl } from './shared/characters.js';
 import { flyGems } from './shared/encounter.js';
 import { daysUntil, countdownHint, countdownSay } from './shared/stage-plan.js';
@@ -72,61 +72,65 @@ function updateBar() {
   $('mute-btn').textContent = speech.muted ? '🔇' : '🔊';
 }
 
+// Where Luna is waiting today, as one line she can read along with, and the one action it asks for.
+function homeState() {
+  const quest = adaptive.todayQuest(readyIds());
+  const next = adaptive.nextStop();
+  const req = next && REGISTRY.find(r => r.id === next.cabinet);
+  // The audition week: until Star Stage has been practiced today, Luna waits there, and the quest comes after.
+  const today = economy.today();
+  const spotFirst = available().find(r => r.ready && spotlightHint(r) && r.place === 'stage' && !Object.keys((economy.save.stage.days || {})[today] || {}).length) || null;
+  const questDone = adaptive.questDone();
+  const dest = spotFirst || (!quest.claimed && !questDone ? req : null);
+  const line = spotFirst ? 'Luna is waiting at ' + spotFirst.name + '.' : quest.claimed ? 'Quest done! Play anywhere you like.' : questDone ? 'The chest is ready!' : 'Luna is waiting at ' + (req ? req.name : 'the meadow') + '.';
+  const action = quest.claimed ? null : questDone ? 'chest' : 'go';
+  return { quest, dest, line, action, spoken: line + (action === 'go' ? ' Tap Go!' : action === 'chest' ? ' Open it!' : '') };
+}
+function announceHome() { return audio.say('Hello, ' + economy.save.child.name + '! ' + homeState().spoken); }
+let announceNext = false; // a trail stop was just finished: when the map shows, Luna says where to go next
+
 function renderHome() {
   const home = $('home');
   const name = economy.save.child.name;
-  const quest = adaptive.todayQuest(readyIds());
   const comp = economy.companion();
-  const next = adaptive.nextStop();
-  const req = next && REGISTRY.find(r => r.id === next.cabinet);
-  const later = quest.stops.filter(st => !st.done && st !== next).map(st => REGISTRY.find(r => r.id === st.cabinet)).filter(Boolean);
-  const questDone = adaptive.questDone();
-  const questStars = quest.stops.map(st => st.done ? '⭐' : '☆').join('');
-  const streak = economy.streak();
-  // The audition week: until Star Stage has been practiced today, Luna waits there (one place to go, the one she
-  // hears about), and the reading quest comes after.
-  const today = economy.today();
-  const spotFirst = available().find(r => r.ready && spotlightHint(r) && r.place === 'stage' && !Object.keys((economy.save.stage.days || {})[today] || {}).length) || null;
+  const { quest, dest, line, action } = homeState();
+  const questStars = quest.claimed ? '⭐⭐' : quest.stops.map(st => st.done ? '⭐' : '☆').join('');
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: comp.level }));
-  luna.addEventListener('click', () => { luna.className.baseVal = 'companion happy'; setTimeout(() => { luna.className.baseVal = 'companion idle'; }, 1400); audio.say(withName(pick(praise.greeting), name)); });
+  luna.addEventListener('click', () => { luna.className.baseVal = 'companion happy'; setTimeout(() => { luna.className.baseVal = 'companion idle'; }, 1400); announceHome(); });
+  // One Go: the place's picture, the written line, and a single big action (Go, or Open when the chest is ready).
+  const go = action === 'go' && dest
+    ? el('button', { class: 'go ' + dest.place, type: 'button', 'aria-label': 'Go to ' + dest.name, onclick: () => dest.ready ? openCabinet(dest) : soon(dest) },
+      [el('div', { class: 'art', html: placeArtSVG(dest.place) }), el('div', { class: 'line', text: line }), el('div', { class: 'word', text: 'Go!' })])
+    : action === 'chest'
+      ? el('button', { class: 'go chest', type: 'button', 'aria-label': 'Open the chest', onclick: claimQuest },
+        [el('div', { class: 'art' }, [svgFrom(chestSVG({ open: false }))]), el('div', { class: 'line', text: line }), el('div', { class: 'word', text: 'Open!' })])
+      : el('div', { class: 'go done' }, [el('div', { class: 'line', text: line })]);
 
   home.replaceChildren(
     el('div', { class: 'map' }, [
-      el('div', { class: 'map-head' }, [
+      el('div', { class: 'go-card' }, [
         luna,
         el('div', { class: 'greeting' }, [
-          el('div', { class: 'hello', text: 'Hello, ' + name + '!' }),
-          el('div', { class: 'sub', text: spotFirst ? 'Luna is waiting at ' + spotFirst.name + '.' : quest.claimed ? 'Quest done! Play anywhere you like.' : questDone ? 'The chest is ready to open!' : 'Luna is waiting at ' + (req ? req.name : 'the meadow') + '.' }),
-          el('div', { class: 'meter', 'aria-label': 'Luna glow' }, [el('span', { class: 'star', text: '⭐' }), el('div', { class: 'track' }, [el('div', { class: 'fill', style: 'width:' + Math.round(comp.fraction * 100) + '%' })])]),
-          el('div', { class: 'streak', 'aria-label': 'Days played this week' }, [el('span', { text: '🔥' }), ...streak.last7.map(on => el('span', { class: 'dot' + (on ? ' on' : '') }))])
+          el('div', { class: 'hello' }, [el('span', { text: 'Hello, ' + name + '! ' }), el('span', { class: 'stars', 'aria-label': 'quest stars', text: questStars })]),
+          go
         ])
-      ]),
-      el('div', { class: 'quest' }, [
-        el('div', { class: 'icon', text: quest.claimed ? '✅' : '🗺️' }),
-        el('div', { class: 'text', text: quest.claimed ? 'Today\'s quest is done! Play anywhere you like.' : questDone ? 'Both stops done. Open the chest!' : 'Trail: ' + (req ? req.name : 'a place') + (later.length ? ', then ' + later.map(r => r.name).join(', ') : '') + '. Then play anywhere!' }),
-        quest.claimed ? el('div', { class: 'stars', text: '⭐⭐' })
-          : questDone ? el('button', { class: 'claim', type: 'button', text: 'Open chest!', onclick: claimQuest })
-          : el('div', { class: 'stars', text: questStars })
       ]),
       el('div', { class: 'places' }, [
         el('div', { class: 'path' }),
         ...available().map(r => ({ r, spot: spotlightHint(r) })).sort((a, b) => !!b.spot - !!a.spot).map(({ r, spot }) => {
-          const rescued = economy.rescuedAt(r.place, SQUISHIES[r.place] || []);
-          const isToday = spotFirst ? r === spotFirst : !quest.claimed && !!next && r.id === next.cabinet;
+          const isToday = !!dest && r === dest;
           const onTrail = !quest.claimed && quest.stops.some(st => st.cabinet === r.id && !st.done);
-          const btn = el('button', { class: 'place ' + r.place + (isToday ? ' today' : onTrail ? ' next' : '') + (spot ? ' spotlight' : '') + (r.ready ? '' : ' soon'), type: 'button', 'aria-label': r.name, onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
+          // today's stops stay full size; the other places shrink until the quest is claimed, then all are equal
+          const compact = !quest.claimed && !isToday && !onTrail && !spot;
+          return el('button', { class: 'place ' + r.place + (isToday ? ' today' : '') + (spot ? ' spotlight' : '') + (compact ? ' compact' : '') + (r.ready ? '' : ' soon'), type: 'button', 'aria-label': r.name, onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
             el('div', { class: 'art', html: placeArtSVG(r.place) }),
-            el('div', {}, [el('div', { class: 'name', text: r.name }), el('div', { class: 'hint', text: !r.ready ? 'Coming soon' : spot || r.hint })]),
-            el('div', { class: 'side' }, [
-              el('div', { class: 'bubbles' }, (SQUISHIES[r.place] || []).map(id => el('span', { class: rescued.includes(id) ? 'free' : '', text: rescued.includes(id) ? '😊' : '' })))
-            ])
+            el('div', {}, [el('div', { class: 'name', text: r.name }), el('div', { class: 'hint', text: !r.ready ? 'Coming soon' : spot || r.hint })])
           ]);
-          if (isToday) btn.appendChild(svgFrom(lunaSVG({ state: 'idle', glow: comp.level }), 'luna-here'));
-          return btn;
         })
       ])
     ])
   );
+  if (announceNext) { announceNext = false; announceHome(); }
   $('home').hidden = false; $('cabinet').hidden = true; $('back-btn').hidden = true;
   $('title').textContent = 'Princess Quest';
   updateBar();
@@ -148,10 +152,21 @@ function claimQuest() {
   audio.say('Quest complete! Ten gems for you, ' + economy.save.child.name + '!');
 }
 
-let opening = false;
+let opening = false, stopsDoneAtOpen = 0;
+// A finished round that completed one of today's stops sends her back to the map, where Luna says where to
+// go next (or that the chest is ready). Free-play rounds stay in the place's own menu.
+function afterRound() {
+  const done = adaptive.todayQuest().stops.filter(st => st.done).length;
+  if (done <= stopsDoneAtOpen) return false;
+  stopsDoneAtOpen = done;
+  announceNext = true;
+  nav.toMap();
+  return true;
+}
 async function openCabinet(r) {
   if (opening || current) return; // BUG-04: ignore a second tap while a place is opening
   opening = true;
+  stopsDoneAtOpen = adaptive.todayQuest().stops.filter(st => st.done).length;
   audio.stop();
   try {
     const mod = await import(r.entry);
@@ -160,7 +175,7 @@ async function openCabinet(r) {
     $('home').hidden = true; $('cabinet').hidden = false; $('back-btn').hidden = false;
     $('title').textContent = r.name.split(' ').pop();
     window.scrollTo(0, 0);
-    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, store, exit: () => nav.toMap(), praise, place: r.place, cabinetId: r.id, refreshBar: updateBar, nav: { push: nav.push, pop: nav.pop } });
+    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, store, exit: () => nav.toMap(), afterRound, praise, place: r.place, cabinetId: r.id, refreshBar: updateBar, nav: { push: nav.push, pop: nav.pop } });
   } catch (e) {
     console.error(e);
     toast('This place needs one visit online first.');
@@ -232,7 +247,7 @@ function keyTargets() {
   const scope = overlay || document;
   const groups = overlay ? ['button'] : [
     document.querySelector('.tile.picked') ? '.slot' : null,
-    '.choice', '.tile', '.pat', '.sword', '.gem-box', '.ten-frame .cell', '.number-line button', '.rune', '.turn-done', '.encounter-btn', '.place', '.garden-spot'
+    '.choice', '.tile', '.pat', '.sword', '.gem-box', '.ten-frame .cell', '.number-line button', '.rune', '.turn-done', '.encounter-btn', 'button.go, .place', '.garden-spot'
   ].filter(Boolean);
   for (const sel of groups) {
     const list = [...scope.querySelectorAll(sel)].filter(visible);
@@ -306,7 +321,7 @@ async function boot() {
     $('topbar').hidden = false;
     renderHome();
     await audioReady;
-    await audio.say(withName(pick(praise.greeting), economy.save.child.name));
+    await announceHome(); // Luna says where she is waiting; the same words are written on the Go card
     // the show week: Luna says where to go (the card's countdown is text she cannot read)
     const spot = available().filter(r => r.ready && spotlightHint(r)).map(r => countdownSay(daysUntil(economy.today(), r.spotlight.until))).find(Boolean);
     const stageToDo = !Object.keys((economy.save.stage.days || {})[economy.today()] || {}).length; // as spotFirst in renderHome
