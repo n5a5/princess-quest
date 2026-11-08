@@ -231,7 +231,7 @@ const caveCount = {
     const path = el('div', { class: 'number-line' }, [...shown.map(v => el('button', { type: 'button', class: 'on', text: String(v), disabled: '' })), el('button', { type: 'button', text: '?', disabled: '' })]);
     const max = it.kind === 'tens' || it.kind === 'decades' ? 100 : 20;
     const tensChoices = () => { const set = new Set([answer]); for (const d of shuffle([10, -10, 20, -20])) if (set.size < 3 && answer + d >= 0 && answer + d <= 100) set.add(answer + d); return shuffle([...set]).map(v => ({ id: String(v), label: String(v), ok: v === answer, say: String(v), textOnly: true })); };
-    const grid = choiceGrid({ audio, prompt, items: it.kind === 'tens' ? tensChoices() : numeralChoices(answer, { min: 0, max, n: 3 }), praise: praiseLine(), revealText: 'It is ' + answer + '.' });
+    const grid = choiceGrid({ audio, prompt, items: it.kind === 'tens' ? tensChoices() : numeralChoices(answer, { min: 0, max }), praise: praiseLine(), revealText: 'It is ' + answer + '.' });
     grid.el.querySelectorAll('.choice').forEach(c => { c.classList.add('text-only'); c.querySelector('.pic')?.remove(); });
     stage.setBody(path, grid.el);
     await audio.say(prompt);
@@ -424,6 +424,7 @@ const road = {
         else { stones[target - 1].classList.remove('glow'); stones[target - 1].click(); }
       }));
       stage.setBody(el('div', { class: 'number-line road' }, stones));
+      audio.say(prompt); // not awaited: a quick tap ends the instruction instead of waiting for it
     });
     return result;
   }
@@ -500,8 +501,8 @@ async function roadTo100(stage, it, ctx, praiseLine) {
       else { stones[target - 1].classList.remove('glow'); stones[target - 1].click(); }
     }));
     stage.setBody(wall, el('div', { class: 'number-line road' }, stones));
+    audio.say(prompt);
   });
-  await audio.say(prompt);
   return result;
 }
 const tensOnes = {
@@ -548,7 +549,12 @@ const tensOnes = {
     if (more === 10) { const b = bundleEl(); b.classList.add('arrive'); vis.el.insertBefore(b, looseBox); vis.bundles.push(b); }
     else { const g = el('span', { class: 'loose arrive', text: GEM }); if (!looseBox) { looseBox = el('div', { class: 'loose-gems' }); vis.el.appendChild(looseBox); } looseBox.appendChild(g); vis.loose.push(g); }
     await wait(500);
-    const k2 = it.k + (more === 10 ? 1 : 0), r2 = it.r + (more === 1 ? 1 : 0);
+    let k2 = it.k + (more === 10 ? 1 : 0), r2 = it.r + (more === 1 ? 1 : 0);
+    if (r2 === 10) { // ten loose gems tie into a bundle: that is the whole idea
+      await audio.say('Ten loose gems. They make a bundle!');
+      looseBox.remove(); vis.loose = []; const b = bundleEl(); b.classList.add('arrive'); vis.el.appendChild(b); vis.bundles.push(b);
+      k2 += 1; r2 = 0; await wait(500);
+    }
     const slips = more === 10 ? [n + 1, n + 11, n + 9, n] : [n + 10, n + 2, n];
     const grid = choiceGrid({ audio, prompt: 'How many now?', items: slipChoices(answer, slips), praise: praiseLine(),
       revealText: n + ' and ' + (more === 10 ? 'ten' : 'one') + ' more is ' + answer + '.', onMiss: () => countAll(k2, r2) });
@@ -652,7 +658,9 @@ function buildRound(kind) {
   const fs = (ctx.adaptive.focus() || {}).skill;
   const target = fs && Object.values(FAMILIES).some(f => f.subskill === fs) ? fs : ctx.adaptive.targetFor('caverns');
   const tf = Object.values(FAMILIES).find(f => f.subskill === target) || crystalBridge;
-  const others = shuffle([gemFrames, Math.random() < 0.5 ? gemTrail : road, crystalBridge, numberStories, teenTower, tensOnes].filter(f => f !== tf));
+  // the four other slots: Quick Peek, Gem Pouch and Number Spells (documented weaknesses) always, the rest rotate
+  const rest = shuffle([Math.random() < 0.5 ? gemTrail : road, teenTower, tensOnes].filter(f => f !== tf));
+  const others = shuffle([gemFrames, crystalBridge, numberStories].filter(f => f !== tf).concat(rest)).sort((a, b) => Number(rest.includes(a)) - Number(rest.includes(b)));
   take(tf); take(others[0]); take(others[1]); take(tf); take(others[2]); take(fs ? tf : others[3]);
   return items.slice(0, 6);
 }
