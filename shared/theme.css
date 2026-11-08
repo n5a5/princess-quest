@@ -39,6 +39,7 @@ main { padding: calc(var(--bar) + 12px) 12px 40px; max-width: 560px; margin: 0 a
 #splash .hero { width: min(70vw, 300px); animation: floaty 3.5s ease-in-out infinite; }
 #splash h1 { font-family: var(--display); font-size: 40px; font-weight: 700; color: var(--tint-gold); text-shadow: 0 4px 20px rgba(233, 185, 73, 0.35); }
 #splash p { font-size: 18px; opacity: 0.85; }
+#splash .app-version { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); font-size: 15px; opacity: 0.8; letter-spacing: 0.5px; }
 .star-field { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .star-field span { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #fff; opacity: 0.6; }
 
@@ -90,6 +91,7 @@ main { padding: calc(var(--bar) + 12px) 12px 40px; max-width: 560px; margin: 0 a
 .place.falls { background: linear-gradient(135deg, #DDF1FC, #BFE3F7); }
 .place.castle { background: linear-gradient(135deg, #FFF0D6, #F9DDA8); }
 .place.woods { background: linear-gradient(135deg, #DFF3EA, #BFE5D4); }
+.place.lagoon { background: linear-gradient(135deg, #E2F6FA, #B9E4EF); }
 .place .luna-here { position: absolute; right: 14px; bottom: -6px; width: 64px; height: 64px; animation: floaty 3s ease-in-out infinite; }
 
 /* ---------- Place screen ---------- */
@@ -100,6 +102,7 @@ main { padding: calc(var(--bar) + 12px) 12px 40px; max-width: 560px; margin: 0 a
 .scene.falls { background: linear-gradient(180deg, #EAF6FD, #D3EBF9); }
 .scene.castle { background: linear-gradient(180deg, #FFF7E8, #FCE9C4); }
 .scene.woods { background: linear-gradient(180deg, #ECF8F2, #D4EEE2); }
+.scene.lagoon { background: linear-gradient(180deg, #E8F8FB, #C3E8F1); }
 .scene-head { display: flex; align-items: center; gap: 12px; }
 .scene-head .companion { width: 84px; height: 84px; flex: none; }
 .scene-head .title { font-family: var(--display); font-size: 24px; font-weight: 700; color: var(--plum); }
@@ -379,3 +382,371 @@ button:focus-visible, .choice:focus-visible, .tile:focus-visible, .place:focus-v
 .cave-wall span { font-size: 12px; text-align: center; padding: 3px 0; border-radius: 4px; color: var(--ink); background: rgba(255,255,255,0.7); font-variant-numeric: tabular-nums; }
 .cave-wall span.on { background: var(--tint-gold); font-weight: 700; outline: 2px solid var(--gold); }
 .cave-wall span.now { background: var(--lavender); font-weight: 700; outline: 2px solid var(--violet); }
+/* Star Stage: practice for the Annie audition (games/princess-quest/stage.js). Sized for a tablet held by a
+   six-year-old: big pictures, a big turn panel, and whose turn it is unmistakable (ear and sky blue = Luna,
+   red microphone = her). */
+main:has(> #cabinet .scene.stage) { max-width: 760px; }
+.place.stage { background: linear-gradient(135deg, #FFE3E8, #F7C3CF); }
+/* the audition countdown: a rose stage glow, unlike the gold of today's quest stop */
+.place.spotlight { border-color: #E2688F; box-shadow: 0 0 0 4px rgba(226, 104, 143, 0.3), 0 0 26px rgba(226, 104, 143, 0.55), var(--shadow); }
+.place.spotlight .hint { font-weight: 800; color: var(--rose-deep); }
+.scene.stage { background: linear-gradient(180deg, #FFF1F4, #FBD9E1); gap: 16px; }
+.scene.stage .scene-head .companion { width: clamp(84px, 16vw, 128px); height: clamp(84px, 16vw, 128px); }
+.scene.stage .scene-head .companion.talking { animation: hop 0.9s ease-in-out infinite; }
+.scene.stage .scene-head .title { font-size: clamp(24px, 4.4vw, 34px); }
+.scene.stage .encounter-btn { position: relative; min-height: clamp(110px, 22vw, 170px); font-size: clamp(18px, 3.2vw, 24px); }
+.scene.stage .encounter-btn .icon { font-size: clamp(40px, 9vw, 68px); }
+.scene.stage .encounter-btn.next-up { border-color: var(--gold); box-shadow: var(--glow-gold); animation: breathe 2.4s ease-in-out infinite; }
+.scene.stage .encounter-btn .tick { position: absolute; top: 6px; right: 10px; font-size: 13px; color: var(--mint-deep); }
+.day-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 10px; border-radius: var(--radius); background: rgba(255,255,255,0.55); }
+.day-strip .day { width: clamp(38px, 8vw, 58px); height: clamp(38px, 8vw, 58px); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: clamp(20px, 4.6vw, 32px); background: #fff; border: 3px solid #F3D3DC; color: var(--plum); }
+.day-strip .day.done { background: var(--tint-gold); border-color: var(--gold); }
+.day-strip .day.missed { opacity: 0.5; }
+.day-strip .day.is-today { border-color: var(--gold); box-shadow: var(--glow-gold); }
+.day-strip .day.show { width: clamp(52px, 11vw, 76px); height: clamp(52px, 11vw, 76px); background: linear-gradient(180deg, #E2688F, #B83A5E); border-color: #B83A5E; font-size: clamp(28px, 6vw, 44px); }
+.scene.stage .round-dots span.current { background: var(--rose); animation: pulse 1s ease-in-out infinite; }
+.scene.stage .cues { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; padding: 14px; border-radius: var(--radius); background: rgba(255,255,255,0.55); transition: background 0.4s; }
+.scene.stage .cue { min-width: clamp(84px, 19vw, 150px); min-height: clamp(84px, 19vw, 150px); padding: 6px 10px; border-radius: 22px; background: var(--cream); border: 4px solid transparent; box-shadow: var(--shadow-soft); font-size: clamp(48px, 11vw, 92px); line-height: 1; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s, transform 0.25s, border-color 0.3s, box-shadow 0.25s; }
+.scene.stage .cue.lit { border-color: var(--gold); }
+.scene.stage .cue.dim { opacity: 0.28; }
+.scene.stage .cue.now { transform: scale(1.14); box-shadow: var(--glow-gold); }
+.scene.stage .cue.wiggle { animation: wiggle 0.5s ease-in-out; }
+.scene.stage .cues.curtain { background: repeating-linear-gradient(90deg, #B83A5E 0 22px, #E2688F 22px 44px); }
+.scene.stage .cues.curtain .cue { background: transparent; border-color: transparent; box-shadow: none; }
+.scene.stage .cues.curtain .cue span { visibility: hidden; }
+.scene.stage .cues.curtain::after { content: '🎭'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: clamp(56px, 13vw, 100px); }
+.scene.stage .mic { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: var(--radius); background: rgba(255,255,255,0.75); box-shadow: var(--shadow-soft); border: 4px solid transparent; transition: background 0.25s, border-color 0.25s, box-shadow 0.25s; }
+.scene.stage .mic-icon { flex: none; width: clamp(72px, 16vw, 120px); height: clamp(72px, 16vw, 120px); border-radius: 50%; font-size: clamp(40px, 9vw, 64px); display: flex; align-items: center; justify-content: center; background: var(--lavender); transition: background 0.2s; }
+.scene.stage .mic[data-state="luna"] { background: var(--tint-sky); }
+.scene.stage .mic[data-state="luna"] .mic-icon { background: #BFE3F7; }
+.scene.stage .mic[data-state="you"] { background: #FFF1F1; border-color: #F87171; box-shadow: 0 0 0 6px rgba(248, 113, 113, 0.25), var(--shadow-soft); }
+.scene.stage .mic[data-state="you"] .mic-icon { background: #F87171; animation: pulse 0.9s ease-in-out infinite; }
+.scene.stage .mic[data-state="big"] { background: var(--tint-gold); border-color: var(--gold); }
+.scene.stage .mic[data-state="luna"] .vmeter, .scene.stage .mic[data-state="luna"] .vstar { visibility: hidden; }
+.scene.stage .vmeter { flex: 1; height: clamp(22px, 4vw, 34px); border-radius: 16px; background: #F3E8EE; overflow: hidden; }
+.scene.stage .vmeter .fill { width: 0; height: 100%; border-radius: 16px; background: linear-gradient(90deg, var(--mint), var(--gold), var(--rose)); transition: width 0.08s linear; }
+.scene.stage .vstar { flex: none; font-size: clamp(44px, 10vw, 76px); filter: grayscale(1); opacity: 0.35; transition: filter 0.15s, opacity 0.15s, transform 0.1s; }
+.scene.stage .vstar.on, .scene.stage .mic[data-state="big"] .vstar { filter: none; opacity: 1; }
+.scene.stage .mic-status { min-height: 1.4em; text-align: center; font-family: var(--display); font-size: clamp(22px, 4.6vw, 32px); font-weight: 700; color: var(--plum); }
+.stage-curtain { position: relative; height: clamp(260px, 50vw, 420px); border-radius: var(--radius); overflow: hidden; background: radial-gradient(60% 50% at 50% 85%, #FFF1C9, #F9D77B 40%, #5B3E8F 100%); }
+.stage-curtain .cl, .stage-curtain .cr { position: absolute; top: 0; bottom: 0; width: 50%; background: repeating-linear-gradient(90deg, #B83A5E 0 18px, #E2688F 18px 36px); transition: transform 1.6s ease-in-out; z-index: 1; }
+.stage-curtain .cl { left: 0; }
+.stage-curtain .cr { right: 0; }
+.stage-curtain.open .cl { transform: translateX(-88%); }
+.stage-curtain.open .cr { transform: translateX(88%); }
+.stage-curtain .spot { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: clamp(96px, 20vw, 160px); animation: pulse 1.6s ease-in-out infinite; }
+
+/* Update notice (shared/updates.js): above everything, the splash included */
+/* left/right + auto margins, not left: 50% + translate: that halves the width it may use and the pop animation's transform would undo the centring */
+.update-pill { position: fixed; left: 12px; right: 12px; margin: 0 auto; width: fit-content; max-width: 480px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 300; display: flex; align-items: center; justify-content: center; gap: 12px; text-align: center; font-variant-numeric: tabular-nums; padding: 10px 18px; border-radius: 999px; border: 2px solid rgba(233, 185, 73, 0.7); background: var(--night); color: var(--tint-gold); font-family: var(--display); font-size: 16px; font-weight: 700; box-shadow: 0 6px 20px rgba(42, 30, 69, 0.4); animation: pop 0.3s ease-out; }
+.update-pill .bar { flex: none; width: 72px; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.2); overflow: hidden; }
+.update-pill .bar i { display: block; width: 0; height: 100%; border-radius: 4px; background: var(--gold); transition: width 0.3s; }
+.update-pill.indeterminate .bar i { width: 35%; animation: update-slide 1.2s ease-in-out infinite; }
+.update-pill.no-bar .bar { display: none; }
+@keyframes update-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+.scene.stage .round-dots { gap: clamp(8px, 1.6vw, 12px); }
+.scene.stage .round-dots span { width: clamp(14px, 2.8vw, 22px); height: clamp(14px, 2.8vw, 22px); }
+.scene.stage .mic[data-state="song"] { background: var(--tint-sky); }
+.scene.stage .mic[data-state="sing"] { background: var(--tint-gold); border-color: var(--gold); box-shadow: var(--glow-gold); }
+.scene.stage .mic[data-state="song"] .mic-icon, .scene.stage .mic[data-state="sing"] .mic-icon { background: #FFE9A8; animation: pulse 1.2s ease-in-out infinite; }
+.scene.stage .mic[data-state="song"] .vmeter, .scene.stage .mic[data-state="song"] .vstar, .scene.stage .mic[data-state="sing"] .vmeter, .scene.stage .mic[data-state="sing"] .vstar { visibility: hidden; }
+.scene.stage .song-box { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 18px; border-radius: var(--radius); background: rgba(255,255,255,0.7); box-shadow: var(--shadow-soft); }
+.scene.stage .song-play { width: clamp(120px, 28vw, 200px); height: clamp(120px, 28vw, 200px); border-radius: 50%; font-size: clamp(56px, 13vw, 96px); color: #fff; background: linear-gradient(180deg, var(--rose), var(--rose-deep)); box-shadow: 0 8px 0 #9E3A5E, var(--shadow); }
+.scene.stage .song-play:active { transform: translateY(4px); box-shadow: 0 4px 0 #9E3A5E, var(--shadow); }
+.scene.stage .song-bar { width: 100%; height: 18px; border-radius: 10px; background: #F3E8EE; overflow: hidden; }
+.scene.stage .song-bar .fill { width: 0; height: 100%; background: linear-gradient(90deg, var(--mint), var(--gold), var(--rose)); transition: width 0.25s linear; }
+
+/* Star Stage audition trainer: today's plan, fading cues, the reminder bounce, the acting cue, sound-on, breathing */
+.plan-strip { display: flex; justify-content: center; gap: 12px; }
+.plan-item { position: relative; width: clamp(54px, 11vw, 76px); height: clamp(54px, 11vw, 76px); border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: clamp(28px, 6vw, 42px); background: rgba(255,255,255,0.8); border: 3px solid #F3D3DC; }
+.plan-item.next { border-color: var(--gold); box-shadow: var(--glow-gold); animation: breathe 2.4s ease-in-out infinite; }
+.plan-item.done { background: var(--tint-mint); border-color: var(--mint); }
+.plan-item b { position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px; border-radius: 50%; background: var(--mint-deep); color: #fff; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.scene.stage .encounter-btn.off { opacity: 0.55; }
+.scene.stage .cues.faded .cue span { opacity: 0.22; }
+.scene.stage .mic.nudge .mic-icon { animation: jump 0.7s ease-out 1; }
+.scene.stage .mic-status.act { font-size: clamp(56px, 12vw, 96px); line-height: 1.1; }
+.scene.stage .unmute { align-self: center; padding: 24px 36px; border-radius: 999px; font-size: clamp(44px, 10vw, 72px); background: linear-gradient(180deg, var(--gold), var(--gold-deep)); box-shadow: 0 8px 0 #9B7414, var(--shadow); animation: breathe 2s ease-in-out infinite; }
+.scene.stage.breath { align-items: center; }
+.scene.stage.breath .bubble { width: clamp(180px, 40vw, 300px); height: clamp(180px, 40vw, 300px); }
+
+/* Phones on their side: compact head, pictures beside the turn panel, everything on one screen */
+@media (orientation: landscape) and (max-height: 600px) {
+  main:has(> #cabinet .scene.stage) { max-width: 980px; }
+  .scene.stage { gap: 8px; padding: 8px 12px; }
+  .scene.stage .scene-head .companion { width: 52px; height: 52px; }
+  .scene.stage .scene-head .title { font-size: 20px; }
+  .scene.stage .scene-head .line { font-size: 13px; }
+  .scene.stage.practice { display: grid; grid-template-columns: 3fr 2fr; grid-template-areas: "head head" "dots dots" "cues mic" "cues status"; align-items: center; }
+  .scene.stage.practice > .scene-head { grid-area: head; }
+  .scene.stage.practice > .round-dots { grid-area: dots; }
+  .scene.stage.practice > .cues { grid-area: cues; padding: 8px; gap: 8px; }
+  .scene.stage.practice > .mic { grid-area: mic; padding: 8px 10px; }
+  .scene.stage.practice > .mic-status { grid-area: status; font-size: 20px; }
+  .scene.stage .cue { min-width: clamp(56px, 17vh, 96px); min-height: clamp(56px, 17vh, 96px); font-size: clamp(32px, 10vh, 60px); }
+  .scene.stage .mic-icon { width: 56px; height: 56px; font-size: 32px; }
+  .scene.stage .vstar { font-size: 40px; }
+  .scene.stage .mic-status.act { font-size: 48px; }
+  .scene.stage .encounters { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .scene.stage .encounter-btn { min-height: 84px; font-size: 16px; }
+  .scene.stage .encounter-btn .icon { font-size: 34px; }
+  .day-strip { padding: 4px; gap: 6px; }
+  .day-strip .day { width: 32px; height: 32px; font-size: 18px; border-width: 2px; }
+  .day-strip .day.show { width: 42px; height: 42px; font-size: 24px; }
+  .plan-item { width: 46px; height: 46px; font-size: 24px; }
+  .stage-curtain { height: 46vh; }
+  .scene.stage.breath .bubble { width: 38vh; height: 38vh; }
+  .scene.stage .song-play { width: 96px; height: 96px; font-size: 48px; }
+}
+.scene.stage .turn-done { align-self: center; width: clamp(96px, 22vw, 140px); height: clamp(96px, 22vw, 140px); border-radius: 50%; font-size: clamp(52px, 12vw, 76px); background: linear-gradient(180deg, var(--mint), var(--mint-deep)); box-shadow: 0 8px 0 #1F6E62, var(--shadow); animation: breathe 2s ease-in-out infinite; }
+@media (orientation: landscape) and (max-height: 600px) {
+  .overlay .sheet { max-height: calc(100vh - 16px); overflow-y: auto; padding: 14px 18px; gap: 8px; }
+  .overlay .sheet .companion { width: 84px; height: 84px; }
+}
+.scene.stage .cue { position: relative; }
+.scene.stage .cue.gone { background: rgba(255,255,255,0.4); border-style: dashed; border-color: #E2A3B6; }
+.scene.stage .cue.gone span { visibility: hidden; }
+.scene.stage .cue.gone::after { content: '❓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.7em; opacity: 0.7; }
+/* Star Stage, review fixes (10/8/2026) */
+/* her turn without a microphone: the thumbs-up in the panel, where the microphone, meter and star were, so it is
+   never below the fold and nothing pretends to listen */
+.scene.stage .mic .turn-done { flex: none; margin: 0 auto; width: clamp(84px, 20vw, 130px); height: clamp(84px, 20vw, 130px); font-size: clamp(46px, 11vw, 70px); }
+.scene.stage .mic[data-state="tap"] { background: #FFF1F1; border-color: #F87171; justify-content: center; }
+.scene.stage .mic[data-state="tap"] .mic-icon, .scene.stage .mic[data-state="tap"] .vmeter, .scene.stage .mic[data-state="tap"] .vstar { display: none; }
+/* her own take playing back: a child, and Luna keeps still */
+.scene.stage .mic[data-state="me"] { background: var(--tint-mint); }
+.scene.stage .mic[data-state="me"] .mic-icon { background: #C9F0E6; animation: pulse 1.2s ease-in-out infinite; }
+.scene.stage .mic[data-state="me"] .vmeter, .scene.stage .mic[data-state="me"] .vstar { visibility: hidden; }
+/* the curtain hides everything: no question marks showing through it */
+.scene.stage .cues.curtain .cue::after { content: none; }
+.scene.stage .cues.curtain .cue { border-color: transparent; background: transparent; }
+/* today's plan is pictures, not buttons: only the next tile glows */
+.plan-item.next { box-shadow: none; animation: none; }
+/* brave breath: the flower and the candle are the cue, so they are big; the microphone question likewise */
+.scene.stage .breath-cue { font-size: clamp(64px, 16vw, 110px); line-height: 1.1; }
+.scene.stage .ask-mic { font-size: clamp(72px, 18vw, 140px); line-height: 1.1; animation: breathe 2s ease-in-out infinite; }
+/* Hear the orphans: picture buttons */
+.scene.stage .hear-row { gap: 12px; }
+.scene.stage .hear-row .big-btn { flex: 1; font-size: clamp(36px, 8vw, 52px); min-height: clamp(76px, 16vw, 104px); }
+/* her finish sheets start under the top bar, so the sound button and Back stay reachable */
+.overlay.below-bar { top: var(--bar); }
+/* short portrait phones (360x640): the menu and the practice screen fit on one screen */
+@media (orientation: portrait) and (max-height: 720px) {
+  .scene.stage { gap: 10px; padding-top: 8px; padding-bottom: 8px; }
+  .scene.stage .scene-head .companion { width: 64px; height: 64px; }
+  .scene.stage .scene-head .title { font-size: 22px; }
+  .scene.stage .encounters { gap: 8px; }
+  .scene.stage .encounter-btn { min-height: 84px; font-size: 16px; gap: 2px; padding: 6px; }
+  .scene.stage .encounter-btn .icon { font-size: 34px; }
+  .day-strip { padding: 4px; gap: 5px; }
+  .day-strip .day { width: 30px; height: 30px; font-size: 17px; border-width: 2px; }
+  .day-strip .day.show { width: 40px; height: 40px; font-size: 22px; }
+  .plan-item { width: 42px; height: 42px; font-size: 22px; }
+  .scene.stage .cues { padding: 8px; gap: 8px; }
+  .scene.stage .cue { min-width: 72px; min-height: 72px; font-size: 42px; }
+  .scene.stage .mic { padding: 8px 12px; }
+  .scene.stage .mic-icon { width: 60px; height: 60px; font-size: 34px; }
+  .scene.stage .mic-status.act { font-size: 52px; }
+  .scene.stage .song-play { width: 110px; height: 110px; font-size: 52px; }
+  .stage-curtain { height: 40vh; }
+}
+/* landscape phones: the curtain mask fits its strip; the menu fits (the plan pictures go: the tiles show it) */
+@media (orientation: landscape) and (max-height: 600px) {
+  .scene.stage .cues.curtain::after { font-size: 48px; }
+  .scene.stage .mic .turn-done { width: 64px; height: 64px; font-size: 36px; }
+  .scene.stage .hear-row .big-btn { min-height: 60px; font-size: 32px; }
+  .scene.stage .song-box { padding: 10px; gap: 10px; }
+  .scene.stage.menu .plan-strip { display: none; }
+  .scene.stage .encounter-btn { min-height: 76px; }
+  main:has(> #cabinet .scene.stage) { padding-bottom: 6px; }
+  .scene.stage .encounter-btn.primary { grid-column: auto; } /* audition day: six tiles in two rows of three */
+  .scene.stage.breath .breath-cue { font-size: 56px; }
+  .scene.stage.breath .bubble { width: 30vh; height: 30vh; }
+  .scene.stage .ask-mic { font-size: 72px; }
+}
+@media (orientation: landscape) and (max-height: 400px) {
+  .scene.stage.menu .day-strip { display: none; }
+  .scene.stage .encounter-btn { min-height: 68px; font-size: 15px; }
+  .scene.stage .encounter-btn .icon { font-size: 28px; }
+}
+.overlay.below-bar .sheet { max-height: calc(100vh - var(--bar) - 24px); overflow-y: auto; }
+/* the grown-ups' PIN pad on a landscape phone: the keypad beside the title and Cancel, so Cancel is never below the fold */
+@media (orientation: landscape) and (max-height: 600px) {
+  .overlay.pin-pad .sheet { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "title keys" "dots keys" "cancel keys"; align-items: center; gap: 8px 20px; width: min(100%, 620px); }
+  .overlay.pin-pad .sheet h2 { grid-area: title; }
+  .overlay.pin-pad .pin-dots { grid-area: dots; }
+  .overlay.pin-pad .pin-grid { grid-area: keys; gap: 6px; }
+  .overlay.pin-pad .pin-key { min-height: 52px; }
+  .overlay.pin-pad .big-btn { grid-area: cancel; }
+}
+/* Star Stage script: the line just before hers (who says it and its last words, lit while it plays), then her own
+   lines written out, one row per phrase: the picture, then the words. The row being said lights up. With the
+   grown-up's switch off (Parent Corner) the rows show only their pictures, side by side as before. */
+.scene.stage .their { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 18px; background: rgba(255,255,255,0.6); border: 3px dashed #D8CCEB; font-family: var(--read); font-size: clamp(16px, 4vw, 22px); line-height: 1.25; color: #6B5A8C; transition: background 0.25s, border-color 0.25s, box-shadow 0.25s; }
+.scene.stage .their .face { flex: none; font-size: clamp(30px, 7vw, 44px); line-height: 1; }
+.scene.stage .their b { color: var(--plum); }
+.scene.stage .their.on { background: #FFF6E5; border: 3px solid var(--gold); color: var(--ink); box-shadow: var(--glow-gold); }
+.scene.stage .cues.script { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; padding: 10px; }
+.scene.stage .cues.script .cue { min-width: 0; min-height: 0; justify-content: flex-start; gap: 12px; padding: 6px 12px; border-radius: 16px; font-size: clamp(30px, 7vw, 46px); text-align: left; }
+.scene.stage .cues.script > * { flex: none; } /* rows keep their height; the box scrolls instead */
+.scene.stage .cues.script .cue .pic { flex: none; }
+.scene.stage .cues.script .you-tag { font-family: var(--display); font-weight: 700; font-size: clamp(15px, 3.6vw, 20px); color: var(--plum); padding-left: 4px; }
+.scene.stage .cues.curtain .you-tag { visibility: hidden; }
+.scene.stage .cues.script .cue .w { font-family: var(--read); font-weight: 700; font-size: clamp(19px, 5vw, 30px); line-height: 1.25; color: var(--ink); }
+.scene.stage .cues.script .cue.now { transform: none; background: #FFF3C4; }
+.scene.stage .cues.script .cue.gone::after { justify-content: flex-start; padding-left: 18px; font-size: 30px; }
+/* Portrait: the practice screen never grows past the screen. Her lines get what is left and scroll inside their
+   own box (the lit row scrolls into view), so the turn panel and "Your turn!" always stay on screen. */
+@media (orientation: portrait) {
+  main:has(.scene.stage.practice) { padding-bottom: 8px; }
+  .scene.stage.practice { max-height: calc(100vh - var(--bar) - 20px); max-height: calc(100dvh - var(--bar) - 20px); }
+  .scene.stage.practice > * { flex: none; }
+  .scene.stage.practice > .cues.script { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+}
+@media (orientation: portrait) and (max-height: 720px) {
+  .scene.stage .cues.script { gap: 4px; padding: 6px; }
+  .scene.stage .cues.script .cue { font-size: 24px; padding: 3px 8px; gap: 8px; }
+  .scene.stage .cues.script .cue .w { font-size: 17px; line-height: 1.2; }
+  .scene.stage .their { font-size: 15px; padding: 5px 10px; }
+  .scene.stage .their .face { font-size: 26px; }
+}
+/* phones on their side: the line before hers across the top, her lines in the left column, the turn panel right */
+@media (orientation: landscape) and (max-height: 600px) {
+  /* the screen's own height: Luna's line and the dots share the top row, her lines scroll in their box */
+  main:has(.scene.stage.practice) { padding-bottom: 6px; }
+  .scene.stage.practice:has(> .cues.script) { height: calc(100vh - var(--bar) - 14px); height: calc(100dvh - var(--bar) - 14px); grid-template-columns: minmax(0, 1fr) 200px; grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "head dots" "their their" "cues mic" "cues status"; align-items: center; row-gap: 6px; }
+  .scene.stage.practice:has(> .cues.script):not(:has(> .their)) { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "head dots" "cues mic" "cues status"; }
+  .scene.stage.practice:has(> .cues.script) > .scene-head .line { display: none; }
+  .scene.stage.practice:has(> .cues.script) > .scene-head .companion { width: 40px; height: 40px; }
+  .scene.stage.practice > .cues.script { align-self: stretch; min-height: 0; overflow-y: auto; }
+  .scene.stage.practice:has(> .their) { grid-template-areas: "head dots" "their their" "cues mic" "cues status"; }
+  .scene.stage.practice > .their { grid-area: their; font-size: 14px; padding: 4px 10px; }
+  .scene.stage.practice > .their .face { font-size: 24px; }
+  /* Sandy's big acting picture needs the room: the line before it has already played */
+  .scene.stage.practice:has(> .mic-status.act) > .their { display: none; }
+  .scene.stage .cues.script { gap: 4px; padding: 6px; }
+  .scene.stage .cues.script .cue { font-size: 24px; padding: 2px 8px; gap: 8px; }
+  .scene.stage .cues.script .cue .w { font-size: 16px; }
+  .scene.stage .cues.script .you-tag { font-size: 13px; }
+}
+/* Kindle Fire 7 on its side (1024x600): a reader's size, there is room */
+@media (orientation: landscape) and (max-height: 600px) and (min-width: 960px) {
+  .scene.stage .cues.script .cue .w { font-size: 20px; }
+  .scene.stage.practice > .their { font-size: 17px; }
+  .scene.stage .cues.script .you-tag { font-size: 15px; }
+}
+/* Star Stage show mode: the gap between this week and the show's circle in the day strip; Sandy's acting turn
+   shows the thumbs-up like a turn without the microphone */
+.day-strip .day.gap { border: none; background: transparent; box-shadow: none; width: auto; min-width: 18px; color: var(--plum); font-weight: 700; }
+.scene.stage .mic[data-state="act"] { background: #FFF6E5; border-color: #F5B544; justify-content: center; }
+.scene.stage .mic[data-state="act"] .mic-icon, .scene.stage .mic[data-state="act"] .vmeter, .scene.stage .mic[data-state="act"] .vstar { display: none; }
+/* very short landscape phones (640x360): Hear the orphans fits without scrolling */
+@media (orientation: landscape) and (max-height: 400px) {
+  .scene.stage .song-play { width: 76px; height: 76px; font-size: 38px; }
+  .scene.stage .hear-row .big-btn { min-height: 52px; }
+}
+
+/* ---------- Tick-Tock Lagoon (games/princess-quest/lagoon.js, shared/clock.js) ---------- */
+main:has(.scene.lagoon) { padding-bottom: 12px; }
+.scene.lagoon { gap: 10px; }
+.scene.lagoon .help-btn { margin-left: auto; flex: none; width: 56px; height: 56px; border-radius: 50%; background: rgba(255,255,255,0.8); border: 3px solid #fff; box-shadow: var(--shadow-soft); font-size: 28px; }
+.scene.lagoon .stage-row { min-height: 0; }
+.scene.lagoon .stage-row .companion { width: 64px; height: 64px; }
+.scene.lagoon .picture.routine { font-size: 54px; min-height: 0; line-height: 1; }
+.scene.lagoon .object { align-items: center; gap: 10px; }
+.time-card { font-family: var(--display); font-size: 44px; font-weight: 700; line-height: 1; background: var(--cream); border-radius: 18px; padding: 8px 18px; box-shadow: var(--shadow-soft); letter-spacing: 1px; }
+.clock-play { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.clock-play > .choices { align-self: stretch; }
+.clock { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.clock .clock-face { width: min(64vw, 27vh, 280px); height: auto; display: block; }
+.clock-face .num { font-family: var(--display); fill: var(--ink); }
+.clock.interactive .clock-face { cursor: grab; touch-action: none; }
+.clock.interactive.turning .clock-face { cursor: grabbing; }
+/* a lit hand keeps its own colour (pink hour, blue minutes) and glows gold around it */
+.clock.turning.minute .hand.minute path, .clock.show-minute .hand.minute path,
+.clock.turning.hour .hand.hour path, .clock.show-hour .hand.hour path { filter: drop-shadow(0 0 4px #F9D77B) drop-shadow(0 0 2px #F9D77B); }
+.clock.show-hour .hand.hour path, .clock.show-minute .hand.minute path { animation: hand-glow 1s ease-in-out infinite alternate; }
+@keyframes hand-glow { from { filter: drop-shadow(0 0 2px #F9D77B); } to { filter: drop-shadow(0 0 7px #F9D77B) drop-shadow(0 0 3px #F9D77B); } }
+.turn-btn { flex: none; width: 60px; height: 60px; border-radius: 50%; border: 3px solid #fff; background: var(--cream); box-shadow: var(--shadow-soft); font-size: 32px; font-weight: 700; color: var(--plum); display: flex; align-items: center; justify-content: center; }
+.turn-btn:active { transform: scale(0.92); }
+.turn-btn[disabled] { opacity: 0.4; }
+.clock.locked .clock-face { cursor: default; }
+.done-btn { min-width: 160px; }
+.done-btn.right { background: linear-gradient(180deg, #8FDCCB, #4DB6A4); }
+.choices.times { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.choices.times .choice { min-height: 64px; }
+.choices.times .choice > span { line-height: 1; font-size: 40px; display: block; } /* no 54px line box around the time */
+.choices.times:has(> .choice:nth-child(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.choices.times:has(> .choice:nth-child(4)) .choice { min-height: 56px; padding: 0; }
+.choices.times:not(:has(> .choice:nth-child(3))) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.choices .digital { font-family: var(--display); font-size: 40px; font-weight: 700; line-height: 1; }
+.choices.clocks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.choices.clocks .choice { min-height: 0; padding: 6px; }
+.choices.clocks .choice > span { width: 100%; display: flex; justify-content: center; }
+.choices.clocks .clock-face { width: 100%; max-width: min(140px, 17vh); height: auto; display: block; }
+.choices.clocks:has(> .choice:nth-child(4)) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.choices.clocks:has(> .choice:nth-child(4)) .clock-face { max-width: min(130px, 14vh); }
+.choices.clocks:not(:has(> .choice:nth-child(3))) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.scene.lagoon .round-dots { min-height: 40px; }
+@media (orientation: portrait) and (max-height: 720px) {
+  .clock .clock-face { width: min(64vw, 25vh, 280px); }
+  .clock-play:has(> .choices.times > .choice:nth-child(4)) .clock .clock-face { width: min(64vw, 19vh, 280px); }
+}
+@media (orientation: portrait) and (min-height: 600px) {
+  .choices.clocks:not(:has(> .choice:nth-child(4))) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .choices.clocks:not(:has(> .choice:nth-child(4))) > .choice:nth-child(3) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 6px); }
+  .choices.clocks .clock-face { max-width: min(160px, 18vh); }
+}
+/* landscape: four time choices in one row */
+@media (orientation: landscape) { .choices.times:has(> .choice:nth-child(4)) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* big landscape screens (Fire HD, Chromebook): the stacked layout, with the clock sized from the free height */
+@media (orientation: landscape) and (min-height: 601px) and (min-width: 1000px) { .scene.lagoon .clock .clock-face { width: min(40vw, max(27vh, calc(100vh - 490px)), 340px); } }
+.reef { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.reef .stone { width: 22px; height: 22px; border-radius: 50%; background: #E6F4F8; border: 3px solid var(--c); transition: background 0.3s, transform 0.3s; }
+.reef .stone.lit { background: var(--c); transform: scale(1.1); }
+.reef .stone.now { animation: pulse 1s ease-in-out infinite; }
+.reef .goal svg { display: block; }
+.scene.lagoon.intro .clock .clock-face { width: min(78vw, 52vh, 340px); }
+/* short landscape screens (phones turned sideways): no scrolling. With a clock card the reef path sits above the
+   clock on the left and Luna, the question and the answers stack on the right; Match puts Luna beside the question
+   and the clocks in a row underneath. Sizes count off the top bar (82 px), the bottom gap (40 px) and the scene's
+   padding. */
+@media (orientation: landscape) and (max-height: 600px) {
+  .scene.lagoon:has(> .round-dots) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 16px; row-gap: 8px; padding: 10px 14px; }
+  .scene.lagoon:has(> .round-dots):has(.clock-play) { grid-template-areas: "clock dots" "clock row" "clock prompt" "clock answer"; align-content: center; }
+  .scene.lagoon:has(> .round-dots):not(:has(.clock-play)) { grid-template-areas: "dots dots" "row prompt" "answer answer"; }
+  .scene.lagoon > .round-dots { grid-area: dots; min-height: 0; }
+  .scene.lagoon > .stage-row { grid-area: row; }
+  .scene.lagoon > div:nth-child(3) { grid-area: prompt; align-self: center; }
+  .scene.lagoon > .activity, .scene.lagoon .clock-play { display: contents; }
+  .scene.lagoon .clock-play > .clock { grid-area: clock; align-self: center; }
+  .scene.lagoon .clock-play > .choices, .scene.lagoon .clock-play > .done-btn, .scene.lagoon > .activity > .choices { grid-area: answer; }
+  .scene.lagoon .clock-play > .done-btn { justify-self: center; }
+  .scene.lagoon .clock-play > .choices.times .choice { min-height: 54px; }
+  .scene.lagoon .clock .clock-face { width: min(40vw, calc(100vh - 150px), 300px); }
+  .scene.lagoon .stage-row { gap: 8px; }
+  .scene.lagoon .stage-row .companion { width: 48px; height: 48px; }
+  .scene.lagoon .stage-row .show-me { min-width: 46px; min-height: 46px; width: 46px; height: 46px; font-size: 22px; }
+  .scene.lagoon .stage-row .object { justify-content: flex-start; }
+  /* the turn buttons sit in the clock's lower corners, so the question keeps its width */
+  .scene.lagoon .clock.interactive { position: relative; }
+  .scene.lagoon .clock.interactive .turn-btn { position: absolute; bottom: 0; width: 52px; height: 52px; font-size: 28px; }
+  .scene.lagoon .clock.interactive .turn-btn.back { left: -10px; }
+  .scene.lagoon .clock.interactive .turn-btn.fwd { right: -10px; }
+  .scene.lagoon .picture.routine { font-size: 38px; }
+  main:has(.scene.lagoon) { max-width: 980px; }
+  .scene.lagoon .prompt { padding: 6px 10px; }
+  .scene.lagoon .prompt .speak-btn { width: 46px; height: 46px; min-width: 46px; min-height: 46px; font-size: 22px; }
+  .choices.clocks .clock-face, .choices.clocks:has(> .choice:nth-child(4)) .clock-face { max-width: min(130px, calc(100vh - 262px)); }
+  .choices.clocks:has(> .choice:nth-child(4)) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .reef { gap: 6px; }
+  .reef .stone { width: 16px; height: 16px; border-width: 2px; }
+  .reef .goal svg { width: 28px; height: 28px; }
+  .time-card { font-size: 32px; padding: 4px 12px; }
+  .scene.lagoon .clock-play > .choices.times:has(> .choice:nth-child(4)) { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .scene.lagoon .clock-play > .choices.times:has(> .choice:nth-child(4)) .digital { font-size: 32px; }
+  .scene.lagoon.intro { flex-direction: row; align-items: center; justify-content: center; column-gap: 16px; }
+  .scene.lagoon.intro > .stage-row { flex: none; }
+  .scene.lagoon.intro .clock .clock-face { width: min(40vw, calc(100vh - 150px), 300px); }
+}
+@media (orientation: landscape) and (max-height: 480px) { .scene.lagoon .prompt { font-size: 18px; } }

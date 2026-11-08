@@ -1,5 +1,6 @@
 // shared/economy.js — save/load, gems, stars, badges, day streak, result log.
 // DOM-free. Storage is injected so it runs under node --test.
+import { stageDefaults, cleanStage, mergeStage } from './stage-plan.js';
 export const SCHEMA_VERSION = 3;
 export const SAVE_KEY = 'arcade.v3';
 export const LOG_DAYS = 60;
@@ -40,10 +41,14 @@ export function defaultSave() {
     questHistory: [],
     feelingsLog: [],    // Calm Tower check-ins: { day, feeling }
     scenariosSeen: [],  // Uh-Oh Courtyard scenario ids already shown
+    stage: stageDefaults(), // Star Stage practice log (shared/stage-plan.js)
+    // Tick-Tock Lagoon: the days she saw how a clock works (o'clock, then thirty), and her mistakes by kind
+    clock: { intro: null, introHalf: null, mistakes: {} },
     // voice: 'device' = the device's text-to-speech for instructions; 'luna' = the pre-recorded story voice
     // (the same voice as the words and letter sounds). Stays 'device' until the parent picks in Parent Corner.
+    // routine: her day's times for the Lagoon's My day cards, { wake: 'HH:MM', ... } (Parent Corner; this device only)
     // focus: what the parent asked the app to lean on for a week: { sound, words: [], until: 'YYYY-MM-DD' } or null
-    settings: { muted: false, rate: 0.9, voiceName: '', modulesOff: [], voice: 'device', focus: null },
+    settings: { muted: false, rate: 0.9, voiceName: '', modulesOff: [], voice: 'device', focus: null, routine: {} },
     log: []
   };
 }
@@ -89,6 +94,10 @@ export function migrate(raw) {
   out.kingdom.gifts = capGifts(Array.isArray(out.kingdom.gifts) ? out.kingdom.gifts : []);
   out.feelingsLog = out.feelingsLog.filter(f => isObj(f) && typeof f.day === 'string');
   out.scenariosSeen = out.scenariosSeen.filter(x => typeof x === 'string');
+  out.stage = cleanStage(out.stage);
+  const day = v => typeof v === 'string' ? v : null;
+  out.clock = { intro: day(out.clock.intro), introHalf: day(out.clock.introHalf), mistakes: Object.fromEntries(Object.entries(isObj(out.clock.mistakes) ? out.clock.mistakes : {}).filter(([, n]) => Number.isInteger(n) && n > 0)) };
+  out.settings.routine = Object.fromEntries(Object.entries(out.settings.routine).filter(([k, v]) => /^[a-z]+$/.test(k) && typeof v === 'string' && /^\d{2}:\d{2}$/.test(v)));
   // saves from before the wallet: everything she has now counts as earned
   if (!isObj(raw.wallet)) out.wallet = { legacy: { earned: out.gems, spent: 0 } };
   for (const [id, w] of Object.entries(out.wallet)) if (!isObj(w) || typeof w.earned !== 'number' || typeof w.spent !== 'number') delete out.wallet[id];
@@ -266,8 +275,13 @@ export function createEconomy({ storage, key = SAVE_KEY, now = () => new Date(),
       a.log.sort((x, y) => (x.day < y.day ? -1 : x.day > y.day ? 1 : (x.t || 0) - (y.t || 0)));
       a.feelingsLog = unionRows(a.feelingsLog, b.feelingsLog);
       a.scenariosSeen = [...new Set([...a.scenariosSeen, ...b.scenariosSeen])];
+      a.stage = mergeStage(a.stage, b.stage);
       for (const [k, v] of Object.entries(b.books)) if (!a.books[k] || (v.reads || 0) > (a.books[k].reads || 0)) a.books[k] = v;
       for (const [k, v] of Object.entries(b.demos)) if (!a.demos[k]) a.demos[k] = v;
+      // the Lagoon: the clock intro counts once seen anywhere; mistakes keep the larger count of each kind
+      if (!a.clock.intro) a.clock.intro = b.clock.intro;
+      if (!a.clock.introHalf) a.clock.introHalf = b.clock.introHalf;
+      for (const [k, n] of Object.entries(b.clock.mistakes)) a.clock.mistakes[k] = Math.max(a.clock.mistakes[k] || 0, n);
       trimLog();
       return persist() ? true : 'full';
     },

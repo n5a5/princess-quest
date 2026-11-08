@@ -125,8 +125,10 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
     }
     return best[n];
   }
-  function lineClips(parts) {
-    if (!lines || !settings || settings.voice !== 'luna') return null;
+  // story: use the story voice whenever it has every sentence, whatever the setting (Star Stage: Luna's
+  // instructions must sound like the Luna who models the line).
+  function lineClips(parts, story = false) {
+    if (!lines || !settings || (settings.voice !== 'luna' && !story)) return null;
     const out = [];
     for (const part of parts) {
       if (part.sound) {
@@ -161,9 +163,9 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
   }
   // Says text, stopping as soon as live() turns false. Shared by say() and the {say} steps of sequence(),
   // so a sequence's own say step never cancels the sequence (the heart-word bug).
-  async function speak(text, live) {
+  async function speak(text, live, story = false) {
     const parts = parseParts(String(text));
-    const clips = lineClips(parts);
+    const clips = lineClips(parts, story);
     if (clips) {
       for (let i = 0; i < clips.length; i++) {
         if (!live()) return;
@@ -231,11 +233,20 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
       await speech.speakText(text, { rate: 0.85 });
       return true;
     },
-    async say(text, { interrupt = true } = {}) {
+    // A ready-made clip outside the four channels (a URL or a recorded Blob): Star Stage's model lines and her
+    // own takes. Results as the player: true = played, 'stopped' = interrupted, false = muted or would not load.
+    async clip(src) {
+      if (api.muted) return false;
+      api.stop();
+      const my = ++seq;
+      const r = await player.play(src);
+      return my === seq ? r : 'stopped';
+    },
+    async say(text, { interrupt = true, story = false } = {}) {
       if (api.muted) return;
       if (interrupt) api.stop();
       const my = ++seq;
-      await speak(text, () => my === seq);
+      await speak(text, () => my === seq, story);
     },
     // Source for one phoneme without playing it: a Blob (recording), a URL (bundled), or null.
     phonemeSrc(id) {
@@ -302,6 +313,7 @@ export function createAudio({ speech, store, player, manifest, sounds, settings,
     }
   };
   api.say = track(api.say);
+  api.clip = track(api.clip);
   api.sequence = track(api.sequence);
   return api;
 }
@@ -348,7 +360,11 @@ export function createWebAudioPlayer() {
   const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!AC) return createHtmlPlayer();
   let ctx = null;
-  const buffers = new Map(); // key → Promise<AudioBuffer>
+  const buffers = new Map(); // URL → Promise<AudioBuffer>
+  // Recordings by Blob, held only as long as the Blob is: Star Stage plays back a new take every few minutes,
+  // and a Map kept every one of them decoded until the app was closed.
+  const blobBuffers = new WeakMap();
+  const rawBlobBuffers = new WeakMap(); // the same recordings unlevelled: Parent Corner hears how loud she really was
   let playing = [];          // active source nodes
   let timers = [];
   let waiters = [];          // resolvers of in-flight play()/chain() promises; settled false on stop
@@ -380,16 +396,17 @@ export function createWebAudioPlayer() {
     try { await Promise.race([c.resume(), new Promise(r => setTimeout(r, 400))]); } catch {}
     return c;
   }
-  function decode(src) {
+  function decode(src, raw = false) {
     const k = keyOf(src);
-    if (!buffers.has(k)) {
+    const cache = src instanceof Blob ? (raw ? rawBlobBuffers : blobBuffers) : buffers;
+    if (!cache.has(k)) {
       const p = (src instanceof Blob ? src.arrayBuffer() : fetch(src).then(r => { if (!r.ok) throw new Error('audio ' + r.status); return r.arrayBuffer(); }))
         .then(ab => context().decodeAudioData(ab))
-        .then(buf => (src instanceof Blob ? conditioned(buf) : buf))
-        .catch(e => { buffers.delete(k); throw e; });
-      buffers.set(k, p);
+        .then(buf => (src instanceof Blob && !raw ? conditioned(buf) : buf))
+        .catch(e => { cache.delete(k); throw e; });
+      cache.set(k, p);
     }
-    return buffers.get(k);
+    return cache.get(k);
   }
   // A recording (Blob) is levelled, trimmed and normalised once, when it is decoded.
   function conditioned(buf) {
@@ -447,10 +464,11 @@ export function createWebAudioPlayer() {
     return end;
   }
   return {
-    async play(src) {
+    // { raw: true }: a recording as it was captured, without the levelling every recording otherwise gets
+    async play(src, { raw = false } = {}) {
       const g0 = gen;
       let buffer;
-      try { buffer = await decode(src); } catch (e) { console.warn('audio missing', src, e); lastError = String(e && e.message || e); return false; }
+      try { buffer = await decode(src, raw); } catch (e) { console.warn('audio missing', src, e); lastError = String(e && e.message || e); return false; }
       if (gen !== g0) return 'stopped'; // stop() or a newer clip came while this one loaded
       stopAll();
       const mine = gen;

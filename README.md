@@ -4,7 +4,7 @@ A magical kindergarten adventure for one child, Amelia, built as a static offlin
 
 Scorecard against the best children's learning apps and the ranked roadmap: `docs/state-of-the-art-scorecard.md` (research behind it: `docs/research/`).
 
-Audio is built offline with Kokoro-82M (af_heart, Apache-2.0) via kokoro-onnx: `tools/build-phonemes.py` (letter sounds), `tools/build-word-audio.py` (words), `tools/collect-lines.py` then `tools/build-lines-audio.py` (the story voice), `tools/build-audition.py` (Parent Corner voice audition).
+Audio is built offline with Kokoro-82M (af_heart, Apache-2.0) via kokoro-onnx: `tools/build-phonemes.py` (letter sounds), `tools/build-word-audio.py` (words), `tools/collect-lines.py` then `tools/build-lines-audio.py` (the story voice), `tools/build-audition.py` (Parent Corner voice audition), `tools/build-stage-audio.py` (Star Stage model lines).
 
 Design documents: `docs/superpowers/specs/2026-09-11-princess-quest-ideal-architecture.md` (research synthesis, evidence grades, decisions) and `docs/superpowers/specs/2026-09-10-princess-quest-v3-design.md` (original v3 spec).
 
@@ -14,7 +14,7 @@ Design documents: `docs/superpowers/specs/2026-09-11-princess-quest-ideal-archit
 npx http-server . -p 8765 -c-1
 ```
 
-Open http://localhost:8765/. Tests: `node --test tests/*.test.js` (99 tests, no dependencies; every module is parsed as an ES module, generators are stress-tested with thousands of draws, every content word and letter sound is checked for a bundled clip, and letter sounds must meet minimum length and loudness). Parent Corner: tap ⚙ on the map, PIN `1234`.
+Open http://localhost:8765/. Tests: `node --test tests/*.test.js` (115 tests, no dependencies; every module is parsed as an ES module, generators are stress-tested with thousands of draws, every content word and letter sound is checked for a bundled clip, and letter sounds must meet minimum length and loudness). Parent Corner: tap ⚙ on the map, PIN `1234`.
 
 ## The kingdom
 
@@ -26,6 +26,7 @@ Open http://localhost:8765/. Tests: `node --test tests/*.test.js` (99 tests, no 
 | 💎 Crystal Caverns | MA.K.NSO.1–3, AR.1 | Quick Peek (subitize, make 5, make 10), Gem Trail (one more / one less, count out n gems, order numbers), Gem Pouch (add / take away with Luna's ten-pocket pouch), Big Gem Piles (ten and ones, compare, number line), Cave Steps (by ones, tens, backward), Number Spells (bonds, decompose, picture problems, true spells, match the spell to the picture) |
 | 🌈 Rainbow Falls | MA.K.M.1, DP.1, AR.1, GR.1 | Measure the Falls (name the attribute; compare length, height with Squishy towers, weight on a balance scale that tips, capacity with jars that show their fill; order three; gems as units), Sort the Squishies (sort into baskets that become a chart: most, fewest, how many, how many more), Rainbow Path (AB / ABB / ABC patterns, what comes next, find the odd one), Shape Stones (2D, 3D, compose) |
 | 🏰 Story Castle | ELA.K.R.1–2, V.1 | Read-to-me stories with picture questions and next-day vocabulary recall, rhyming poems, Calm Tower (feelings, breathing, calm stories, body scan), Uh-Oh Courtyard (what would you do?) |
+| 🎭 Star Stage | Annie audition, 10/14/2026 | By-ear practice for the Broadway at the J audition: My Line and My Song (backward chaining with a picture per chunk, she says each part back, then all of it alone, later with the pictures hidden; her take plays back next to Luna's), Watch the orphans (the film's number, embedded from YouTube, online only), Audition time! (hello, line, song, thank you, applause, her audition played back). The microphone only detects when she speaks and how loud (the big-voice star, relative to her warm-up), never the words. Sits at the top of the map with a countdown until the audition; her first and latest takes are in Parent Corner |
 | 🏡 Squishy Garden | reward | Rescued Squishies live here; gems buy decorations; two gifts say thank you |
 
 Every learning item runs through one loop (`shared/encounter.js`): prompt auto-plays with a 🔊 button and tappable words → she taps or drags → Luna reacts → first miss glows the right answer and re-speaks → second miss reveals, and the item comes back two turns later. A round of six ends with stars, gems flying to the counter, a Squishy freed from its bubble, and a tick on Luna's glow meter (which never goes down). Today's Quest lights one place chosen by the planner; finishing it plus any other place opens the chest.

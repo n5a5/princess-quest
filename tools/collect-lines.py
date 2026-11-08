@@ -62,6 +62,13 @@ def from_json(name):
     for k, pool in J('praise.json').items():
         for p in pool: lines += sentences(p.replace('{name}', name))
     for s in J('sentences.json')['sentences']: lines.append(s['text'])
+    sh = J('stage.json')['show']
+    for p in sh['kate'] + sh['lines'] + sh['songs']: lines += sentences(p['intro']) + sentences(p['tip'])
+    for st in sh['sandy']: lines += sentences(st.get('narrate', '')) + sentences(st.get('do', ''))
+    # before each of her turns Luna says who goes first, then her (shared/stage-plan.js firstThen): "First Annie. Then you!"
+    whos = sorted({b['cue']['who'] for b in sh['kate'] + sh['lines'] + sh['songs'] if b.get('cue')} - {'Everybody', 'Annie and the orphans'})
+    lines += ['First ' + ('everybody' if w == 'Everybody' else re.sub(r'^Mr\. ', 'Mister ', w)) + '.' for w in whos]
+    lines += ['Then you!', 'Now you!', 'Sing along, then keep going!', 'Sing it after me.', 'Say it after me.']
     for b in J('books.json')['books']:
         lines.append(b['title'] + '.'); lines.append(b['question']['prompt'])
         for p in b['pages']: lines += sentences(p['text'])
@@ -79,7 +86,7 @@ def from_code():
         src = f.read_text(encoding='utf-8')
         for m in LIT.finditer(src):
             text = m.group(1).replace("\\'", "'")
-            if re.match(r'^(ELA|MA)\.[A-Z]', text):  # curriculum codes, never spoken
+            if re.match(r'^(ELA|MA)\.[A-Z0-9]', text):  # curriculum codes, never spoken
                 continue
             before = src[:m.start()].rstrip()[-1:] if src[:m.start()].rstrip() else ''
             after = src[m.end():].lstrip()[:1]
@@ -109,7 +116,7 @@ def vocab():
     pw = [w['w'] for st in J('phonics.json')['stages'] for w in st['words']]
     sw = [w for lst in J('sight-words.json')['lists'].values() for w in lst]
     kw = [s['word'] for s in J('sounds.json')['sounds'] if s.get('word')]
-    squishies = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble']
+    squishies = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'Finn', 'Pinchy', 'Inky']
     sort_names = ['pink Squishy', 'green Squishy', 'yellow Squishy', 'tulip', 'blossom', 'daisy', 'caterpillar', 'bee', 'butterfly', 'apple', 'strawberry', 'lemon']
     sort_bins = {'pink Squishy': 'pink', 'green Squishy': 'green', 'yellow Squishy': 'yellow', 'tulip': 'flowers', 'blossom': 'flowers', 'daisy': 'flowers',
                  'caterpillar': 'bugs', 'bee': 'bugs', 'butterfly': 'bugs', 'apple': 'fruit', 'strawberry': 'fruit', 'lemon': 'fruit'}
@@ -143,12 +150,15 @@ PIECES = [
     'They are the same length.', 'They weigh the same.', 'They are the same height.', 'They have the same.', 'They hold the same.',
     # Gem Bundles reveals: "30 and 7 is 37", "27 and ten more is 37", "3 bundles of ten is 30"
     'and ten more is', 'bundles of ten is',
+    # Tick-Tock Lagoon (lagoon.js): the time goes in the slot ("Which clock says" + "three thirty?")
+    'Which clock says', 'Make the clock say', 'Your clock says', 'This clock says', 'That says',
+    'Now move the short hand to the', 'Now move the short hand past the', 'The short hand points to the', 'The short hand has passed the', 'We want',
 ]
-SQUISHY_TOWER_NAMES = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble']  # shared/characters.js SQUISHY_KINDS
+SQUISHY_TOWER_NAMES = ['Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud', 'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'Finn', 'Pinchy', 'Inky']  # shared/characters.js SQUISHY_KINDS
 SLOT_WORDS = ['pink Squishy', 'green Squishy', 'yellow Squishy', 'tulip', 'blossom', 'daisy', 'caterpillar', 'bee', 'butterfly', 'apple',
               'strawberry', 'lemon', 'pink', 'green', 'yellow', 'flowers', 'bugs', 'fruit', 'circle', 'square', 'triangle', 'rectangle',
               'sphere', 'cube', 'cone', 'cylinder', 'Rosie', 'Minty', 'Sunny', 'Skye', 'Plummy', 'Peach', 'Berry', 'Leaf', 'Cloud',
-              'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'gem', 'gems', 'more', 'less',
+              'Lilac', 'Coral', 'Lemon', 'Teal', 'Blush', 'Moss', 'Fern', 'Dawn', 'Pebble', 'Finn', 'Pinchy', 'Inky', 'gem', 'gems', 'more', 'less',
               # Rainbow Path pattern names (falls.js PAT_NAME)
               'heart', 'clover', 'star', 'moon', 'fire', 'purple', 'blue', 'orange',
               # Measure the Falls things (falls.js OBJECTS, HEAVY, HOLDS) and the jars
@@ -174,8 +184,21 @@ def _check(p):
 TEMPLATE_CHECKS = sorted({_check(p) for p in PIECES if len(p) > 3})
 
 
+# Clock times as she says them (shared/clock.js phrase()), at the levels the Lagoon has: o'clock and thirty.
+CLOCK_MINUTES = [0, 30]
+HOUR_WORDS = ['twelve', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+def clock_phrases():
+    out = []
+    for h in range(1, 13):
+        for m in CLOCK_MINUTES:
+            p = HOUR_WORDS[h] + (" o'clock" if m == 0 else ' thirty')
+            out += [p, p + '.', p + '?', p + '!']
+    return out + [w + '.' for w in HOUR_WORDS[1:]]
+
+
 def from_templates(name):
     L = [(p, True) for p in PIECES] + [(w, True) for w in SLOT_WORDS] + [(name + '!', True), (name + '.', True), (name, True)]
+    L += [(p, True) for p in clock_phrases()]
     L += [(str(n), True) for n in range(0, 101)]  # every number to 100: Gem Bundles count by tens and on by ones
     return L
 

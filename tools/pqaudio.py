@@ -21,6 +21,36 @@ def from_file(path, sr=SR):
     return np.frombuffer(run_ff(['-i', str(path), '-f', 'f32le', '-ac', '1', '-ar', str(sr), '-']), dtype=np.float32).copy()
 
 
+def true_peak_db(path):
+    """True peak (dBTP, 4x oversampled) of an encoded file, as ffmpeg's EBU R128 meter reports it."""
+    import re
+    err = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-i', str(path), '-af', 'ebur128=peak=true', '-f', 'null', '-'],
+                         capture_output=True, text=True).stderr
+    m = re.search(r'Peak:\s+(-?[\d.]+|-inf) dBFS', err[err.rfind('Summary:'):])
+    return float(m.group(1)) if m and m.group(1) != '-inf' else -120.0
+
+
+def encode_checked(x, out, kbps, target=None, tp_max=-1.0, tol=0.2):
+    """Encodes and measures the result, then corrects until the ENCODED file is right: true peak at or under
+    tp_max (Opus at low bitrates overshoots by up to ~2.5 dB, so the limiter is tightened) and loudness within tol
+    of `target` (encoding shifts it by ~0.6 dB, short clips by up to ~2 dB, so the aim is corrected by what the
+    file measures). Returns the final true peak."""
+    tgt = target if target is not None else LOUDNESS_LUFS
+    ceiling, aim, tp = -2.0, tgt, 0.0
+    for _ in range(10):
+        y = normalise_loudness(x, aim, ceiling)
+        encode_opus(y, out, kbps)
+        tp = true_peak_db(out)
+        if tp > tp_max:
+            ceiling -= (tp - tp_max) + 0.3
+            continue
+        got = loudness(from_file(out))
+        if abs(got - tgt) <= tol:
+            break
+        aim += tgt - got
+    return tp
+
+
 def encode_opus(x, out, kbps=32):
     wav = TMP / (Path(out).stem + '.enc.wav')
     to_wav(x, wav)
@@ -60,6 +90,52 @@ def normalise_peak(x, peak_db=-1.0):
     return x * (10 ** (peak_db / 20) / pk) if pk > 0 else x
 
 
+# One loudness for every spoken clip, so no line is noticeably quieter than the one before it. Peak
+# normalising alone left Star Stage clips 8 dB apart (and one over full scale after Opus encoding); Kokoro
+# speech has sharp peaks, so reaching a common loudness needs a gentle limiter on those peaks first.
+# -16.5 LUFS is the median of the story-voice lines rendered before this existed.
+LOUDNESS_LUFS = -16.5
+
+
+def limit_peaks(x, ceiling_db=-2.0, hold_ms=8, release_ms=80):
+    """Look-ahead peak limiter: the gain dips just before a peak (no overshoot) and recovers smoothly."""
+    from scipy.ndimage import minimum_filter1d
+    c = 10 ** (ceiling_db / 20)
+    need = np.minimum(1.0, c / np.maximum(np.abs(x), 1e-9))
+    h = max(1, int(SR * hold_ms / 1000))
+    g = minimum_filter1d(need, size=2 * h + 1, mode='nearest')
+    g = np.convolve(g, np.ones(h) / h, mode='same')  # every sample averaged here is <= the need at the peak
+    r = np.exp(-1 / (SR * release_ms / 1000))
+    out = g.copy()
+    for i in range(1, len(out)):  # fall at once, recover with the release time
+        out[i] = g[i] if g[i] < out[i - 1] else out[i - 1] * r + g[i] * (1 - r)
+    return (x * np.minimum(out, need)).astype(np.float32)
+
+
+def loudness(x):
+    """Integrated loudness (EBU R128 / BS.1770, pyloudnorm). A clip shorter than 3 s is measured looped to 3 s:
+    the 400 ms gating blocks make a single word's reading swing by a dB or more (or fail under 0.4 s)."""
+    import pyloudnorm
+    y = np.asarray(x, dtype=np.float64)
+    if len(y) < SR * 3:
+        y = np.tile(y, int(np.ceil(SR * 3 / max(1, len(y)))))
+    return pyloudnorm.Meter(SR).integrated_loudness(y)
+
+
+def normalise_loudness(x, target=LOUDNESS_LUFS, ceiling_db=-2.0):
+    """Gain to `target` integrated loudness with the peaks limited to ceiling_db. Needs pyloudnorm (it brings
+    scipy). encode_checked() then makes sure the encoded file's true peak stays at or under -1 dBTP."""
+    y = x.astype(np.float64)
+    for _ in range(4):  # limiting lowers the loudness a little; converge in a few passes
+        lufs = loudness(y)
+        if not np.isfinite(lufs):
+            return x
+        if abs(lufs - target) < 0.1:
+            break
+        y = limit_peaks(y * 10 ** ((target - lufs) / 20), ceiling_db).astype(np.float64)
+    return y.astype(np.float32)
+
+
 VOICELESS = ('sh', 'ch', 'th', 'p', 't', 'k', 'c', 's', 'f', 'h', 'q', 'x')
 VOICED_STOPS = ('b', 'd', 'g', 'j')
 
@@ -91,6 +167,8 @@ def trim_lead_murmur(x, word, window_ms=None, max_ms=None):
             cut = max(0, fr[n]['i'] - int(SR * 0.005))
     else:
         # the closure: the quietest frame between the murmur and the vowel, clearly below the murmur
+        if v0 <= s + 3:
+            return x, 0  # no room for a murmur before the vowel: nothing to cut
         i = min(range(s + 3, v0), key=lambda k: e[k])
         if e[i] < e[s:i].max() - 4:
             cut = fr[i]['i']
@@ -100,6 +178,54 @@ def trim_lead_murmur(x, word, window_ms=None, max_ms=None):
     if max_ms is not None and ms > max_ms:
         return x, 0
     return x[cut:], ms
+
+
+# The last sounds of a line that cannot end in a hiss: vowels, nasals and liquids (Kokoro's phonemes).
+SOFT_END = set('aeiouæɑɐɔəɛɜɪʊʌɒᵻɚɝmnŋlɹɾ')
+
+
+def soft_end(text):
+    """Whether the line's last spoken sound is a vowel, nasal or liquid (so any hiss after it is not speech)."""
+    from kokoro_onnx.tokenizer import Tokenizer
+    import re
+    # keep the sounds only: no punctuation, spaces, stress or length marks ("juː" ends in u)
+    ph = re.sub(r'[^\w\u0250-\u02af\u1d00-\u1dbfæðŋθʃʒ]|[ˈˌːˑ]', '', Tokenizer().phonemize(text, 'en-us'))
+    return bool(ph) and ph[-1] in SOFT_END
+
+
+def trim_tail_hiss(x, text, max_ms=200):
+    """Kokoro sometimes ends a line with a short "s" of breath noise after the last word: "Hello, everybody!"
+    came out as "everybodies", "Laundry man!" as "Laundry mans". When the last spoken sound is a vowel, nasal or
+    liquid, a hissy stretch at the very end cannot be part of the word, so it is cut (the caller fades the end).
+    Only a stretch that is mostly hiss (energy above 4 kHz) and 40 to max_ms long is cut. Returns (audio, ms_cut)."""
+    if not len(x) or not soft_end(text):
+        return x, 0
+    win, hop = int(SR * 0.02), int(SR * 0.01)
+    start = max(0, len(x) - int(SR * (max_ms + 100) / 1000))
+    rows = []
+    for i in range(start, len(x) - win + 1, hop):
+        f = x[i:i + win] * np.hanning(win)
+        S = np.abs(np.fft.rfft(f)) ** 2; hz = np.fft.rfftfreq(win, 1 / SR); tot = S.sum() + 1e-18
+        rows.append((i, 10 * np.log10(tot), S[(hz > 4000) & (hz < 11000)].sum() / tot))
+    if not rows:
+        return x, 0
+    top = max(r[1] for r in rows)
+    # from the end: past the quiet fade-out, then back over the run of hissy frames; it must follow speech
+    k = len(rows) - 1
+    while k >= 0 and rows[k][1] < top - 20: k -= 1
+    end = k
+    while k >= 0 and rows[k][2] > 0.55: k -= 1
+    run = end - k
+    # up to two frames where the last sound turns into the hiss; before them, speech
+    for _ in range(2):
+        if k >= 0 and rows[k][2] > 0.3: k -= 1
+    if k < 0 or run < 4 or rows[k][2] > 0.3:
+        return x, 0
+    cut = rows[k + 1][0]
+    ms = round((len(x) - cut) / SR * 1000)
+    if ms > max_ms:
+        return x, 0
+    return x[:cut], ms
 
 
 def main_vowel_start(fr):
@@ -120,6 +246,9 @@ class Voice:
         self.name = name
 
     def say(self, text, phonemes=False, speed=0.85, voice=None):
-        a, sr = self.k.create(text, voice=voice or self.name, speed=speed, lang='en-us', is_phonemes=phonemes, trim=False)
+        voice = voice or self.name
+        # 'af_nicole+af_kore+af_jessica': a group, the average of those voices' styles (one clip, many voices)
+        if '+' in voice: voice = np.mean([self.k.get_voice_style(n) for n in voice.split('+')], axis=0).astype(np.float32)
+        a, sr = self.k.create(text, voice=voice, speed=speed, lang='en-us', is_phonemes=phonemes, trim=False)
         assert sr == SR
         return np.asarray(a, dtype=np.float32)

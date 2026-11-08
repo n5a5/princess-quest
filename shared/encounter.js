@@ -7,7 +7,8 @@ import { el, wait, pick, withName, confetti, sheet, bigButton, roundDots } from 
 import { lunaSVG, squishySVG, svgFrom, SQUISHY_KINDS } from './characters.js';
 import { SQUISHIES } from '../games/registry.js';
 
-export function createStage({ host, place, ctx }) {
+// trail(total, done) → node: a place may draw its own progress row (the Lagoon's reef path) instead of the dots.
+export function createStage({ host, place, ctx, trail = null }) {
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: ctx.economy.companion().level }));
   const objectArea = el('div', { class: 'object' });
   const dots = el('div', { class: 'round-dots' });
@@ -31,7 +32,7 @@ export function createStage({ host, place, ctx }) {
     setObject(node) { objectArea.replaceChildren(node || ''); },
     setPrompt(node) { promptArea.replaceChildren(node || ''); },
     setBody(...nodes) { body.replaceChildren(...nodes); },
-    setDots(total, done) { dots.replaceChildren(...roundDots(total, done).childNodes); }
+    setDots(total, done) { dots.replaceChildren(...(trail ? [trail(total, done)] : roundDots(total, done).childNodes)); }
   };
   return stage;
 }
@@ -65,7 +66,8 @@ function idleNudge(stage, audio) {
 // item answered after pointing counts as "not known yet". Families opt in by marking the answer with
 // data-answer (and data-order on tiles, data-done on a Done button); the marker is never shown.
 const DEMO_FAMILIES = new Set(['gpc', 'spell', 'read', 'swap', 'scroll', 'seeds', 'blend', 'count', 'cavecount', 'tens', 'oralswap', 'takeaway', 'rhyme', 'beats',
-  'onsetrime', 'heartap', 'spellheart', 'note', 'frames', 'trail', 'road', 'bridge', 'teen', 'stories', 'measure', 'patterns', 'shapes']);
+  'onsetrime', 'heartap', 'spellheart', 'note', 'frames', 'trail', 'road', 'bridge', 'teen', 'stories', 'measure', 'patterns', 'shapes',
+  'clockread', 'clockmatch', 'clockset']);
 function answerTarget(root) {
   if (root.querySelector('.tile.picked')) return root.querySelector('.slot:not(.filled)');
   const tile = [...root.querySelectorAll('.tile[data-order]:not([disabled]):not(.used)')].sort((a, b) => a.dataset.order - b.dataset.order)[0];
@@ -124,12 +126,13 @@ function showMeButton(stage) {
 }
 
 // Runs a round. items: [{ family, item }] pairs. Returns { stars, ratio, rescued, companion }.
-export async function runEncounterRound({ host, ctx, place, cabinetId, items, review = new Set() }) {
-  const stage = createStage({ host, place, ctx });
+export async function runEncounterRound({ host, ctx, place, cabinetId, items, review = new Set(), trail = null }) {
+  const stage = createStage({ host, place, ctx, trail });
   const praise = ctx.praise && ctx.praise.praise ? ctx.praise.praise : ['Great job!'];
   const name = ctx.economy.save.child.name;
   const queue = items.slice();
-  const retried = new Set();
+  const retried = new Set(); // the queue entries put back after a reveal (by entry: two different cards that share an id, or one word
+  // in two activities, are each scored; only the card that was actually re-presented is a retry)
   let firstTries = 0, total = 0, index = 0, cancelled = false, lastGood = null;
   stage.cancel = () => { cancelled = true; };
   // Back to the menu or map replaces the stage: the round is over, nothing more is said or credited.
@@ -140,9 +143,10 @@ export async function runEncounterRound({ host, ctx, place, cabinetId, items, re
   const showMe = showMeButton(stage);
   stage.root.querySelector('.stage-row').appendChild(showMe);
   while (queue.length && !gone()) {
-    const { family, item } = queue.shift();
+    const entry = queue.shift();
+    const { family, item } = entry;
     const itemId = family.itemId ? family.itemId(item) : (family.id + ':' + (item.w || item.id || index));
-    const isRetry = retried.has(itemId);
+    const isRetry = retried.has(entry);
     stage.setDots(items.length - demoCount, Math.min(items.length - demoCount, index));
     stage.luna('idle');
     stage.helpUsed = false;
@@ -188,9 +192,9 @@ export async function runEncounterRound({ host, ctx, place, cabinetId, items, re
     if (outcome === 'firstTry') stage.luna('happy'); else if (outcome === 'revealed') stage.luna('think'); else stage.luna('happy', 900);
     if (!isRetry) { if (scored) { total++; if (outcome === 'firstTry') firstTries++; } index++; }
     if (outcome === 'revealed' && !isRetry && !family.noRequeue) {
-      retried.add(itemId);
+      retried.add(entry);
       if (queue.length < 2 && lastGood) queue.push(lastGood); // BUG-13: never re-present immediately
-      queue.splice(Math.min(2, queue.length), 0, { family, item });
+      queue.splice(Math.min(2, queue.length), 0, entry);
     } else if (outcome === 'firstTry' && !isRetry && !family.noRequeue) lastGood = { family, item };
     await wait(350);
   }

@@ -14,6 +14,10 @@ import { createContentLoader } from '../shared/content.js';
 import { createSpeech } from '../shared/speech.js';
 import { createAudio, createWebAudioPlayer } from '../shared/audio.js';
 import { mouthSVG } from '../shared/mouths.js';
+import { canListen, openMic } from '../shared/mic.js';
+import { createSongPlayer } from '../shared/songclip.js';
+import { stageDefaults } from '../shared/stage-plan.js';
+import { ROUTINES, routineTimes, digital } from '../shared/clock.js';
 
 const economy = createEconomy({ storage: localStorage, onSaveError: () => alert('This device could not store the save (storage full or blocked). Use Export now to keep a copy.') });
 const adaptive = createAdaptive({ economy });
@@ -23,7 +27,7 @@ const speech = createSpeech({ settings: economy.save.settings, onChange: () => e
 const player = createWebAudioPlayer();
 const audio = createAudio({ speech, store, player, manifest: null, sounds: {}, settings: economy.save.settings, base: '../assets/audio/' });
 const app = document.getElementById('app');
-let SOUNDS = [], SW = null, AUDITION = null;
+let SOUNDS = [], SW = null, AUDITION = null, STAGE = null;
 
 // Fall 2026 formal results, typed from the school reports (i-Ready Inform 1, Aug 18/20; Star, Aug 25 / Sep 1).
 // Strand → the app skills that practise it. 'read' is the plain-language interpretation used to set tiers.
@@ -137,13 +141,16 @@ const TONIGHT = {
   'data-sort': 'Sort the socks by color, count each pile, and ask which pile has the most.',
   'patterns': 'Make a pattern with spoons and forks (spoon, fork, spoon, fork). She says what comes next.',
   'shapes': 'Shape hunt: find three circles and three rectangles in the kitchen.',
-  'comprehension': 'Read a picture book together. Ask who was in it, where it happened, and how someone felt.'
+  'comprehension': 'Read a picture book together. Ask who was in it, where it happened, and how someone felt.',
+  'time-tell': 'Kitchen clock at a routine time (bath, bed): ask "What time is it?" She reads the short hand first, then the long hand: seven o\'clock, seven thirty.'
 };
 function tonightCard() {
-  const practised = SUBSKILLS.filter(d => adaptive.accuracy(d.id) !== null && d.tier <= 2);
+  // the quest's skills only: free-play places (the Lagoon) never take the parent's two minutes
+  const core = new Set([...GROUPS.reading, ...GROUPS.math]);
+  const practised = SUBSKILLS.filter(d => core.has(d.cabinet) && adaptive.accuracy(d.id) !== null && d.tier <= 2);
   const pool = practised.length ? practised : SUBSKILLS.filter(d => d.tier === 1);
   const d = [...pool].sort((x, y) => adaptive.mastery(x.id) - adaptive.mastery(y.id))[0];
-  return d ? d.name + ': ' + TONIGHT[d.id] : 'Read a picture book together.';
+  return d ? d.name + ': ' + (TONIGHT[d.id] || 'Read a picture book together.') : 'Read a picture book together.';
 }
 function tonightLine() {
   const trouble = adaptive.troubleList(2).slice(0, 3);
@@ -151,7 +158,9 @@ function tonightLine() {
   const pretty = id => {
     const [kind, ...rest] = id.split(':');
     const r = rest.join(' ');
-    return ({ spell: 'building the word "' + r + '"', read: 'reading the word "' + r + '"', heartap: 'the wish word "' + r + '"', note: 'finding "' + r.split(' ')[0] + '" in a sentence', scroll: 'reading a sentence', 'gpc-hear': 'hearing the sound of "' + r + '"', 'gpc-see': 'the sound of the letter "' + r + '"', swap: 'changing ' + r.replace('>', ' into '), oralswap: 'hearing ' + r.replace('>', ' change to '), takeaway: 'taking a sound off ' + r.split('>')[0], rhyme: 'a rhyme for ' + r.split('>')[0], beats: 'clapping the beats in ' + r, onsetrime: 'putting together ' + r, 'pa-first': 'the first sound in ' + r, 'pa-final': 'the last sound in ' + r, 'pa-medial': 'the middle sound in ' + r, blend: 'blending ' + r, count: 'counting sounds in ' + r, teen: 'teen number ' + r.replace('teens ', ''), bridge: 'the sum ' + r, frames: 'seeing ' + r.replace(/\w+ /, '') + ' gems quickly', trail: r.startsWith('onemore') ? 'one more or one less' : r.startsWith('countout') ? 'counting out ' + r.replace('countout ', '') + ' gems' : 'putting numbers in order', story: 'the story questions', vocab: 'the story word', measure: 'measuring (' + r + ')', sort: 'sorting', pattern: 'the ' + r.split(' ')[0] + ' pattern', shape: 'the ' + r.replace(/\w+ /, '') + ' shape' })[kind] || id;
+    // Lagoon ids are clockread:3:30[:bed]; the time is two parts
+    const at = rest.length >= 2 ? rest[0] + ':' + rest[1] + (rest[2] ? ' (' + rest[2] + ')' : '') : r;
+    return ({ spell: 'building the word "' + r + '"', read: 'reading the word "' + r + '"', heartap: 'the wish word "' + r + '"', note: 'finding "' + r.split(' ')[0] + '" in a sentence', scroll: 'reading a sentence', 'gpc-hear': 'hearing the sound of "' + r + '"', 'gpc-see': 'the sound of the letter "' + r + '"', swap: 'changing ' + r.replace('>', ' into '), oralswap: 'hearing ' + r.replace('>', ' change to '), takeaway: 'taking a sound off ' + r.split('>')[0], rhyme: 'a rhyme for ' + r.split('>')[0], beats: 'clapping the beats in ' + r, onsetrime: 'putting together ' + r, 'pa-first': 'the first sound in ' + r, 'pa-final': 'the last sound in ' + r, 'pa-medial': 'the middle sound in ' + r, blend: 'blending ' + r, count: 'counting sounds in ' + r, teen: 'teen number ' + r.replace('teens ', ''), bridge: 'the sum ' + r, frames: 'seeing ' + r.replace(/\w+ /, '') + ' gems quickly', trail: r.startsWith('onemore') ? 'one more or one less' : r.startsWith('countout') ? 'counting out ' + r.replace('countout ', '') + ' gems' : 'putting numbers in order', story: 'the story questions', vocab: 'the story word', measure: 'measuring (' + r + ')', sort: 'sorting', pattern: 'the ' + r.split(' ')[0] + ' pattern', shape: 'the ' + r.replace(/\w+ /, '') + ' shape', clockread: 'reading the clock at ' + at, clockmatch: 'matching the clock to ' + at, clockset: 'setting the clock to ' + at })[kind] || id;
   };
   const items = trouble.map(t => pretty(t.id)).join('; ');
   return `Two minutes tonight: revisit ${items}. Say it, let her find it, then let her teach it to you.`;
@@ -164,6 +173,8 @@ function render() {
   const mastered = sw.filter(([, v]) => v.box >= 5 && v.firstTryDays.length >= 3).length;
   app.replaceChildren(
     weekSection(),
+    stageSection(),
+    lagoonSection(),
     focusSection(),
     el('section', {}, [
       el('h2', { text: 'Is it working?' }),
@@ -187,7 +198,7 @@ function render() {
           const place = REGISTRY.find(r => r.id === d.cabinet);
           return el('tr', { class: (d.tier === 1 ? 'tier1 ' : '') + (adaptive.needsReteach(d.id) ? 'reteach' : '') }, [
             el('td', {}, [d.name + ' ', el('span', { class: 'muted', text: d.strand })]),
-            el('td', { text: place ? place.name.replace(/^(Unicorn|Whisper|Wishing|Crystal|Rainbow|Story) /, '') : d.cabinet }),
+            el('td', { text: place ? place.name.replace(/^(Unicorn|Whisper|Wishing|Crystal|Rainbow|Story|Tick-Tock) /, '') : d.cabinet }),
             el('td', { text: d.tier === 1 ? 'focus' : d.tier === 2 ? 'secondary' : 'strength' }),
             el('td', { text: adaptive.accuracy(d.id) === null ? '—' : LEVEL_WORD[adaptive.level(d.id)] }),
             el('td', { text: adaptive.stage(d.id) }),
@@ -270,6 +281,166 @@ function render() {
 // Focus this week: the parent picks a sound and some wish words; for seven days the planner leans on them
 // (more of that letter stone and its words in the Meadow, that sound as the target in the Woods, those
 // words first in the Well) without switching anything else off.
+// Star Stage (Annie show practice: Kate and Sandy): what she did each day, and her takes (the first and the latest
+// of each part, and of each part in Run my lines) so a grown-up can hear how it is going without sitting next to
+// her. The audition's recordings (10/14/2026) stay listed at the end while they are on the device.
+const AUDITION_TAKES = [['line', 'Audition line, practice'], ['song', 'Audition song, practice'], ['other', 'Another line'], ['audition-slate', 'Audition: hello'], ['audition-line', 'Audition: line'], ['audition-song', 'Audition: song'], ['audition-thanks', 'Audition: thank you']];
+const STAGE_WORDS = { kate: 'Kate', lines: 'orphan lines', songs: 'a song', sandy: 'Sandy', run: 'ran her lines', hear: 'heard the song', line: 'audition line', song: 'audition song', watch: 'watched the clip', audition: 'mock audition', other: 'another line', dayof: 'audition-day warm-up' };
+const showParts = () => STAGE && STAGE.show ? [...STAGE.show.kate, ...STAGE.show.lines, ...STAGE.show.songs] : [];
+const partName = b => (b.song ? b.song + ': ' : b.who === 'Kate' || /Kate/.test(b.who) ? 'Kate: ' : 'Orphans: ') + b.chunks[0].text + (b.chunks.length > 1 ? '…' : '');
+const fmtDay = d => (([y, m, dd]) => `${+m}/${+dd}/${y}`)(d.split('-'));
+function stageSection() {
+  const st = economy.save.stage;
+  const days = Object.keys(st.days).sort();
+  const when = STAGE && STAGE.showDate ? fmtDay(STAGE.showDate) : '';
+  // as recorded, not levelled: you hear how loud she really was
+  const play = id => { player.stop(); player.play(store.get('stage', id), { raw: true }); };
+  const list = [...showParts().map(b => [b.id, partName(b)]), ...showParts().map(b => ['run-' + b.id, 'Run: ' + partName(b)]), ...AUDITION_TAKES];
+  const takes = list.filter(([id]) => store.has('stage', id)).map(([id, name]) => el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+    el('span', { text: name, style: 'min-width:150px' }),
+    store.has('stage', id + '-first') ? el('button', { type: 'button', text: '▶ First take', onclick: () => play(id + '-first') }) : null,
+    el('button', { type: 'button', text: '▶ Latest', onclick: () => play(id) })
+  ]));
+  return el('section', {}, [
+    el('h2', { text: 'Star Stage: Annie, Kate and Sandy' + (when ? ' (show ' + when + ')' : '') }),
+    el('div', { class: 'kpis' }, [kpi('Days practiced', days.length), kpi('Kate', st.solos.kate || 0), kpi('Orphan lines', st.solos.lines || 0), kpi('Songs', st.solos.songs || 0), kpi('Sandy', st.solos.sandy || 0), kpi('Run my lines', st.solos.run || 0), kpi('Heard the song', st.watched)]),
+    el('p', {}, [el('strong', { text: 'By day: ' }), days.slice(-10).map(d => d.slice(5) + ' ' + Object.entries(st.days[d]).map(([k, n]) => (STAGE_WORDS[k] || k) + (n > 1 ? ' ×' + n : '')).join(', ')).join(' · ') || 'nothing yet.']),
+    ...(takes.length ? takes : [el('p', { class: 'muted', text: 'Her recordings appear here after her first practice.' })]),
+    wordsBlock(),
+    songBlock(),
+    micTest(),
+    // a grown-up tried it out first: start Star Stage over for her (the song and its times stay)
+    el('div', { class: 'row', style: 'justify-content:flex-start; margin-top:12px' }, [
+      el('button', { type: 'button', class: 'danger', text: 'Reset Star Stage practice', onclick: resetStage }),
+      el('span', { class: 'muted', text: 'Clears practice days, counts and recordings, as if she never started. The loaded song and the written-lines switch stay.' })
+    ]),
+    el('p', { class: 'muted', text: 'The microphone only checks that she spoke and how loud (the star), never the words. Hear the orphans plays the recording loaded below, which stays on this device; everything works offline. Recordings stay on this device and play here exactly as loud as she was.' })
+  ]);
+}
+
+async function resetStage() {
+  if (!confirm('Reset Star Stage? This clears every practice day, count and recording on this device, so the plan starts again from the beginning. The loaded song stays. (Combining progress from another device later would bring that device\'s Star Stage practice back.)')) return;
+  const { songCut, script } = economy.save.stage;
+  economy.save.stage = { ...stageDefaults(), songCut, script };
+  economy.persist();
+  for (const id of store.ids('stage')) if (id !== 'song-audio') await store.remove('stage', id);
+  render();
+}
+
+// Her words, for the grown-up who helps: each part with the same pictures she sees and, in grey, its cue (the line
+// just before hers, and who says it), so you can run lines with her anywhere. And the switch for her lines written
+// out on the practice screens: on unless turned off, this device only. Off, each row shows only its picture.
+function wordsBlock() {
+  const st = economy.save.stage;
+  const sh = STAGE && STAGE.show;
+  const name = (economy.save.child && economy.save.child.name) || 'Amelia';
+  const part = b => el('div', { style: 'margin:6px 0 6px 8px' }, [
+    b.cue ? el('div', { class: 'muted', text: b.cue.who + ': ' + b.cue.text }) : null,
+    el('div', { style: 'font-weight:600', text: b.who + ':' }),
+    ...b.chunks.map(c => el('div', { style: 'margin-left:8px', text: c.pic + '  ' + c.text.replace(/\{name\}/g, name) }))
+  ]);
+  const group = (title, blocks) => el('details', { style: 'margin:8px 0' }, [el('summary', { text: title }), ...blocks.map(part)]);
+  const lines = !sh ? [] : [
+    group('Kate (' + sh.kate.length + ' parts)', sh.kate),
+    group('The orphans, spoken (' + sh.lines.length + ' lines)', sh.lines),
+    ...[...new Set(sh.songs.map(b => b.song))].map(song => group(song, sh.songs.filter(b => b.song === song))),
+    el('details', { style: 'margin:8px 0' }, [el('summary', { text: 'Sandy (Scene 2)' }), ...sh.sandy.map(x => el('div', { style: 'margin:4px 0 4px 8px' }, [
+      x.cue ? el('div', { class: 'muted', text: x.cue.who + ': ' + x.cue.text }) : null,
+      el('div', { text: (x.pic || '🎵') + '  ' + (x.do || x.narrate || '') })
+    ]))])
+  ];
+  const box = el('input', { type: 'checkbox', id: 'stage-words', onchange: e => { st.script = e.target.checked; economy.persist(); } });
+  box.checked = st.script !== false;
+  return el('div', { style: 'margin-top:12px' }, [
+    el('h3', { text: 'Her words' }),
+    ...lines,
+    el('label', { class: 'toggle', style: 'margin-top:8px', for: 'stage-words' }, [box, el('span', { style: 'flex:1', text: 'Show her lines written out, under the line before hers (this device)' })]),
+    el('p', { class: 'muted', text: 'On unless you turn it off. The practice screen reads like a little script: who speaks just before her and their last words, then her lines, one row per phrase with its picture; the row being said lights up. On a from-memory try the rows whose pictures are hidden hide their words too, and Run my lines shows none, so she still practises saying it without reading. Ask the director who sings the last Tomorrow (the script does not say), and what the orphans shout when they cheer.' })
+  ]);
+}
+
+// The cast recording for Hear the orphans and the first Hard-Knock Life chorus in Orphan songs. Loaded from a file on
+// this device and kept only here (the app and its public site never contain it). The chorus inside it was found by
+// analysis, not by ear:
+// "Play my part" lets a grown-up check it and the buttons move its start and end half a second at a time.
+let songPlayer = null;
+function songBlock() {
+  const s = economy.save.stage;
+  const rec = store.get('stage', 'song-audio');
+  const base = STAGE && STAGE.songCut;
+  // Star Stage content did not load (offline on a first visit): nothing to cut against, so no editor rather than a crash
+  if (!base) return el('p', { class: 'muted', text: 'Star Stage did not load, so the song settings are not available. Reload to try again.' });
+  const fmt = t => Math.floor(t / 60) + ':' + (t % 60).toFixed(1).padStart(4, '0');
+  const load = el('input', { type: 'file', accept: 'audio/*', onchange: async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const probe = createSongPlayer(f);
+    const d = await probe.duration();
+    probe.release();
+    if (!d) { alert('This device cannot play that file. Use the MP3 of the clip.'); e.target.value = ''; return; }
+    await store.save('stage', 'song-audio', f);
+    if (base && d < base.end) alert('This recording is only ' + fmt(d) + ' long, so her part (' + fmt(base.start) + ' to ' + fmt(base.end) + ') is not in it. Orphan songs will use Luna\'s chant; Hear the orphans still plays it.');
+    else if (base && Math.abs(d - base.duration) > 2) alert('This recording is ' + fmt(d) + ' long, not ' + fmt(base.duration) + ' like the clip the times were set for. Use "Play my part" and the buttons to find "It\'s the hard-knock life for us" … "It\'s the hard-knock life!".');
+    render();
+  } });
+  if (!rec) return el('div', { class: 'song-setup' }, [
+    el('p', {}, [el('strong', { text: 'The real song: ' }), 'not loaded. Load the movie clip audio (the "It\'s the Hard Knock Life" Full Clip MP3): Orphan songs then plays the orphans singing the first chorus and Hear the orphans plays the whole number, offline. The file stays on this device.']),
+    el('label', { class: 'toggle' }, ['Load the song ', load])
+  ]);
+  if (!songPlayer) songPlayer = createSongPlayer(rec);
+  const cut = () => s.songCut || { start: base.start, end: base.end };
+  const warn = el('p', { class: 'reteach', style: 'display:none' });
+  songPlayer.duration().then(d => {
+    if (!d) { warn.textContent = '⚠ This device cannot play the stored song. Remove it and load the MP3 again.'; warn.style.display = ''; }
+    else if (d < cut().end) { warn.textContent = '⚠ The recording is ' + fmt(d) + ' long; her part ends at ' + fmt(cut().end) + '. Move the end earlier, or load the full clip.'; warn.style.display = ''; }
+  });
+  const label = el('span', { text: '' });
+  const show = () => { const c = cut(); label.textContent = 'Her part: ' + fmt(c.start) + ' to ' + fmt(c.end) + (s.songCut ? ' (adjusted)' : ''); };
+  const nudge = (key, by) => () => { const c = { ...cut() }; c[key] = Math.max(0, Math.round((c[key] + by) * 10) / 10); if (c.end - c.start < 3) return; s.songCut = c; economy.persist(); show(); };
+  show();
+  return el('div', { class: 'song-setup' }, [
+    el('p', {}, [el('strong', { text: 'The real song: ' }), '✓ loaded on this device. Play her part once: it should start at "It\'s the hard-knock life for us" and end after "It\'s the hard-knock life!".']),
+    warn,
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+      el('button', { type: 'button', text: '▶ Play my part', onclick: () => { const c = cut(); songPlayer.play({ from: c.start, to: c.end }); } }),
+      el('button', { type: 'button', text: '⏹ Stop', onclick: () => songPlayer.stop() }),
+      label
+    ]),
+    // start and end on rows of their own (they never wrap apart), the remove button away from them
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+      el('span', { text: 'Start', style: 'min-width:3em' }), el('button', { type: 'button', text: '−½ s', onclick: nudge('start', -0.5) }), el('button', { type: 'button', text: '+½ s', onclick: nudge('start', 0.5) })
+    ]),
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+      el('span', { text: 'End', style: 'min-width:3em' }), el('button', { type: 'button', text: '−½ s', onclick: nudge('end', -0.5) }), el('button', { type: 'button', text: '+½ s', onclick: nudge('end', 0.5) }),
+      el('button', { type: 'button', text: 'Reset', onclick: () => { s.songCut = null; economy.persist(); show(); } })
+    ]),
+    el('div', { class: 'row', style: 'justify-content:flex-start; margin-top:12px' }, [
+      el('button', { type: 'button', class: 'danger', text: 'Remove the song', onclick: async () => { if (!confirm('Remove the song from this device?')) return; songPlayer.release(); songPlayer = null; await store.remove('stage', 'song-audio'); render(); } })
+    ])
+  ]);
+}
+
+// Set-up check for a grown-up: asks for the microphone (so she never meets the browser's permission question
+// alone) and shows how loud a shout is on this device.
+function micTest() {
+  const out = el('span', { class: 'muted', text: canListen() ? 'Tap, then say "Hello, everybody!" in a big voice.' : 'This browser cannot record.' });
+  const btn = el('button', { type: 'button', text: '🎤 Test the microphone', onclick: async () => {
+    btn.disabled = true; out.textContent = 'Listening… say "Hello, everybody!"';
+    let m = null;
+    try {
+      m = await openMic();
+      const room = await m.floor(400);
+      const res = await m.listen({ floorDb: room, maxMs: 5000, endSilenceMs: 900, noVoiceMs: 4500 });
+      out.textContent = res.heard
+        ? `✓ Heard you. Loudest ${Math.round(res.peakDb)} dB, room ${Math.round(room)} dB. Star Stage is ready; she will not be asked for the microphone again.`
+        : `Nothing heard (loudest ${res.maxDb === null ? '–' : Math.round(res.maxDb)} dB, room ${Math.round(room)} dB). Check that nothing covers the microphone, then try again.`;
+    } catch (e) {
+      out.textContent = e && e.name === 'NotAllowedError' ? 'The microphone is blocked. Allow it in the browser\'s site settings for this app, then try again.' : 'No microphone found (' + (e && e.name || e) + ').';
+    } finally { if (m) m.close(); btn.disabled = false; }
+  } });
+  if (!canListen()) btn.disabled = true;
+  return el('div', { class: 'row', style: 'justify-content:flex-start' }, [btn, out]);
+}
+
 function focusSection() {
   const s = economy.save;
   const section = el('section', {}, [el('h2', { text: 'Focus this week' })]);
@@ -313,6 +484,44 @@ function focusSection() {
     el('p', {}, [el('a', { href: 'home-card-tens.html', target: '_blank', text: 'Print the home card: tens and ten more (one page)' })])
   );
   return section;
+}
+// Tick-Tock Lagoon: her clock level, the mistakes she makes most, and her day's times for the My day cards.
+// Telling time is a grade 1 benchmark (MA.1.M.2.1), so the whole place is a stretch, and free play: it never takes
+// a quest stop or Star Stage time.
+const CLOCK_MISTAKES = {
+  next: 'reads the next hour at half past (3:30 as "four thirty")', minute: 'misses what the long hand says (3:30 as "three o\'clock")',
+  swap: 'mixes up the two hands', near: 'reads an hour next to the right one', across: 'reads the number across the clock',
+  'set-minute': 'sets the long hand wrong', 'set-hour': 'sets the short hand wrong'
+};
+const CLOCK_LEVEL = { hour: "o'clock", half: 'half past ("three thirty")' };
+function lagoonSection() {
+  const s = economy.save;
+  const id = 'time-tell';
+  const acc = adaptive.accuracy(id);
+  const mistakes = Object.entries(s.clock.mistakes).sort((a, b) => b[1] - a[1]);
+  const inputs = ROUTINES.map(r => el('input', { type: 'time', step: '1800', id: 'routine-' + r.id, value: s.settings.routine[r.id] || '' }));
+  const fits = routineTimes(s.settings.routine, adaptive.stage(id));
+  const inGame = list => 'In the game now: ' + (list.length ? list.map(x => x.name + ' ' + digital(x.time)).join(', ') : 'none at this level yet') + '.';
+  const saved = el('span', { class: 'muted', text: ' ' + inGame(fits) });
+  return el('section', {}, [
+    el('h2', { text: 'Tick-Tock Lagoon: telling time' }),
+    el('p', { text: acc === null ? 'Not played yet.' : `Level: ${CLOCK_LEVEL[adaptive.stage(id)] || adaptive.stage(id)}. First try ${Math.round(acc * 100)}% on the last 20 cards. Mastery ${Math.round(adaptive.mastery(id) * 100)}%.` }),
+    el('p', {}, [el('strong', { text: 'Her mistakes so far: ' }), mistakes.length ? mistakes.map(([k, n]) => (CLOCK_MISTAKES[k] || k) + ' ×' + n).join('; ') : 'none yet.']),
+    el('p', { class: 'muted', text: 'Florida teaches telling time in grade 1 (MA.1.M.2.1: hours and half hours on analog and digital clocks), so all of this is a stretch above kindergarten. The Lagoon is free play: it never replaces Star Stage or the daily quest. Hours come first; half past ("three thirty") unlocks after two good days of o\'clock.' }),
+    el('h3', { text: 'Her day (for the My day cards)' }),
+    el('p', { class: 'muted', text: 'Times stay on this device. At the o\'clock level only times on the hour show up; half-hour times join at the next level. Leave a box empty to skip it.' }),
+    el('div', { class: 'row', style: 'justify-content:flex-start;flex-wrap:wrap;gap:10px' }, ROUTINES.map((r, i) => el('label', {}, [r.pic + ' ' + r.name + ' ', inputs[i]]))),
+    el('div', { class: 'row', style: 'justify-content:flex-start' }, [
+      el('button', { type: 'button', text: 'Save times', onclick: () => {
+        const out = {};
+        ROUTINES.forEach((r, i) => { const v = inputs[i].value; if (/^\d{2}:\d{2}$/.test(v)) out[r.id] = v; });
+        s.settings.routine = out; economy.persist();
+        const now = routineTimes(out, adaptive.stage(id));
+        saved.textContent = ' Saved. ' + inGame(now);
+      } }),
+      saved
+    ])
+  ]);
 }
 function weekSection() {
   const today = economy.today();
@@ -524,6 +733,7 @@ async function start() {
   try { audio.setManifest(await content.load('audio-manifest')); } catch (e) { console.warn('no manifest', e); }
   try { audio.setLines(await content.load('lines-audio')); } catch (e) { console.warn('no lines', e); }
   try { AUDITION = await content.load('audition'); } catch (e) { AUDITION = null; }
+  try { STAGE = await content.load('stage'); } catch (e) { STAGE = null; }
   try { SW = await content.load('sight-words'); } catch (e) { console.warn(e); }
   await store.load();
   let unlocked = false;

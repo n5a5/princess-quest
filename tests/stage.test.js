@@ -1,0 +1,462 @@
+// tests/stage.test.js — Star Stage: every model clip the place can ask for exists, backward chaining order,
+// countdown, the practice log in the save (clean, merge), and the voice gate on synthetic level streams.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { ROOT, readJSON } from './helpers.js';
+import { clipId, clipRanges, chainSteps, daysUntil, countdownHint, cleanStage, logPractice, mergeStage, stageDefaults, rmsDb, bigVoiceThreshold, createVoiceGate, roomLevel, followTimes, dayStrip, addDays, dailyPlan, hiddenFromEnd, shortCue, firstThen, CUE_WORDS, songQueue, linesHalf } from '../shared/stage-plan.js';
+import { REGISTRY } from '../games/registry.js';
+import { migrate, defaultSave } from '../shared/economy.js';
+
+const stage = readJSON('content/stage.json');
+const sh = stage.show;
+const parts = [...sh.kate, ...sh.lines, ...sh.songs];
+const blocks = [stage.warmup, ...parts];
+const withCue = [...parts, ...sh.sandy].filter(b => b.cue);
+
+test('every clip the place can play is bundled, and nothing else', () => {
+  const want = new Set();
+  for (const b of blocks) for (const [i, j] of clipRanges(b.chunks.length, b.chain !== false)) want.add(clipId(b.id, i, j) + '.ogg');
+  for (const b of withCue) want.add(b.id + '-cue.ogg');
+  const have = new Set(readdirSync(join(ROOT, 'assets/audio/stage')));
+  assert.deepEqual([...want].filter(f => !have.has(f)), [], 'missing clips (run tools/build-stage-audio.py)');
+  assert.deepEqual([...have].filter(f => !want.has(f)), [], 'stale clips');
+  const dur = readJSON('content/stage-audio.json');
+  for (const f of want) assert.ok(dur[f.replace('.ogg', '')] > 300, 'duration of ' + f);
+});
+
+test('content: her parts, cues, pictures, dates', () => {
+  const ids = [...blocks, ...sh.sandy].map(b => b.id);
+  assert.equal(new Set(ids).size, ids.length, 'block ids are unique');
+  for (const b of blocks) for (const c of b.chunks) { assert.ok(c.text.trim(), b.id); assert.ok(c.pic, b.id + ' picture'); }
+  for (const b of parts) {
+    assert.ok(b.intro && b.tip && b.act && b.who, b.id + ' intro, tip, acting cue, who');
+    assert.ok(b.cue && b.cue.who && b.cue.text, b.id + ' has a cue');
+    assert.ok(b.chunks.length >= 1 && b.chunks.length <= 4, b.id + ': at most four pieces, so a visit stays short');
+  }
+  for (const b of sh.songs) assert.ok(b.sing && b.song, b.id + ' is a song section');
+  // every cue is said by a character with their own voice and picture, never Luna's voice
+  for (const b of withCue) { assert.ok(sh.voices[b.cue.who], b.id + ' voice for ' + b.cue.who); assert.ok(sh.people[b.cue.who], b.id + ' picture for ' + b.cue.who); }
+  const KOKORO = ['af_sky', 'af_bella', 'af_nicole', 'af_aoede', 'af_kore', 'af_jessica', 'am_puck', 'am_michael', 'am_adam'];
+  for (const [who, v] of Object.entries(sh.voices)) { assert.notEqual(v, 'af_heart', who + ' is not Luna'); assert.ok(v.split('+').every(x => KOKORO.includes(x)), who + ': ' + v); }
+  // Sandy: only the kinds the game knows, and every song it sings exists
+  for (const st of sh.sandy) {
+    assert.ok(['act', 'listen', 'sing', 'wait'].includes(st.kind), st.id);
+    if (st.kind === 'sing') assert.ok(sh.songs.some(b => b.id === st.block) && st.narrate, st.id);
+    else assert.ok(st.pic && st.do, st.id);
+  }
+  // Run my lines: her spoken parts and Kate's lines, each once, all real
+  assert.ok(sh.run.length >= 10 && new Set(sh.run).size === sh.run.length);
+  for (const id of sh.run) assert.ok([...sh.kate, ...sh.lines].some(b => b.id === id), 'run: ' + id);
+  for (const b of [...sh.kate, ...sh.lines]) assert.ok(sh.run.includes(b.id), b.id + ' is in Run my lines');
+  // Kokoro stops at "Mr." as at a sentence end: every spoken text with it needs a say
+  for (const b of blocks) for (const c of b.chunks) assert.ok(!c.text.includes('Mr.') || c.say, b.id);
+  for (const b of withCue) assert.ok(!b.cue.text.includes('Mr.') || b.cue.say, b.id + ' cue');
+  assert.match(stage.showDate, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(stage.videos, undefined, 'no YouTube: it could lead out of the app');
+  const reg = REGISTRY.find(r => r.id === 'stage');
+  assert.ok(reg && existsSync(join(ROOT, reg.entry.replace('./', ''))));
+  assert.equal(reg.spotlight.until, stage.showDate, 'map countdown and the place use the same date');
+  assert.equal(daysUntil(reg.spotlight.from, reg.spotlight.until), 14, 'the map spotlight starts two weeks before the show');
+});
+
+test('cue clips are in the character\'s voice and every clip says what the content says now', () => {
+  const said = readJSON('tools/stage-audio-texts.json');
+  for (const b of withCue) {
+    const [voice, , text] = said[b.id + '-cue'].split('|');
+    assert.equal(voice, sh.voices[b.cue.who], b.id + ' cue voice');
+    assert.equal(text, b.cue.say || b.cue.text, b.id + ' cue text');
+  }
+  for (const b of blocks) for (const [i, j] of clipRanges(b.chunks.length, b.chain !== false)) {
+    const [voice, , text] = said[clipId(b.id, i, j)].split('|');
+    assert.equal(voice, 'af_heart', b.id + ' is Luna');
+    assert.equal(text, b.chunks.slice(i, j).map(c => c.say || c.text).join(' ').replace(/\{name\}/g, 'Amelia'), clipId(b.id, i, j));
+  }
+});
+
+test('clip ranges: singles and tails, no duplicates', () => {
+  assert.deepEqual(clipRanges(4), [[0, 1], [0, 4], [1, 2], [1, 4], [2, 3], [2, 4], [3, 4]]);
+  assert.deepEqual(clipRanges(1), [[0, 1]]);
+});
+
+test('backward chaining: last chunk first, ends with the whole thing', () => {
+  assert.deepEqual(chainSteps(4), [[3, 4], [2, 4], [1, 4], [0, 4]]);
+  for (const [i, j] of chainSteps(4)) assert.ok(clipRanges(4).some(r => r[0] === i && r[1] === j));
+});
+
+test('countdown', () => {
+  assert.equal(daysUntil('2026-10-08', '2026-10-14'), 6);
+  assert.equal(daysUntil('2026-10-31', '2026-11-01'), 1); // across a month (and the DST change on Nov 1)
+  assert.equal(countdownHint(6, 'Annie show'), 'Annie show in 6 days');
+  assert.equal(countdownHint(1, 'Annie show'), 'Annie show tomorrow!');
+  assert.equal(countdownHint(0, 'Annie show'), 'Annie show today!');
+  assert.equal(countdownHint(-1, 'Annie show'), null);
+});
+
+test('practice log: survives the save migration, junk is dropped, merging is idempotent', () => {
+  const s = defaultSave();
+  logPractice(s.stage, '2026-10-09', 'line'); logPractice(s.stage, '2026-10-09', 'line'); s.stage.solos.line = 2; s.stage.auditions = 1;
+  const back = migrate(JSON.parse(JSON.stringify(s)));
+  assert.deepEqual(back.stage, s.stage);
+  assert.deepEqual(cleanStage({ days: { bad: {}, '2026-10-09': { line: -1, song: 'x', watch: 2 } }, watched: 'many', solos: [] }), { ...stageDefaults(), days: { '2026-10-09': { watch: 2 } } });
+  assert.deepEqual(migrate({ ...s, stage: 'nope' }).stage, stageDefaults());
+  const other = { days: { '2026-10-09': { line: 1, song: 1 }, '2026-10-10': { audition: 1 } }, watched: 3, auditions: 0, solos: { song: 1 } };
+  const m1 = mergeStage(s.stage, other);
+  assert.deepEqual(m1.days, { '2026-10-09': { line: 2, song: 1 }, '2026-10-10': { audition: 1 } });
+  assert.equal(m1.watched, 3); assert.equal(m1.auditions, 1); assert.deepEqual(m1.solos, { line: 2, song: 1 });
+  assert.deepEqual(mergeStage(m1, other), m1);
+});
+
+const run = (gate, levels, stepMs = 50) => { for (let k = 0; k < levels.length; k++) { const r = gate.step(levels[k], k * stepMs); if (r) return r; } return null; };
+const flat = (db, ms) => Array(Math.round(ms / 50)).fill(db);
+
+test('voice gate: hears speech, waits for her to stop, reports the peak', () => {
+  const g = createVoiceGate({ floorDb: -65, endSilenceMs: 1200, maxMs: 12000, noVoiceMs: 7000 });
+  const r = run(g, [...flat(-65, 600), ...flat(-25, 1500), ...flat(-65, 400), ...flat(-30, 500), ...flat(-65, 3000)]);
+  assert.equal(r.reason, 'end');
+  assert.equal(r.heard, true);
+  assert.ok(r.peakDb > -27 && r.peakDb <= -25, String(r.peakDb));
+  assert.ok(r.ms >= 600 + 1500 + 400 + 500 + 1200 && r.ms < 600 + 1500 + 400 + 500 + 1500, 'a short pause does not end the take');
+});
+
+test('voice gate: silence ends at noVoiceMs, a chime in the grace period is ignored, maxMs caps a take', () => {
+  const quiet = run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000 }), [-20, -20, -20, -20, ...flat(-62, 8000)]);
+  assert.deepEqual([quiet.reason, quiet.heard, quiet.peakDb], ['novoice', false, null]);
+  const syll = ms => Array.from({ length: Math.round(ms / 50) }, (_, k) => -22 - 12 * Math.abs(Math.sin(k / 2.4))); // a voice: up and down every syllable
+  const long = run(createVoiceGate({ floorDb: -60, maxMs: 3000 }), syll(5000));
+  assert.equal(long.reason, 'max');
+  assert.equal(long.heard, true);
+  // a noisy room raises the start level; room noise alone is not her voice
+  const noisy = createVoiceGate({ floorDb: -38 });
+  assert.equal(noisy.startDb, -26);
+  assert.equal(run(noisy, flat(-36, 8000)).reason, 'novoice');
+  // a loud TV or fan (red team: -25 dB counted as her voice): the room level is no longer capped at -40
+  assert.equal(createVoiceGate({ floorDb: -25 }).startDb, -13);
+  assert.equal(createVoiceGate({ floorDb: -5 }).startDb, -12, 'never above -12 dB');
+});
+
+test('big voice: relative to her warm-up, with sane limits', () => {
+  assert.equal(bigVoiceThreshold(null), -26);
+  assert.equal(bigVoiceThreshold(-12), -18);
+  assert.equal(bigVoiceThreshold(-45), -36); // a whispered warm-up cannot make everything "big"
+  assert.ok(Math.abs(rmsDb(new Float32Array(1000).fill(0.1)) - -20) < 0.01);
+});
+
+// Star Stage speaks in the story voice whatever the setting (audio.say { story: true }), which only works when
+// every sentence it says has a rendered clip; otherwise the whole line falls back to the device voice.
+test('every Star Stage sentence has a story-voice clip', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { splitSentences, keyOf } = await import('../shared/audio.js');
+  const have = readJSON('content/lines-audio.json').lines;
+  const src = readFileSync(join(ROOT, 'games/princess-quest/stage.js'), 'utf8');
+  const unq = s => s.replace(/\\'/g, "'");
+  // every sentence-like string literal not glued to another with + (ternaries included)
+  const said = [...src.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)].filter(m => /^[A-Z][a-z]/.test(m[1]) && (/[.!?]$/.test(m[1]) || m[1].split(' ').length >= 4)
+    && src.slice(m.index + m[0].length).trimStart()[0] !== '+' && src.slice(0, m.index).trimEnd().slice(-1) !== '+').map(m => unq(m[1]));
+  said.push(...[...src.match(/const HINT = \{([\s\S]*?)\};/)[1].matchAll(/: '((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
+  said.push(...[...src.matchAll(/cannot\('((?:[^'\\]|\\.)*)'\)/g)].map(m => unq(m[1])));
+  for (const list of ['BIG', 'MORE']) said.push(...[...src.match(new RegExp('const ' + list + ' = \\[(.*)\\];'))[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])));
+  said.push(...[...src.matchAll(/(?:intro|line): '((?:[^'\\]|\\.)*)'/g)].map(m => unq(m[1])), 'You did it!');
+  for (const p of parts) said.push(p.intro, p.tip);
+  for (const st of sh.sandy) said.push(st.narrate || '', st.do || '');
+  const missing = said.filter(t => /^[A-Za-z]/.test(t)).flatMap(t => splitSentences(t)).filter(sn => !have[keyOf(sn)]);
+  assert.ok(said.length >= 25, String(said.length));
+  assert.deepEqual([...new Set(missing)], [], 'run tools/collect-lines.py and tools/build-lines-audio.py');
+});
+
+test('room level: median of real readings, not the silent first ones', () => {
+  assert.equal(roomLevel([-120, -120, -45, -44, -46, -130, -43]), -44);
+  assert.equal(roomLevel([-120, -120, -120]), -60);
+  assert.equal(roomLevel([]), -60);
+  // a TV at -40 dB now raises the start level, so the TV alone is not her voice
+  assert.equal(createVoiceGate({ floorDb: roomLevel([-120, -120, -40, -41, -40, -39]) }).startDb, -28);
+});
+
+test('follow-along: each picture lights in proportion to its words', () => {
+  assert.deepEqual(followTimes(['abcd', 'abcd'], 1000), [0, 500]);
+  assert.deepEqual(followTimes(['Yes, Miss Hannigan.'], 1300), [0]);
+  const chunks = sh.kate[0].chunks.map(c => c.text);
+  const t = followTimes(chunks, 5327);
+  assert.equal(t.length, chunks.length); assert.equal(t[0], 0); assert.ok(t.every((x, k) => k === 0 || x > t[k - 1]) && t[t.length - 1] < 5327);
+});
+
+test('day strip: a week back, a week ahead, then the show circle; stars on practice days', () => {
+  const kinds = s => s.map(d => d.kind).join(' ');
+  assert.equal(kinds(dayStrip('2027-02-16', '2027-02-21', new Set(['2027-02-15']))), 'done today future future future future show');
+  assert.equal(kinds(dayStrip('2027-02-16', '2027-02-21', new Set(['2027-02-14', '2027-02-16']))), 'done missed done future future future future show');
+  assert.equal(dayStrip('2027-02-16', '2027-02-21', new Set()).filter(d => d.today).length, 1);
+  assert.equal(kinds(dayStrip('2027-02-21', '2027-02-21', new Set())), 'show');
+  assert.deepEqual(dayStrip('2027-02-22', '2027-02-21', new Set()), []);
+  assert.ok(dayStrip('2027-02-20', '2027-02-21', new Set(['2027-01-01'])).length <= 9, 'at most a week back');
+  // months away: the next week, a gap, and the show, never a circle for every day (review: 119 circles)
+  assert.equal(kinds(dayStrip('2026-10-25', '2027-02-21', new Set())), 'today future future future future future future gap show');
+  assert.equal(kinds(dayStrip('2027-02-14', '2027-02-21', new Set())), 'today future future future future future future show', 'a week away: no gap');
+  assert.equal(addDays('2026-10-31', 1), '2026-11-01');
+});
+
+test('song cut: kept when sane, dropped when not; content default is inside the clip', () => {
+  assert.deepEqual(cleanStage({ songCut: { start: 10.8, end: 27 } }).songCut, { start: 10.8, end: 27 });
+  assert.equal(cleanStage({ songCut: { start: 10, end: 10.5 } }).songCut, null);
+  assert.equal(cleanStage({ songCut: 'x' }).songCut, null);
+  assert.deepEqual(mergeStage({ songCut: null }, { songCut: { start: 1, end: 9 } }).songCut, { start: 1, end: 9 });
+  const c = stage.songCut;
+  assert.ok(c.start >= 0 && c.end > c.start + 5 && c.end < c.duration, 'chorus inside the recording');
+});
+
+test('daily plan: Kate and a song every day, orphan lines and Sandy in turn, a run every third day and in the last week', () => {
+  const S = '2027-02-21';
+  const at = (d, o = {}) => dailyPlan(d, S, { heard: true, canHear: true, ...o });
+  assert.deepEqual(dailyPlan('2026-10-25', S, { canHear: true }), ['hear', 'kate', 'songs', 'lines'], 'hear the recording first, until heard once');
+  assert.deepEqual(dailyPlan('2026-10-25', S, { canHear: false }), ['kate', 'songs', 'lines'], 'no recording loaded: nothing she cannot do');
+  assert.deepEqual(at('2026-10-25'), ['kate', 'songs', 'lines']); // 119 days out
+  assert.deepEqual(at('2026-10-26'), ['kate', 'songs', 'sandy']); // 118
+  assert.deepEqual(at('2026-10-27'), ['kate', 'songs', 'run']); // 117, a multiple of three
+  assert.deepEqual(at('2027-02-14'), ['kate', 'songs', 'run'], 'the last week: a run every day');
+  assert.deepEqual(at('2027-02-20'), ['kate', 'songs', 'run']);
+  assert.deepEqual(at(S), ['run'], 'show day: one run, nothing new');
+  assert.deepEqual(at('2027-02-22'), []);
+  // over the weeks every tile comes round, and never more than three a day plus hearing the song
+  const seen = new Set();
+  for (let k = 8; k < 40; k++) { const p = at(addDays('2026-10-25', k)); assert.ok(p.length === 3); p.forEach(x => seen.add(x)); }
+  assert.deepEqual([...seen].sort(), ['kate', 'lines', 'run', 'sandy', 'songs']);
+});
+
+test('song sections: a new one alone, learned ones two or three at a time, least practiced first', () => {
+  const secs = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
+  assert.deepEqual(songQueue(secs, {}).map(x => x.id), ['a'], 'all new: the first, alone');
+  assert.deepEqual(songQueue(secs, { a: 1 }).map(x => x.id), ['b'], 'the least practiced first');
+  assert.deepEqual(songQueue(secs, { a: 2, b: 2, c: 2, d: 1 }).map(x => x.id), ['d'], 'a section still new gets the visit');
+  assert.deepEqual(songQueue(secs, { a: 3, b: 2, c: 2, d: 4 }).map(x => x.id), ['b', 'c', 'a'], 'learned: up to three, least practiced first');
+  assert.deepEqual(songQueue(sh.songs, {}).map(x => x.id), [sh.songs[0].id]);
+  const lines = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  assert.deepEqual(linesHalf(lines, 0), [1, 2, 3, 4, 5]);
+  assert.deepEqual(linesHalf(lines, 1), [6, 7, 8, 9, 10]);
+  assert.deepEqual(linesHalf(lines, 2), [1, 2, 3, 4, 5]);
+  assert.equal(linesHalf(sh.lines, 0).length + linesHalf(sh.lines, 1).length, sh.lines.length);
+});
+
+test('cue fading: one more picture hidden from the end each practice, then all of them', () => {
+  assert.deepEqual([0, 1, 2, 3, 9].map(k => hiddenFromEnd(k, 3)), [0, 1, 2, 3, 3]);
+  assert.deepEqual([0, 1, 4, 5].map(k => hiddenFromEnd(k, 4)), [0, 1, 4, 4]);
+  assert.equal(sh.kate.find(x => x.id === 'kate-doin').chunks.length, 3, 'Maybe, then her Kate line in two clauses');
+});
+
+test('voice gate: the reminder chime mid-take is not taken for her voice', () => {
+  const g = createVoiceGate({ floorDb: -65, noVoiceMs: 7000, endSilenceMs: 1200 });
+  let r = null, t = 0;
+  for (; t < 3000; t += 50) r = g.step(-64, t);
+  assert.equal(g.heard, false);
+  g.ignore(t + 500);
+  for (; t < 3500; t += 50) r = g.step(-20, t); // the chime, loud
+  assert.equal(g.heard, false, 'chime ignored');
+  for (; t < 7200 && !r; t += 50) r = g.step(-64, t);
+  assert.equal(r.reason, 'novoice');
+  const g2 = createVoiceGate({ floorDb: -65 });
+  g2.ignore(1000);
+  let r2 = null;
+  for (let u = 0; u < 3000 && !r2; u += 50) r2 = g2.step(u < 1000 ? -64 : -25, u);
+  assert.equal(g2.heard, true, 'her voice after the window counts');
+});
+
+test('echo-only clips: each chunk and the whole', () => {
+  assert.deepEqual(clipRanges(4, false), [[0, 1], [0, 4], [1, 2], [2, 3], [3, 4]]);
+});
+
+test('voice gate: a steady sound above the start level is not her voice, and ends the take early', () => {
+  const steady = run(createVoiceGate({ floorDb: -60, maxMs: 30000 }), flat(-25, 30000));
+  assert.deepEqual([steady.reason, steady.heard, steady.peakDb], ['steady', false, null]);
+  assert.ok(steady.ms <= 3000, 'within about 2.5 s of the sound starting: ' + steady.ms);
+  // (a steady tone under about a second is not caught: its rise and fall look like a syllable)
+});
+
+test('voice gate: a soft voice a little over the start level is heard, not called steady (review: a quiet child was never heard)', () => {
+  // syllables peaking 5 dB over the start level (-48), dipping toward the room between them
+  const env = [-60, -54, -48, -45, -43, -44, -47, -52, -58, -60];
+  const soft = Array.from({ length: 120 }, (_, k) => env[k % env.length]);
+  const r = run(createVoiceGate({ floorDb: -60, maxMs: 9000, endSilenceMs: 1500 }), [...soft, ...flat(-60, 2000)]);
+  assert.deepEqual([r.reason, r.heard], ['end', true]);
+  assert.ok(r.peakDb > -48 && r.peakDb < -42, String(r.peakDb));
+});
+
+test('voice gate: one bump near the microphone is not her turn (review: a tap earned "Big stage voice!")', () => {
+  for (const bump of [[-23], [-30, -34]]) {
+    const levels = flat(-60, 8000);
+    bump.forEach((db, k) => { levels[30 + k] = db; });
+    const r = run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000 }), levels);
+    assert.deepEqual([r.reason, r.heard, r.peakDb], ['novoice', false, null], JSON.stringify(bump));
+    assert.ok(r.maxDb > -48, 'the sound itself is reported (maxDb), so a caller knows the microphone works');
+  }
+  assert.equal(run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000 }), flat(-60, 8000)).maxDb < -59, true);
+});
+
+test('room level per turn: one loud reading never sets the floor; a room that stays loud does (review: deaf for the whole visit)', async () => {
+  const { quietFloor, deadMic } = await import('../shared/stage-plan.js');
+  assert.equal(quietFloor([]), -60);
+  assert.equal(quietFloor([-25]), -25, 'a single reading is all there is');
+  assert.equal(quietFloor([-25, -60]), -60, 'her "yay!" at the tap, then a quiet reading before her turn');
+  assert.equal(quietFloor([-60, -58, -25, -61, -59]), -59);
+  assert.equal(quietFloor([-60, -30, -29, -31]), -31, 'the TV went on and stayed on: followed within readings');
+  assert.equal(quietFloor([-60, -60, -60, -60, -60, -30, -30, -30]), -30, 'only the last five count');
+  assert.equal(quietFloor([-30], -20), -38, 'the start level stays 6 dB under her warm-up shout');
+  assert.equal(quietFloor([-60], -20), -60);
+  assert.equal(roomLevel([-120, -120, -120], null), null, 'no usable reading: the fallback');
+  assert.equal(deadMic({ heard: false, maxDb: -120 }), true);
+  assert.equal(deadMic({ heard: false, maxDb: null }), true);
+  assert.equal(deadMic({ heard: false, maxDb: -58 }), false, 'a quiet child in a quiet room: the microphone works');
+  assert.equal(deadMic({ heard: true, maxDb: -20 }), false);
+});
+
+test('Luna: every gradient she uses is defined in her own drawing, with ids unique to each copy, at every state and level', async () => {
+  const { lunaSVG } = await import('../shared/characters.js');
+  for (const state of ['idle', 'happy', 'think', 'yay']) for (const glow of [0, 1, 2, 3]) {
+    const svg = lunaSVG({ state, glow }), other = lunaSVG({ state, glow });
+    const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(m => m[1]);
+    for (const [, ref] of svg.matchAll(/url\(#([^)]+)\)/g)) assert.ok(ids.includes(ref), `${state} g${glow}: url(#${ref}) is defined`);
+    const otherIds = [...other.matchAll(/id="([^"]+)"/g)].map(m => m[1]);
+    assert.ok(!ids.some(i => otherIds.includes(i)), 'ids differ between copies (a hidden copy must not steal the gradient)');
+    assert.ok(!svg.includes('${'), 'no template text left in the markup');
+    for (const f of ['face-idle', 'face-happy', 'face-think', 'face-yay', 'body']) assert.ok(svg.includes(`class="${f}"`), f);
+    assert.ok(svg.includes(`class="companion ${state}"`) && svg.includes('viewBox="0 0 120 120"'));
+  }
+});
+
+test('map countdown: Luna says where to go in the show week only', async () => {
+  const { countdownSay } = await import('../shared/stage-plan.js');
+  assert.equal(countdownSay(0), 'Your Annie show is today! Tap Star Stage.');
+  assert.equal(countdownSay(1), 'Your Annie show is tomorrow! Tap Star Stage.');
+  assert.equal(countdownSay(6), 'Your Annie show is in six days! Tap Star Stage.');
+  assert.equal(countdownSay(8), null);
+  assert.equal(countdownSay(-1), null);
+  const { readFileSync } = await import('node:fs');
+  const lines = JSON.parse(readFileSync(new URL('../content/lines-audio.json', import.meta.url), 'utf8')).lines;
+  for (let d = 0; d <= 7; d++) for (const part of countdownSay(d).match(/[^!.]+[!.]/g)) assert.ok(lines[part.trim().toLowerCase()], 'clip for ' + part);
+});
+
+test('room level from her takes: one loud reading is outvoted by the next take (review: still deaf for the visit when the first reading was loud)', async () => {
+  const { quietLevel, quietFloor } = await import('../shared/stage-plan.js');
+  assert.equal(quietLevel([-120, -120, -50]), null, 'too few usable readings');
+  const take = [...Array(20).fill(-120), ...Array(30).fill(-61), ...Array(60).fill(-25), ...Array(30).fill(-60)];
+  assert.equal(quietLevel(take), -61, 'the quiet around her voice, not her voice and not the warm-up silence');
+  // her "yay!" during the room reading, then readings that came back empty (a microphone warming up): the first
+  // take's quiet level brings the start level back down for the retry
+  const rooms = [-21];
+  assert.equal(quietFloor(rooms), -21);
+  rooms.push(quietLevel(take));
+  assert.equal(quietFloor(rooms), -61);
+  // a steady TV is not quiet: its level is the room
+  assert.equal(quietLevel(Array(100).fill(-30)), -30);
+});
+
+test('voice gate: once she has started, a soft syllable keeps the take open (review: a soft voice was cut off mid-line)', () => {
+  // a clear start, then soft syllables whose smoothed level crosses the start level (-48) with only one or two raw
+  // readings above it each: they are still her voice
+  const start = [-60, -40, -38, -38, -40, -60];
+  const soft = [-60, -47, -44, -60, -60];
+  const levels = [...flat(-60, 500), ...start, ...Array(6).fill(soft).flat(), ...flat(-60, 3000)];
+  const r = run(createVoiceGate({ floorDb: -60, endSilenceMs: 1200, maxMs: 12000 }), levels);
+  const lastSoft = (10 + start.length + 6 * soft.length) * 50;
+  assert.equal(r.reason, 'end');
+  assert.ok(r.ms >= lastSoft + 1000, `the take ran past her last soft syllable (${r.ms} ms vs ${lastSoft} ms)`);
+});
+
+test('voice gate: a knock with a room tail is not her turn, and her voice after it still is (red team: a table knock earned "Big stage voice!")', () => {
+  const knock = [-25, -18, -33, -47];
+  const alone = flat(-60, 8000); knock.forEach((db, k) => { alone[20 + k] = db; });
+  const r1 = run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), alone);
+  assert.deepEqual([r1.reason, r1.heard, r1.peakDb], ['novoice', false, null]);
+  // the knock, then she speaks at 3 s: the take waits for her and reports her, not the knock
+  const syll = Array.from({ length: 40 }, (_, k) => -26 - 10 * Math.abs(Math.sin(k / 2.4)));
+  const then = [...flat(-60, 1000), ...knock, ...flat(-60, 1800), ...syll, ...flat(-60, 2000)];
+  const r2 = run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), then);
+  assert.equal(r2.reason, 'end'); assert.equal(r2.heard, true);
+  assert.ok(r2.peakDb < -24, 'the peak is her voice, not the knock: ' + r2.peakDb);
+  assert.ok(r2.ms > 1000 + 200 + 1800 + 2000, 'ended after her voice, not after the knock: ' + r2.ms);
+  // a hard knock with a long room tail (six readings over the start level): loudest first, then only decaying
+  const hard = flat(-60, 8000); [-8.7, -16.6, -23.9, -31.3, -39.1, -46.0, -53.1, -57.3, -59.6].forEach((db, k) => { hard[20 + k] = db; });
+  assert.deepEqual(run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), hard).heard, false);
+  // the same knock with the analyser's window catching only the start of it in the first reading
+  const half = flat(-60, 8000); [-14, -8.7, -16.6, -23.9, -31.3, -39.1, -46.0, -53.1].forEach((db, k) => { half[20 + k] = db; });
+  assert.deepEqual(run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), half).heard, false);
+  // a knock split evenly across two analyser readings (round 3 red team: praised as "Big stage voice!")
+  const split = flat(-60, 8000); [-14.19, -14.83, -20.64, -27.12, -32.86, -38.9, -44.7, -50.6].forEach((db, k) => { split[20 + k] = db; });
+  assert.deepEqual(run(createVoiceGate({ floorDb: -60, noVoiceMs: 7000, endSilenceMs: 1200 }), split).heard, false);
+  // a short word with a hard start ("Big!") is still her: it sustains before it fades
+  const big = [...flat(-60, 600), -20, -15, -16, -18, -25, -35, -45, ...flat(-60, 2000)];
+  assert.equal(run(createVoiceGate({ floorDb: -60, endSilenceMs: 900 }), big).heard, true);
+  // a short real word ("Hi!", about 350 ms) still counts
+  const hi = [...flat(-60, 600), -40, -30, -26, -25, -27, -32, -38, ...flat(-60, 2000)];
+  assert.equal(run(createVoiceGate({ floorDb: -60, endSilenceMs: 900 }), hi).heard, true);
+});
+
+test('voice gate: soft short phrases are heard (round 3: the 300 ms minimum dropped a quiet "Hey there." and "It ain\'t fair!")', () => {
+  // Luna's own clips of these lines, as analyser readings, scaled to a quiet child's voice in a quiet room
+  const hey = [-34.3, -17.1, -14.2, -13.4, -13.4, -13.7, -12.7, -14.5, -16.9, -19.6, -20.5, -19.9];
+  const fair = [-19.2, -13.4, -12.5, -12.9, -10.2, -12.4, -24.8, -22.7, -26.8, -19.2, -15.4, -17.3, -19.2, -22.0, -23.8, -22.2];
+  for (const [clip, peak] of [[hey, -44], [fair, -41]]) {
+    const top = Math.max(...clip), lv = clip.map(db => Math.max(-60, db - top + peak));
+    const r = run(createVoiceGate({ floorDb: -60, endSilenceMs: 1200 }), [...flat(-60, 600), ...lv, ...flat(-60, 2000)]);
+    assert.equal(r.heard, true, `peak ${peak} dB`);
+  }
+});
+
+test('quiet microphone (Samsung, room -87 dB): a normal voice is heard, and the star bar moves down with the microphone', async () => {
+  const { micGain } = await import('../shared/stage-plan.js');
+  assert.equal(createVoiceGate({ floorDb: -87 }).startDb, -70, 'start level -70, not -50 (that needed a shout)');
+  assert.equal(createVoiceGate({ floorDb: -60 }).startDb, -48, 'a usual room is unchanged');
+  // speech peaking at -55 dB on that microphone: 32 dB over its room, clearly a voice
+  const syll = Array.from({ length: 40 }, (_, k) => -55 - 10 * Math.abs(Math.sin(k / 2.4)));
+  const r = run(createVoiceGate({ floorDb: -87, endSilenceMs: 1200 }), [...flat(-87, 500), ...syll, ...flat(-87, 2000)]);
+  assert.equal(r.heard, true);
+  assert.equal(micGain(-87), -27); assert.equal(micGain(-60), 0); assert.equal(micGain(-40), 0); assert.equal(micGain(-120), -30); assert.equal(micGain(null), 0);
+  assert.equal(bigVoiceThreshold(null, -27), -53);
+  assert.equal(bigVoiceThreshold(-70, -27), -63, 'a quiet warm-up on a quiet microphone still sets a reachable bar');
+  assert.equal(bigVoiceThreshold(-45, 0), -36, 'unchanged on a usual microphone');
+});
+
+test('her lines are written out unless a grown-up turned them off, and the switch stays on this device', () => {
+  assert.equal(stageDefaults().script, true);
+  assert.equal(cleanStage({}).script, true, 'saves from before the switch: on');
+  assert.equal(cleanStage({ words: false }).script, true, 'the old words-under-pictures switch does not turn the script off');
+  assert.equal(cleanStage({ script: false }).script, false);
+  assert.equal(cleanStage({ script: 'no' }).script, true);
+  assert.equal(mergeStage({ script: true }, { script: false }).script, true, 'another device never turns it off here');
+  assert.equal(mergeStage({ script: false }, { script: true }).script, false);
+});
+
+test('the line before hers: whole when short, else from the start of a sentence; Luna names who goes first (never "cue")', () => {
+  assert.equal(shortCue('Hi, kids!'), 'Hi, kids!');
+  assert.equal(shortCue("Don't it feel like the wind is always howlin'?"), "Don't it feel like the wind is always howlin'?", 'a short line is shown whole');
+  assert.equal(shortCue("So maybe now this prayer's the last one of its kind... won't you please come get your baby"), "…won't you please come get your baby");
+  assert.equal(shortCue('...and clean this dump until it shines like the top of the Chrysler Building! Get to work.'), '…Get to work.', 'a long line from its last sentence');
+  assert.equal(shortCue('You call this clean, Annie, you lazy little girl, after all this time? Annie? Annie?'), '…Annie? Annie?', 'a one-word last sentence takes the one before it');
+  for (const b of [...parts, ...sh.sandy].filter(x => x.cue)) {
+    const c = shortCue(b.cue.text);
+    assert.ok(b.cue.text.trim().endsWith(c.replace(/^…/, '')), b.id + ' keeps the end of the line');
+    if (c.startsWith('…')) { const t = b.cue.text.trim(); assert.match(t.slice(0, t.length - c.length + 1), /[.!?…]\s+$/, b.id + ' starts at a sentence: ' + c); }
+  }
+  assert.equal(firstThen({ who: 'Annie' }), 'First Annie. Then you!');
+  assert.equal(firstThen({ who: 'Everybody' }), 'Sing along, then keep going!', 'the group\'s line is hers too');
+  assert.equal(firstThen({ who: 'Annie and the orphans' }), 'Sing along, then keep going!');
+  assert.equal(firstThen({ who: 'Mr. Warbucks' }), 'First Mister Warbucks. Then you!', 'no full stop inside the name');
+  assert.equal(firstThen(null), 'Now you!');
+  for (const w of ['Everybody', 'Annie and the orphans']) assert.notEqual(sh.voices[w], sh.voices.Annie, w + ' is not Annie\'s voice');
+  const src = readFileSync(join(ROOT, 'games/princess-quest/stage.js'), 'utf8');
+  const spoken = [...src.matchAll(/say\('((?:[^'\\]|\\.)*)'/g)].map(m => m[1]);
+  assert.ok(!spoken.some(t => /\bcue\b/i.test(t)), 'Luna never says "cue": ' + spoken.filter(t => /\bcue\b/i.test(t)).join(' | '));
+  for (const p of parts) assert.ok(!/\bcue\b/i.test(p.intro + ' ' + p.tip), p.id);
+  for (const p of parts) assert.ok(p.intro.split(/\s+/).length <= 10, p.id + ' intro is short: ' + p.intro);
+  assert.match(src, /await say\(isSong \? 'Sing it after me\.' : 'Say it after me\.'\);/, 'a new part says what to do: repeat after Luna');
+});
+
+test('Run my lines shows no words (her lines under the curtain); the practice screens are a script', () => {
+  const src = readFileSync(join(ROOT, 'games/princess-quest/stage.js'), 'utf8');
+  const body = name => { const at = src.indexOf('async function ' + name + '('); assert.ok(at >= 0, name); return src.slice(at, src.indexOf('\n}\n', at)); };
+  const run = body('runTile');
+  assert.match(run, /view\(b, b\.who, 'Run my lines', ids\.length, \{ words: false \}\)/, 'no words on the run-through screens');
+  assert.match(run, /await warmUp\(r, \{ words: false \}\)/, 'the warm-up shout that opens it: no words either');
+  assert.match(src, /const script = words && stage\(\)\.script !== false;/);
+  const css = readFileSync(join(ROOT, 'shared/theme.css'), 'utf8');
+  assert.match(css, /\.cues\.script \.cue\.gone::after/, 'a hidden row shows a question mark, not its words');
+  assert.match(css, /\.cue\.gone span \{ visibility: hidden; \}/, 'a hidden row hides its words too');
+});

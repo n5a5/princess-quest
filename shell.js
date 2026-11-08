@@ -11,6 +11,8 @@ import { createSfx } from './shared/sfx.js';
 import { el, bigButton, sheet, toast, confetti, breathingBubble, withName, pick } from './shared/ui.js';
 import { lunaSVG, gemSVG, chestSVG, placeArtSVG, svgFrom, starFieldEl } from './shared/characters.js';
 import { flyGems } from './shared/encounter.js';
+import { daysUntil, countdownHint, countdownSay } from './shared/stage-plan.js';
+import { watchUpdates, installedVersion } from './shared/updates.js';
 
 // If the browser refuses to store the save, say so once instead of losing progress silently.
 const economy = createEconomy({ storage: localStorage, onSaveError: () => toast('Progress could not be saved on this device. Ask a grown-up to check Parent Corner.', 6000) });
@@ -27,6 +29,7 @@ if (/[?&](debug|nosw)=1/.test(location.search)) window.__pq = { audio, economy, 
 
 const $ = id => document.getElementById(id);
 let current = null;   // { entry, module }
+let updates = null;   // shared/updates.js: a new version installed while she played loads when she is back on the map
 
 // Back-button navigation: every screen below the map pushes a history entry with a handler that
 // restores the screen above it. The phone's back button pops one level; from the map it exits.
@@ -35,7 +38,12 @@ let current = null;   // { entry, module }
 const NAV_SID = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const nav = {
   stack: [], ignore: 0, waited: 0,
-  push(handler) { nav.stack.push(handler); history.pushState({ depth: nav.stack.length, sid: NAV_SID }, ''); },
+  // A push right after a pop (Star Stage stops its activity, then the PIN pad opens) waits for that pop's popstate,
+  // or the pop would land on the new entry and drop it.
+  push(handler, tries = 0) {
+    if (nav.ignore > 0 && tries < 8) { setTimeout(() => nav.push(handler, tries + 1), 60); return; }
+    nav.stack.push(handler); history.pushState({ depth: nav.stack.length, sid: NAV_SID }, '');
+  },
   pop() { if (!nav.stack.length) return; nav.ignore++; history.back(); },
   // A tap on Back while a pop is still in flight (e.g. right after "Yay!") waits briefly for that popstate.
   toMap() {
@@ -54,6 +62,9 @@ window.addEventListener('popstate', e => {
 let praise = { praise: ['Great job!'], greeting: ['Hello, {name}!'], retry: [], reveal: [] };
 
 function available() { return REGISTRY.filter(r => !economy.save.settings.modulesOff.includes(r.id)); }
+// A place with an event coming (Star Stage before the audition) goes to the top of the map with a countdown.
+// a place's countdown on the map, from its spotlight's `from` day (two weeks before the show) to the day itself
+const spotlightHint = r => r.spotlight && !(r.spotlight.from && economy.today() < r.spotlight.from) ? countdownHint(daysUntil(economy.today(), r.spotlight.until), r.spotlight.label) : null;
 function readyIds() { return available().filter(r => r.ready).map(r => r.id); }
 
 function updateBar() {
@@ -72,6 +83,10 @@ function renderHome() {
   const questDone = adaptive.questDone();
   const questStars = quest.stops.map(st => st.done ? '⭐' : '☆').join('');
   const streak = economy.streak();
+  // The audition week: until Star Stage has been practiced today, Luna waits there (one place to go, the one she
+  // hears about), and the reading quest comes after.
+  const today = economy.today();
+  const spotFirst = available().find(r => r.ready && spotlightHint(r) && r.place === 'stage' && !Object.keys((economy.save.stage.days || {})[today] || {}).length) || null;
   const luna = svgFrom(lunaSVG({ state: 'idle', glow: comp.level }));
   luna.addEventListener('click', () => { luna.className.baseVal = 'companion happy'; setTimeout(() => { luna.className.baseVal = 'companion idle'; }, 1400); audio.say(withName(pick(praise.greeting), name)); });
 
@@ -81,7 +96,7 @@ function renderHome() {
         luna,
         el('div', { class: 'greeting' }, [
           el('div', { class: 'hello', text: 'Hello, ' + name + '!' }),
-          el('div', { class: 'sub', text: quest.claimed ? 'Quest done! Play anywhere you like.' : questDone ? 'The chest is ready to open!' : 'Luna is waiting at ' + (req ? req.name : 'the meadow') + '.' }),
+          el('div', { class: 'sub', text: spotFirst ? 'Luna is waiting at ' + spotFirst.name + '.' : quest.claimed ? 'Quest done! Play anywhere you like.' : questDone ? 'The chest is ready to open!' : 'Luna is waiting at ' + (req ? req.name : 'the meadow') + '.' }),
           el('div', { class: 'meter', 'aria-label': 'Luna glow' }, [el('span', { class: 'star', text: '⭐' }), el('div', { class: 'track' }, [el('div', { class: 'fill', style: 'width:' + Math.round(comp.fraction * 100) + '%' })])]),
           el('div', { class: 'streak', 'aria-label': 'Days played this week' }, [el('span', { text: '🔥' }), ...streak.last7.map(on => el('span', { class: 'dot' + (on ? ' on' : '') }))])
         ])
@@ -95,13 +110,13 @@ function renderHome() {
       ]),
       el('div', { class: 'places' }, [
         el('div', { class: 'path' }),
-        ...available().map(r => {
+        ...available().map(r => ({ r, spot: spotlightHint(r) })).sort((a, b) => !!b.spot - !!a.spot).map(({ r, spot }) => {
           const rescued = economy.rescuedAt(r.place, SQUISHIES[r.place] || []);
-          const isToday = !quest.claimed && !!next && r.id === next.cabinet;
+          const isToday = spotFirst ? r === spotFirst : !quest.claimed && !!next && r.id === next.cabinet;
           const onTrail = !quest.claimed && quest.stops.some(st => st.cabinet === r.id && !st.done);
-          const btn = el('button', { class: 'place ' + r.place + (isToday ? ' today' : onTrail ? ' next' : '') + (r.ready ? '' : ' soon'), type: 'button', 'aria-label': r.name, onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
+          const btn = el('button', { class: 'place ' + r.place + (isToday ? ' today' : onTrail ? ' next' : '') + (spot ? ' spotlight' : '') + (r.ready ? '' : ' soon'), type: 'button', 'aria-label': r.name, onclick: () => r.ready ? openCabinet(r) : soon(r) }, [
             el('div', { class: 'art', html: placeArtSVG(r.place) }),
-            el('div', {}, [el('div', { class: 'name', text: r.name }), el('div', { class: 'hint', text: r.ready ? r.hint : 'Coming soon' })]),
+            el('div', {}, [el('div', { class: 'name', text: r.name }), el('div', { class: 'hint', text: !r.ready ? 'Coming soon' : spot || r.hint })]),
             el('div', { class: 'side' }, [
               el('div', { class: 'bubbles' }, (SQUISHIES[r.place] || []).map(id => el('span', { class: rescued.includes(id) ? 'free' : '', text: rescued.includes(id) ? '😊' : '' })))
             ])
@@ -145,7 +160,7 @@ async function openCabinet(r) {
     $('home').hidden = true; $('cabinet').hidden = false; $('back-btn').hidden = false;
     $('title').textContent = r.name.split(' ').pop();
     window.scrollTo(0, 0);
-    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, exit: () => nav.toMap(), praise, place: r.place, cabinetId: r.id, refreshBar: updateBar, nav: { push: nav.push, pop: nav.pop } });
+    await mod.mount($('cabinet'), { economy, adaptive, content, audio, speech, store, exit: () => nav.toMap(), praise, place: r.place, cabinetId: r.id, refreshBar: updateBar, nav: { push: nav.push, pop: nav.pop } });
   } catch (e) {
     console.error(e);
     toast('This place needs one visit online first.');
@@ -159,6 +174,7 @@ function closeCabinet() {
   if (current && current.module.unmount) { try { current.module.unmount(); } catch (e) { console.warn(e); } }
   current = null;
   $('cabinet').replaceChildren();
+  if (updates && updates.reloadIfReady()) return;
   renderHome();
   if (clock.due()) showShaper();
 }
@@ -198,7 +214,13 @@ function showPin() {
         else { entry = ''; render(); toast('Try again'); }
       }
     } }));
-  const o = sheet([el('h2', { text: 'Parent corner' }), dots, el('div', { class: 'pin-grid' }, keys), bigButton('Cancel', () => o.remove(), 'soft')]);
+  // a nav level of its own: the phone's Back (or Escape) closes the pad and leaves her where she was
+  let open = true;
+  const close = () => { if (!open) return; open = false; o.remove(); };
+  const o = sheet([el('h2', { text: 'Parent corner' }), dots, el('div', { class: 'pin-grid' }, keys), bigButton('✖ Cancel', () => { if (open) { close(); nav.pop(); } }, 'soft')]);
+  o.classList.add('pin-pad');
+  nav.push(close);
+  audio.say('This is for grown-ups. Tap cancel to keep playing.');
 }
 
 // Keyboard play (Chromebooks and laptops): number keys pick the 1st, 2nd, 3rd… thing to tap on screen,
@@ -210,7 +232,7 @@ function keyTargets() {
   const scope = overlay || document;
   const groups = overlay ? ['button'] : [
     document.querySelector('.tile.picked') ? '.slot' : null,
-    '.choice', '.tile', '.pat', '.sword', '.gem-box', '.ten-frame .cell', '.number-line button', '.rune', '.encounter-btn', '.place', '.garden-spot'
+    '.choice', '.tile', '.pat', '.sword', '.gem-box', '.ten-frame .cell', '.number-line button', '.rune', '.turn-done', '.encounter-btn', '.place', '.garden-spot'
   ].filter(Boolean);
   for (const sel of groups) {
     const list = [...scope.querySelectorAll(sel)].filter(visible);
@@ -237,13 +259,21 @@ function onKey(e) {
     return;
   }
   if (e.key === 'Enter' && (!t || t === document.body)) {
-    const done = [...document.querySelectorAll('.overlay .big-btn, .big-btn')].find(visible);
-    if (done) { e.preventDefault(); done.click(); }
+    // the main button first (gold, e.g. "Yay!" or Star Stage's ✅), and Star Stage's thumbs-up when it waits
+    for (const sel of ['.overlay .big-btn.gold', '.overlay .big-btn', '.turn-done:not([hidden])', '.big-btn.gold', '.big-btn']) {
+      const done = [...document.querySelectorAll(sel)].find(visible);
+      if (done) { e.preventDefault(); done.click(); break; }
+    }
     return;
   }
   if (e.key === 'Escape') {
+    // like the phone's Back: one level (out of an activity to its place's menu), then the map; a sheet that sits
+    // under the top bar (Star Stage's finish sheets) does not block it
+    if (document.querySelector('.overlay.pin-pad')) { e.preventDefault(); history.back(); return; }
     const back = $('back-btn');
-    if (!back.hidden && !document.querySelector('.overlay')) { e.preventDefault(); back.click(); }
+    if (back.hidden || document.querySelector('.overlay:not(.below-bar)')) return;
+    e.preventDefault();
+    if (nav.stack.length > 1) history.back(); else back.click();
   }
 }
 
@@ -276,14 +306,25 @@ async function boot() {
     $('topbar').hidden = false;
     renderHome();
     await audioReady;
-    audio.say(withName(pick(praise.greeting), economy.save.child.name));
+    await audio.say(withName(pick(praise.greeting), economy.save.child.name));
+    // the show week: Luna says where to go (the card's countdown is text she cannot read)
+    const spot = available().filter(r => r.ready && spotlightHint(r)).map(r => countdownSay(daysUntil(economy.today(), r.spotlight.until))).find(Boolean);
+    const stageToDo = !Object.keys((economy.save.stage.days || {})[economy.today()] || {}).length; // as spotFirst in renderHome
+    if (spot && stageToDo && !current && !opening && !document.querySelector('.overlay')) audio.say(spot);
   });
   $('back-btn').addEventListener('click', () => nav.toMap());
   $('mute-btn').addEventListener('click', () => { speech.toggleMuted(); if (speech.muted) audio.stop(); updateBar(); });
-  $('gear-btn').addEventListener('click', showPin);
+  // a place may be in the middle of something (Star Stage records her): let it stop before the PIN pad opens
+  $('gear-btn').addEventListener('click', () => { if (current && current.module.interrupt) current.module.interrupt(); showPin(); });
   document.addEventListener('pointerdown', () => clock.touch(), { passive: true });
   document.addEventListener('keydown', onKey);
   // ?nosw=1 skips the service worker (local testing only: no cache-first surprises while editing files).
-  if ('serviceWorker' in navigator && !/[?&]nosw=1/.test(location.search)) navigator.serviceWorker.register('sw.js').catch(e => console.warn('sw', e));
+  if ('serviceWorker' in navigator && !/[?&]nosw=1/.test(location.search)) {
+    updates = watchUpdates({ onSplash: () => !!$('splash'), onMap: () => !current && !opening && !document.querySelector('.overlay') });
+    // the version on this device, small at the bottom of the splash (a grown-up checking an update)
+    // (asked again a few seconds later if the worker did not answer the first time)
+    const showVersion = () => installedVersion().then(v => { const n = $('app-version'); if (v && n) n.textContent = 'Version ' + v; return v; });
+    navigator.serviceWorker.ready.then(showVersion).then(v => { if (!v) setTimeout(showVersion, 3000); }).catch(() => {});
+  }
 }
 boot();
